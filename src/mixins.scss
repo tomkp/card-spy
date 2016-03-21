@@ -1,0 +1,15 @@
+
+.truncate {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.shadow {
+  box-shadow: -8px 0 8px 0 rgba(0, 0, 0, .5);
+}
+
+.stripes {
+  background-image: linear-gradient(to left top, #eee 0%, #eee 25%, #fff 25%, #fff 50%, #eee 50%, #eee 75%, #fff 75%);
+  background-size: 30px 30px;
+}

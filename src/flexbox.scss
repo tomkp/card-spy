@@ -1,0 +1,38 @@
+
+
+/* vertically stacked */
+.column {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    position: relative;
+    height: 100%;
+    min-height: 100%;
+}
+
+/* left to right */
+.row {
+    display: flex;
+    flex: 1;
+    flex-direction: row;
+    height: 100%;
+    min-height: 100%;
+    position: absolute;
+    left: 0;
+    right: 0;
+}
+
+.column > .flex {
+}
+
+.row > .flex {
+    height: 100%;
+}
+
+/* flexible content area */
+.flex {
+    flex: 1;
+    overflow-y: auto;
+}
+
+

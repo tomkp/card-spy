@@ -1,0 +1,14 @@
+@import "../../../colours.scss";
+
+.searchbar {
+
+
+  padding: 0 1rem;
+
+  input {
+    padding: .5rem 1rem;
+    background: color($black lightness(20%));
+    border: 1px solid $black;
+    border-radius: 2px;
+  }
+}

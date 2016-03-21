@@ -1,0 +1,51 @@
+{
+  "name": "card-explorer",
+  "version": "1.0.0",
+  "description": "",
+  "author": "tomkp <tom@tomkp.com>",
+  "license": "MIT",
+  "main": "card-explorer.js",
+  "scripts": {
+    "start": "electron card-explorer.js",
+    "compile": "webpack",
+    "compile:watch": "webpack -w"
+  },
+  "dependencies": {
+    "babel-polyfill": "^6.7.2",
+    "card-reader": "0.0.24",
+    "emv": "^1.0.2",
+    "es6-promise": "^3.1.2",
+    "history": "^2.0.1",
+    "normalize.css": "^3.0.3",
+    "react": "^0.14.7",
+    "react-dom": "^0.14.7",
+    "react-redux": "^4.4.1",
+    "react-router": "^2.0.1",
+    "redux": "^3.3.1"
+  },
+  "devDependencies": {
+    "autoprefixer": "^6.3.3",
+    "babel-cli": "^6.6.5",
+    "babel-core": "^6.7.2",
+    "babel-loader": "^6.2.4",
+    "babel-preset-es2015": "^6.6.0",
+    "babel-preset-react": "^6.5.0",
+    "babel-preset-react-hmre": "^1.1.1",
+    "css-loader": "^0.23.1",
+    "electron-prebuilt": "^0.36.0",
+    "express": "^4.13.4",
+    "live-server": "^0.9.2",
+    "mocha": "^2.4.5",
+    "postcss": "^5.0.19",
+    "postcss-color-function": "^2.0.1",
+    "postcss-loader": "^0.8.2",
+    "precss": "^1.4.0",
+    "react-addons-test-utils": "^0.14.7",
+    "style-loader": "^0.13.0",
+    "surge": "^0.17.7",
+    "webpack": "^1.12.14",
+    "webpack-dev-middleware": "^1.5.1",
+    "webpack-dev-server": "^1.14.1",
+    "webpack-hot-middleware": "^2.10.0"
+  }
+}

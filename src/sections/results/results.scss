@@ -1,0 +1,22 @@
+@import "../../colours.scss";
+
+.results {
+  width: 14rem;
+  background: $silver;
+}
+
+.result {
+
+  a {
+    display: block;
+    text-decoration: none;
+    color: $black;
+    border-bottom: 1px solid #aaa;
+    padding: 1rem;
+    cursor: pointer;
+  }
+
+  .active {
+    background: $gray;
+  }
+}
