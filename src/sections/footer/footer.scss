@@ -1,9 +1,33 @@
 @import "../../colours.scss";
 
+.status {
+  display: inline-block;
+  border-radius: 50%;
+  width: 1rem;
+  height: 1rem;
+  vertical-align: text-top;
+}
+
+
 .footer {
-  background: $black;
-  color: #fff;
+  background: $silver;
+  color: $gray;
   height: 3rem;
   line-height: 3rem;
   padding: 0 1rem;
+
+  .atr {
+    font-family: "Menlo", "Lucida Console", monospace;
+  }
+
+  .device-status {
+    @extend .status;
+    background: $alizarin;
+  }
+
+  .card-status {
+    @extend .status;
+    background: $emerland;
+  }
+
 }
