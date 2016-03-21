@@ -1,9 +1,10 @@
 import React from 'react';
 import './footer.scss';
 
-export default () => {
+export default ({reader, status}) => {
     return <div className="footer">
-        <span className="atr" title="ATR (Answer To Reset)">3b6d00000031c071d66419160100849000</span>
+        <span className="reader">{reader?reader.name:''}</span>
+        <span className="atr" title="ATR (Answer To Reset)">{status?status.atr.toString('hex'):''}</span>
         <span className="device-status deactivated"></span>
         <span className="card-status removed"></span>
     </div>

@@ -1,8 +1,9 @@
 const path = require('path');
 const webpack = require('webpack');
+const webpackTargetElectronRenderer = require('webpack-target-electron-renderer');
 
 
-module.exports = {
+var config = {
     devtool: 'cheap-module-eval-source-map',
     entry: [
         './src/app.js'
@@ -34,4 +35,8 @@ module.exports = {
             require('autoprefixer')
         ];
     }
+
 };
+config.target = webpackTargetElectronRenderer(config);
+
+module.exports = config;

@@ -1,5 +1,8 @@
 'use strict';
 
+var cardreader = require('card-reader');
+var iso7816 = require('iso7816');
+
 const electron = require('electron');
 // Module to control application life.
 const app = electron.app;
@@ -18,7 +21,9 @@ function createWindow () {
     mainWindow.loadURL('file://' + __dirname + '/dist/index.html');
 
     // Open the DevTools.
-    mainWindow.webContents.openDevTools();
+    let webContents = mainWindow.webContents;
+
+    webContents.openDevTools();
 
     // Emitted when the window is closed.
     mainWindow.on('closed', function() {
@@ -27,6 +32,59 @@ function createWindow () {
         // when you should delete the corresponding element.
         mainWindow = null;
     });
+
+
+    webContents.on('did-finish-load', function() {
+
+        webContents.send('test', 'hello');
+
+        cardreader.on('device-activated', function (reader) {
+            console.info(`Device '${reader.name}' activated`);
+            webContents.send('device-activated', reader);
+        });
+
+        cardreader.on('device-deactivated', function (reader) {
+            console.info(`Device '${reader.name}' deactivated`);
+            webContents.send('device-deactivated', reader);
+        });
+
+        cardreader.on('card-removed', function (reader) {
+            console.info(`Card removed from '${reader.name}' `);
+            webContents.send('card-removed', reader);
+        });
+
+        cardreader.on('issue-command', function (reader, command) {
+            console.info(`Command '${command.toString('hex')}' issued to '${reader.name}' `);
+            webContents.send('issue-command', reader, command);
+        });
+
+        cardreader.on('receive-response', function (reader, response, command) {
+            console.info(`Response '${response}' received from '${reader.name}' in response to '${command}'`);
+            webContents.send('receive-response', reader, response, command);
+        });
+
+
+        cardreader.on('card-inserted', function (reader, status) {
+
+            console.info(`Card inserted into '${reader.name}', atr: '${status.atr.toString('hex')}'`);
+
+            webContents.send('card-inserted', {reader: reader, status: status});
+
+/*
+            let application = iso7816(cardreader);
+            application
+                .selectFile([0x31, 0x50, 0x41, 0x59, 0x2E, 0x53, 0x59, 0x53, 0x2E, 0x44, 0x44, 0x46, 0x30, 0x31])
+                .then(function (response) {
+                    console.info(`Select PSE Response: '${response}'`);
+                }).catch(function (error) {
+                    console.error('Error:', error, error.stack);
+                });*/
+        });
+    });
+
+
+
+
 }
 
 // This method will be called when Electron has finished

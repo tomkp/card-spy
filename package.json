@@ -16,6 +16,7 @@
     "emv": "^1.0.2",
     "es6-promise": "^3.1.2",
     "history": "^2.0.1",
+    "iso7816": "^1.0.14",
     "normalize.css": "^3.0.3",
     "react": "^0.14.7",
     "react-dom": "^0.14.7",
@@ -46,6 +47,7 @@
     "webpack": "^1.12.14",
     "webpack-dev-middleware": "^1.5.1",
     "webpack-dev-server": "^1.14.1",
-    "webpack-hot-middleware": "^2.10.0"
+    "webpack-hot-middleware": "^2.10.0",
+    "webpack-target-electron-renderer": "^0.4.0"
   }
 }
