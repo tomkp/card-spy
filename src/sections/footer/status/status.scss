@@ -1,0 +1,20 @@
+@import "../../../colours.scss";
+
+
+.status {
+  display: inline-block;
+  border-radius: 50%;
+  width: 1rem;
+  height: 1rem;
+  vertical-align: text-top;
+
+  &.unknown {
+    background: #aaa
+  }
+  &.activated, &.inserted {
+    background: $emerland;
+  }
+  &.deactivated, &.removed {
+    background: $alizarin;
+  }
+}

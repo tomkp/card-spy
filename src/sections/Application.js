@@ -19,35 +19,47 @@ class Application extends React.Component {
         
         const ipc = electron.ipcRenderer;
 
-        ipc.on('device-activated', function(event, {reader}) {
+        ipc.on('device-activated', (event, {reader}) => {
             console.log(`* Device activated '${reader.name}'`);
+            this.setState({
+                deviceStatus: 'activated'
+            });
         });
-        ipc.on('device-deactivated', function(event, {reader}) {
+        ipc.on('device-deactivated', (event, {reader}) => {
             console.log(`* Device deactivated '${reader.name}'`);
+            this.setState({
+                deviceStatus: 'deactivated'
+            });
         });
         ipc.on('card-inserted', (event, {reader, status}) => {
             console.log(`* Card inserted into '${reader.name}', atr: '${status.atr.toString('hex')}'`);
             this.setState({
                 status: status,
-                reader: reader
+                reader: reader,
+                cardStatus: 'inserted'
             });
         });
-        ipc.on('card-removed', function(event, message) {
+        ipc.on('card-removed', (event, message) => {
             console.log(`* Card removed`);
+            this.setState({
+                cardStatus: 'removed'
+            });
         });
-        ipc.on('command-issued', function(event, {reader, command}) {
+        ipc.on('command-issued', (event, {reader, command}) => {
             console.log(`* Command issued '${command}'`);
         });
-        ipc.on('response-received', function(event, {reader, response, command}) {
+        ipc.on('response-received', (event, {reader, response, command}) => {
             console.log(`* Response received '${command}' -> '${response}'`);
         });
-        ipc.on('error', function(event, message) {
+        ipc.on('error', (event, message) => {
             console.log(event, message);
         });
 
         this.state = {
             status: null,
-            reader: null
+            reader: null,
+            deviceStatus: 'unknown',
+            cardStatus: 'unknown'
         };
     }
 
@@ -55,7 +67,10 @@ class Application extends React.Component {
         return (
             <div className="column application">
                 <div className="flex"> </div>
-                <Footer reader={this.state.reader} status={this.state.status}/>
+                <Footer reader={this.state.reader}
+                        atr={this.state.status?this.state.status.atr:''}
+                        deviceStatus={this.state.deviceStatus}
+                        cardStatus={this.state.cardStatus} />
             </div>
         );
     }

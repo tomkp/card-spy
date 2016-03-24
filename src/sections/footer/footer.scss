@@ -13,9 +13,4 @@
     font-family: "Menlo", "Lucida Console", monospace;
   }
 
-  .card-status {
-    @extend .status;
-    background: $emerland;
-  }
-
 }
