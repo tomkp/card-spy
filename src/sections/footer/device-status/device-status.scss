@@ -1,0 +1,8 @@
+@import "../../../colours.scss";
+@import "../../../mixins.scss";
+
+.device-status {
+  @extend .status;
+  background: $alizarin;
+}
+

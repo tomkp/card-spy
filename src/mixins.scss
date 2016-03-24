@@ -13,3 +13,11 @@
   background-image: linear-gradient(to left top, #eee 0%, #eee 25%, #fff 25%, #fff 50%, #eee 50%, #eee 75%, #fff 75%);
   background-size: 30px 30px;
 }
+
+.status {
+  display: inline-block;
+  border-radius: 50%;
+  width: 1rem;
+  height: 1rem;
+  vertical-align: text-top;
+}

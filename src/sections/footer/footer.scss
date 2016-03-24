@@ -1,12 +1,5 @@
 @import "../../colours.scss";
-
-.status {
-  display: inline-block;
-  border-radius: 50%;
-  width: 1rem;
-  height: 1rem;
-  vertical-align: text-top;
-}
+@import "../../mixins.scss";
 
 
 .footer {
@@ -18,11 +11,6 @@
 
   .atr {
     font-family: "Menlo", "Lucida Console", monospace;
-  }
-
-  .device-status {
-    @extend .status;
-    background: $alizarin;
   }
 
   .card-status {
