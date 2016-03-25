@@ -3,7 +3,7 @@ import './application.scss';
 
 import Header from './header/Header';
 import Footer from './footer/Footer';
-import Results from './results/Results';
+import Commands from './results/Commands';
 import Sidebar from './sidebar/Sidebar';
 
 
@@ -48,8 +48,16 @@ class Application extends React.Component {
         ipc.on('command-issued', (event, {reader, command}) => {
             console.log(`* Command issued '${command}'`);
         });
-        ipc.on('response-received', (event, {reader, response, command}) => {
+        ipc.on('response-received', (event, {reader, command, response}) => {
             console.log(`* Response received '${command}' -> '${response}'`);
+            let commands = this.state.commands;
+            commands.push({
+                command: command,
+                response: response
+            });
+            this.setState({
+                commands: commands
+            })
         });
         ipc.on('error', (event, message) => {
             console.log(event, message);
@@ -59,14 +67,20 @@ class Application extends React.Component {
             status: null,
             reader: null,
             deviceStatus: 'unknown',
-            cardStatus: 'unknown'
+            cardStatus: 'unknown',
+            commands: []
         };
     }
+
 
     render() {
         return (
             <div className="column application">
-                <div className="flex"> </div>
+                <div className="flex">
+                    {this.props.children &&
+                        React.cloneElement(this.props.children, { commands: this.state.commands})
+                    }
+                </div>
                 <Footer reader={this.state.reader}
                         atr={this.state.status?this.state.status.atr:''}
                         deviceStatus={this.state.deviceStatus}
