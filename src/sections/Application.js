@@ -39,7 +39,7 @@ class Application extends React.Component {
                 cardStatus: 'inserted'
             });
         });
-        ipc.on('card-removed', (event, message) => {
+        ipc.on('card-removed', (event, reader) => {
             console.log(`* Card removed`);
             this.setState({
                 cardStatus: 'removed'

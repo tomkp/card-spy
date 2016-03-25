@@ -38,43 +38,43 @@ function createWindow() {
 
         setTimeout(function () {
 
-            var cardreader = require('card-reader');
             var iso7816 = require('iso7816');
+            var devices = require('card-reader');
 
 
-            cardreader.on('device-activated', function (reader) {
-                console.log(`# Device '${reader.name}' activated`);
-                webContents.send('device-activated', {reader});
+            devices.on('device-activated', function (event) {
+                console.log(`# Device '${event.reader.name}' activated`);
+                webContents.send('device-activated', event);
             });
 
-            cardreader.on('device-deactivated', function (reader) {
-                console.log(`# Device '${reader.name}' deactivated`);
-                webContents.send('device-deactivated', {reader});
+            devices.on('device-deactivated', function (event) {
+                console.log(`# Device '${event.reader.name}' deactivated`);
+                webContents.send('device-deactivated', event);
             });
 
-            cardreader.on('card-removed', function (reader) {
-                console.log(`# Card removed from '${reader.name}' `);
-                webContents.send('card-removed', {reader});
+            devices.on('card-removed', function (event) {
+                console.log(`# Card removed from '${event.reader.name}' `);
+                webContents.send('card-removed', event);
             });
 
-            cardreader.on('command-issued', function (reader, command) {
-                console.log(`# Command '${command.toString('hex')}' issued to '${reader.name}' `);
-                webContents.send('command-issued', {reader, command});
+            devices.on('command-issued', function (event) {
+                console.log(`# Command '${event.command.toString('hex')}' issued to '${event.reader.name}' `);
+                webContents.send('command-issued', event);
             });
 
-            cardreader.on('response-received', function (reader, response, command) {
-                console.log(`# Response '${response}' received from '${reader.name}' in response to '${command}'`);
-                webContents.send('response-received', {reader, response, command});
+            devices.on('response-received', function (event) {
+                console.log(`# Response '${event.response}' received from '${event.reader.name}' in response to '${event.command}'`);
+                webContents.send('response-received', event);
             });
 
 
-            cardreader.on('card-inserted', function (reader, status) {
+            devices.on('card-inserted', function (event) {
 
-                console.log(`# Card inserted into '${reader.name}', atr: '${status.atr.toString('hex')}'`);
+                console.log(`# Card inserted into '${event.reader.name}', atr: '${event.status.atr.toString('hex')}'`);
 
-                webContents.send('card-inserted', {reader, status});
+                webContents.send('card-inserted', event);
 
-                let application = iso7816(cardreader);
+                let application = iso7816(devices, event.reader);
                 application
                     .selectFile([0x31, 0x50, 0x41, 0x59, 0x2E, 0x53, 0x59, 0x53, 0x2E, 0x44, 0x44, 0x46, 0x30, 0x31])
                     .then(function (response) {
