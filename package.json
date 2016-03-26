@@ -13,11 +13,11 @@
   "dependencies": {
     "babel-polyfill": "^6.7.4",
     "card-reader": "^1.0.3",
-    "emv": "^1.0.5",
+    "emv": "^1.0.6",
     "es6-promise": "^3.1.2",
     "hexify": "^1.0.1",
     "history": "^2.0.1",
-    "iso7816": "^1.0.19",
+    "iso7816": "^1.0.20",
     "normalize.css": "^4.0.0",
     "react": "^0.14.7",
     "react-dom": "^0.14.7",
