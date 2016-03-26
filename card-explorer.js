@@ -1,8 +1,9 @@
 'use strict';
 
 
-
 const electron = require('electron');
+const smartcard = require('smartcard');
+
 // Module to control application life.
 const app = electron.app;
 // Module to create native browser window.
@@ -38,53 +39,77 @@ function createWindow() {
 
         setTimeout(function () {
 
-            var iso7816 = require('iso7816');
-            var devices = require('card-reader');
+            const Devices = smartcard.Devices;
+            const Iso7816Application = smartcard.Iso7816Application;
+
+            const devices = new Devices();
 
 
             devices.on('device-activated', function (event) {
-                console.log(`# Device '${event.reader.name}' activated`);
-                webContents.send('device-activated', event);
-            });
 
-            devices.on('device-deactivated', function (event) {
-                console.log(`# Device '${event.reader.name}' deactivated`);
-                webContents.send('device-deactivated', event);
-            });
+                const currentDevices = event.devices;
+                let device = event.device;
+                console.log(`Device '${device}' activated, devices: ${currentDevices}`);
+                for (let prop in currentDevices) {
+                    console.log("Devices: " + currentDevices[prop]);
+                }
 
-            devices.on('card-removed', function (event) {
-                console.log(`# Card removed from '${event.reader.name}' `);
-                webContents.send('card-removed', event);
-            });
+                //console.log(`${JSON.stringify(device)}`);
 
-            devices.on('command-issued', function (event) {
-                console.log(`# Command '${event.command.toString('hex')}' issued to '${event.reader.name}' `);
-                webContents.send('command-issued', event);
-            });
+                webContents.send('device-activated', {device: device, devices: currentDevices});
 
-            devices.on('response-received', function (event) {
-                console.log(`# Response '${event.response}' received from '${event.reader.name}' in response to '${event.command}'`);
-                webContents.send('response-received', event);
-            });
+                device.on('card-inserted', function (event) {
+                    let card = event.card;
+                    console.log(`Card '${event.card}' inserted into '${event.device}'`);
 
+                    //console.log(`${JSON.stringify(card)}`);
 
-            devices.on('card-inserted', function (event) {
+                    webContents.send('card-inserted', {atr: event.card.getAtr(), device: device.toString()});
 
-                console.log(`# Card inserted into '${event.reader.name}', atr: '${event.status.atr.toString('hex')}'`);
+                    card.on('command-issued', function (event) {
+                        console.log(`Command '${event.command}' issued to '${event.card}' `);
 
-                webContents.send('card-inserted', event);
+                        webContents.send('command-issued', {command: event.command.toString(), atr: event.card.getAtr()});
 
-                let application = iso7816(devices, event.reader);
-                application
-                    .selectFile([0x31, 0x50, 0x41, 0x59, 0x2E, 0x53, 0x59, 0x53, 0x2E, 0x44, 0x44, 0x46, 0x30, 0x31])
-                    .then(function (response) {
-                        console.log(`# Select PSE Response: '${response}'`);
-                    }).catch(function (error) {
-                        console.log('# Error:', error, error.stack);
+                    });
+
+                    card.on('response-received', function (event) {
+                        console.log(`Response '${event.response}' received from '${event.card}' in response to '${event.command}'`);
+
+                        //console.log(`${JSON.stringify(command)}`);
+                        //console.log(`${JSON.stringify(response)}`);
+
+                        webContents.send('response-received', {command: event.command.toString(), response: event.response.toString(), atr: event.card.getAtr()});
+
+                    });
+
+                    const application = new Iso7816Application(card);
+                    application.selectFile([0x31, 0x50, 0x41, 0x59, 0x2E, 0x53, 0x59, 0x53, 0x2E, 0x44, 0x44, 0x46, 0x30, 0x31])
+                        .then(function (response) {
+                            console.info(`Select PSE Response: '${response}' '${response.meaning()}'`);
+                        }).catch(function (error) {
+                        console.error('Error:', error, error.stack);
                     });
 
 
+                });
+                device.on('card-removed', function (event) {
+                    console.log(`Card removed from '${event.name}' `);
+
+                    webContents.send('card-removed', event);
+
+                });
+
             });
+
+            devices.on('device-deactivated', function (event) {
+                console.log(`Device '${event.reader.name}' deactivated, devices: ${devices.listDevices()}`);
+
+                webContents.send('device-deactivated', event);
+
+            });
+
+
         }, 500);
     });
 

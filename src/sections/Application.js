@@ -19,37 +19,40 @@ class Application extends React.Component {
         
         const ipc = electron.ipcRenderer;
 
-        ipc.on('device-activated', (event, {reader}) => {
-            console.log(`* Device activated '${reader.name}'`);
+        ipc.on('device-activated', (event, {device, devices}) => {
+            console.log(`* Device '${device.name}' activated, devices: [${devices}]`);
             this.setState({
-                deviceStatus: 'activated'
+                device: device
             });
         });
-        ipc.on('device-deactivated', (event, {reader}) => {
-            console.log(`* Device deactivated '${reader.name}'`);
+        ipc.on('device-deactivated', (event, {device, devices}) => {
+            console.log(`* Device '${device.name}' deactivated, devices: ${devices}`);
+            
             this.setState({
-                deviceStatus: 'deactivated'
+                device: null
             });
         });
-        ipc.on('card-inserted', (event, {reader, status}) => {
-            console.log(`* Card inserted into '${reader.name}', atr: '${status.atr.toString('hex')}'`);
+        ipc.on('card-inserted', (event, {atr, device}) => {
+            console.log(`* Card '${atr}' inserted into '${device}'`);
+
             this.setState({
-                status: status,
-                reader: reader,
-                cardStatus: 'inserted'
+                device: device,
+                card: atr
             });
         });
-        ipc.on('card-removed', (event, reader) => {
-            console.log(`* Card removed`);
+        ipc.on('card-removed', (event, {name}) => {
+            console.log(`* Card removed from '${name}' `);
+
             this.setState({
-                cardStatus: 'removed'
+                card: null
             });
         });
-        ipc.on('command-issued', (event, {reader, command}) => {
-            console.log(`* Command issued '${command}'`);
+        ipc.on('command-issued', (event, {atr, command}) => {
+            console.log(`* Command '${command}' issued to '${atr}' `);
         });
-        ipc.on('response-received', (event, {reader, command, response}) => {
-            console.log(`* Response received '${command}' -> '${response}'`);
+        ipc.on('response-received', (event, {atr, command, response}) => {
+            console.log(`* Response '${response}' received from '${atr}' in response to '${command}'`);
+
             let commands = this.state.commands;
             commands.push({
                 command: command,
@@ -64,10 +67,8 @@ class Application extends React.Component {
         });
 
         this.state = {
-            status: null,
-            reader: null,
-            deviceStatus: 'unknown',
-            cardStatus: 'unknown',
+            device: null,
+            card: null,
             commands: []
         };
     }
@@ -81,10 +82,8 @@ class Application extends React.Component {
                         React.cloneElement(this.props.children, { commands: this.state.commands})
                     }
                 </div>
-                <Footer reader={this.state.reader}
-                        atr={this.state.status?this.state.status.atr:''}
-                        deviceStatus={this.state.deviceStatus}
-                        cardStatus={this.state.cardStatus} />
+                <Footer device={this.state.device}
+                        card={this.state.card} />
             </div>
         );
     }

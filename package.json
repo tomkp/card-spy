@@ -23,7 +23,8 @@
     "react-dom": "^0.14.7",
     "react-redux": "^4.4.1",
     "react-router": "^2.0.1",
-    "redux": "^3.3.1"
+    "redux": "^3.3.1",
+    "smartcard": "^1.0.2"
   },
   "devDependencies": {
     "autoprefixer": "^6.3.4",
@@ -46,7 +47,7 @@
     "style-loader": "^0.13.1",
     "surge": "^0.17.7",
     "webpack": "^1.12.14",
-    "webpack-dev-middleware": "^1.6.0",
+    "webpack-dev-middleware": "^1.6.1",
     "webpack-dev-server": "^1.14.1",
     "webpack-hot-middleware": "^2.10.0",
     "webpack-target-electron-renderer": "^0.4.0"
