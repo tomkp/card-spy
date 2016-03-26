@@ -7,6 +7,11 @@
 }
 .response {
 
-
+  &.ok {
+    color: $nephritis;
+  }
+  &.error {
+    color: $alizarin;
+  }
 
 }

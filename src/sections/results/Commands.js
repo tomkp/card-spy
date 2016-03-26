@@ -10,6 +10,8 @@ export default ({commands}) => {
             { commands.map((result, key) => {
                 return <CommandResponse key={key}
                                 command={result.command}
+                                ok={result.ok}
+                                meaning={result.meaning}
                                 response={result.response} />
             })
             }

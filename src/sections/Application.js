@@ -50,13 +50,15 @@ class Application extends React.Component {
         ipc.on('command-issued', (event, {atr, command}) => {
             console.log(`* Command '${command}' issued to '${atr}' `);
         });
-        ipc.on('response-received', (event, {atr, command, response}) => {
+        ipc.on('response-received', (event, {atr, command, response, ok, meaning}) => {
             console.log(`* Response '${response}' received from '${atr}' in response to '${command}'`);
 
             let commands = this.state.commands;
             commands.push({
                 command: command,
-                response: response
+                response: response,
+                ok: ok,
+                meaning: meaning
             });
             this.setState({
                 commands: commands

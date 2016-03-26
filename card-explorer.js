@@ -69,7 +69,13 @@ function createWindow() {
 
                     card.on('response-received', function (event) {
                         console.log(`Response '${event.response}' received from '${event.card}' in response to '${event.command}'`);
-                        webContents.send('response-received', {command: event.command.toString(), response: event.response.toString(), atr: event.card.getAtr()});
+                        webContents.send('response-received', {
+                            command: event.command.toString(),
+                            response: event.response.toString(),
+                            ok: event.response.isOk(),
+                            meaning: event.response.meaning(),
+                            atr: event.card.getAtr()
+                        });
                     });
 
                     const application = new Iso7816Application(card);
