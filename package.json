@@ -8,7 +8,8 @@
   "scripts": {
     "start": "electron card-explorer.js",
     "compile": "webpack",
-    "compile:watch": "webpack -w"
+    "compile:watch": "webpack -w",
+    "build:osx": "electron-packager . --overwrite --out='build' --icon='tomkp.icns' --platform=darwin --appname='Card Explorer' --arch=x64"
   },
   "dependencies": {
     "babel-polyfill": "^6.7.4",
@@ -38,6 +39,7 @@
     "babel-preset-react": "^6.5.0",
     "babel-preset-react-hmre": "^1.1.1",
     "css-loader": "^0.23.1",
+    "electron-packager": "^5.2.1",
     "electron-prebuilt": "^0.37.2",
     "express": "^4.13.4",
     "live-server": "^0.9.2",

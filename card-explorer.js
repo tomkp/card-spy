@@ -17,7 +17,7 @@ let mainWindow;
 
 function createWindow() {
     // Create the browser window.
-    mainWindow = new BrowserWindow({width: 600, height: 600});
+    mainWindow = new BrowserWindow({width: 600, height: 600, icon:'./tomkp.png', title: 'Card Explorer'});
 
     // and load the index.html of the app.
     mainWindow.loadURL('file://' + __dirname + '/dist/index.html');
@@ -25,7 +25,7 @@ function createWindow() {
     // Open the DevTools.
     let webContents = mainWindow.webContents;
 
-    webContents.openDevTools();
+    //webContents.openDevTools();
 
     // Emitted when the window is closed.
     mainWindow.on('closed', function () {
