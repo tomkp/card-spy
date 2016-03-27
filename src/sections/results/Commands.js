@@ -7,7 +7,7 @@ import './commands.scss';
 
 export default ({commands}) => {
     return (
-        <SplitPane split="vertical" minSize="50" defaultSize="100">
+        <SplitPane split="horizontal" minSize="50" defaultSize="400">
             <div className="commands">
                 { commands.map((result, key) => {
                     return <CommandResponse key={key}
