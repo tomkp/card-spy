@@ -1,0 +1,47 @@
+
+.tlv-viewer {
+//  margin: 1rem;
+}
+
+.bytes {
+  display: inline-block;
+}
+.cell {
+  display: inline-block;
+  width: 2rem;
+  height: 2rem;
+  text-align: center;
+  vertical-align: top;
+}
+.byte {
+  background: #eee;
+  /*  border: 1px solid #ddd;
+    border-right: 0;
+    &:last-child {
+      border-right: 1px solid #ddd;
+    }*/
+}
+
+
+.tlv {
+  margin-left: 1rem;
+}
+
+.tlv-array {
+
+}
+.tlv-attribute {
+  display: inline-block;
+}
+.tag {
+  background: #999;
+  color: #000;
+}
+.length {
+  background: #aaa;
+  color: #333;
+}
+.value {
+  background: #ccc;
+  color: #000;
+}
