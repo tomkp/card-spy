@@ -1,6 +1,8 @@
 import React from 'react';
 import './application.scss';
 
+import {Layout, Fixed, Flex} from 'react-layout-pane';
+
 import Header from './header/Header';
 import Footer from './footer/Footer';
 import Commands from './results/Commands';
@@ -78,15 +80,18 @@ class Application extends React.Component {
 
     render() {
         return (
-            <div className="column application">
-                <div className="flex">
+            <Layout type="column">
+                <Flex className="application">
                     {this.props.children &&
-                        React.cloneElement(this.props.children, { commands: this.state.commands})
+                    React.cloneElement(this.props.children, { commands: this.state.commands})
                     }
-                </div>
-                <Footer device={this.state.device}
-                        card={this.state.card} />
-            </div>
+                </Flex>
+                <Fixed>
+                    <Footer device={this.state.device}
+                            card={this.state.card} />
+                </Fixed>
+            </Layout>
+
         );
     }
 }
