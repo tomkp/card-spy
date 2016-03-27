@@ -110,6 +110,7 @@ function createWindow() {
                                 return queue;
                             }).then(function(applicationIds) {
                                 console.info(`Application IDs: '${applicationIds}'`);
+                                webContents.send('applications-found', {ids: applicationIds});
                             }).catch(function (error) {
                                 console.error('Error:', error, error.stack);
                             });

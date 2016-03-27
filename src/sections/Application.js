@@ -66,6 +66,12 @@ class Application extends React.Component {
                 commands: commands
             })
         });
+        ipc.on('applications-found', (event, {ids}) => {
+            console.log(`* Applications found '${ids}'`);
+            this.setState({
+                ids: ids
+            })
+        });
         ipc.on('error', (event, message) => {
             console.log(event, message);
         });
@@ -73,17 +79,19 @@ class Application extends React.Component {
         this.state = {
             device: null,
             card: null,
+            ids: [],
             commands: []
         };
     }
 
 
     render() {
+        console.log(`Application.state: ${JSON.stringify(this.state)}`);
         return (
             <Layout type="column">
                 <Flex className="application">
                     {this.props.children &&
-                    React.cloneElement(this.props.children, { commands: this.state.commands})
+                    React.cloneElement(this.props.children, { commands: this.state.commands, ids: this.state.ids})
                     }
                 </Flex>
                 <Fixed>

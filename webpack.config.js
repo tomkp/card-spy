@@ -6,7 +6,7 @@ const webpackTargetElectronRenderer = require('webpack-target-electron-renderer'
 var config = {
     devtool: 'cheap-module-eval-source-map',
     entry: [
-        './src/app.js'
+        './src/Routing.js'
     ],
     output: {
         path: path.join(__dirname, 'dist'),
