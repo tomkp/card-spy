@@ -1,11 +1,14 @@
 @import "../../colours.scss";
+@import "../../mixins.scss";
 
 
 .commands-control {
   background: #eee;
-  border-bottom: 1px solid #aaa;
+  //border-bottom: 1px solid #aaa;
   padding: .5rem 1rem;
   text-align: right;
+  z-index: 2;
+  @extend .shadow;
 }
 
 .commands {
@@ -13,6 +16,7 @@
   background: $white;
   font-family: "Menlo", "Lucida Console", monospace;
   overflow-y: auto;
+  z-index: 1;
 }
 
 
