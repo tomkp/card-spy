@@ -131,7 +131,7 @@ function leftpad (str, len, ch) {
 
 const Tag = ({tag}) => {
     return <div className="tag">
-        <span className="description">{emvLookup(tag.toString('16')).toUpperCase()}</span>
+        <span className="description">{emvLookup(tag.toString('16'))}</span>
         {tag.toString('16')}
     </div>;
 };
