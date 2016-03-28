@@ -29,7 +29,7 @@
     "react-layout-pane": "^0.1.16",
     "react-redux": "^4.4.1",
     "react-router": "^2.0.1",
-    "react-split-pane": "^0.1.25",
+    "react-split-pane": "^0.1.26",
     "redux": "^3.3.1",
     "smartcard": "^1.0.6",
     "tlv": "^1.1.1"
@@ -43,7 +43,7 @@
     "babel-preset-react": "^6.5.0",
     "babel-preset-react-hmre": "^1.1.1",
     "css-loader": "^0.23.1",
-    "electron-packager": "^5.2.1",
+    "electron-packager": "^6.0.0",
     "electron-prebuilt": "^0.37.2",
     "express": "^4.13.4",
     "live-server": "^0.9.2",

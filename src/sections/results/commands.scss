@@ -1,10 +1,20 @@
 @import "../../colours.scss";
 
+
+.commands-control {
+  background: #eee;
+  border-bottom: 1px solid #aaa;
+  padding: .5rem 1rem;
+  text-align: right;
+}
+
 .commands {
   //width: 14rem;
   background: $white;
   font-family: "Menlo", "Lucida Console", monospace;
+  overflow-y: auto;
 }
+
 
 .aids {
   font-family: "Menlo", "Lucida Console", monospace;

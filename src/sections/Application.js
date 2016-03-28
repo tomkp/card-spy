@@ -85,13 +85,19 @@ class Application extends React.Component {
     }
 
 
+    clear() {
+        this.setState({
+           commands: []
+        });
+    }
+
     render() {
         //console.log(`Application.state: ${JSON.stringify(this.state)}`);
         return (
             <Layout type="column">
                 <Flex className="application">
                     {this.props.children &&
-                    React.cloneElement(this.props.children, { commands: this.state.commands, ids: this.state.ids})
+                    React.cloneElement(this.props.children, { commands: this.state.commands, ids: this.state.ids, clear: () => {this.clear()}})
                     }
                 </Flex>
                 <Fixed>
