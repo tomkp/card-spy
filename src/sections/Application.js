@@ -86,7 +86,7 @@ class Application extends React.Component {
 
 
     render() {
-        console.log(`Application.state: ${JSON.stringify(this.state)}`);
+        //console.log(`Application.state: ${JSON.stringify(this.state)}`);
         return (
             <Layout type="column">
                 <Flex className="application">

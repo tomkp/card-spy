@@ -1,11 +1,4 @@
 
-.tlv-viewer {
-//  margin: 1rem;
-}
-
-.bytes {
-  display: inline-block;
-}
 .cell {
   display: inline-block;
   width: 2rem;
@@ -13,35 +6,27 @@
   text-align: center;
   vertical-align: top;
 }
-.byte {
-  background: #eee;
-  /*  border: 1px solid #ddd;
-    border-right: 0;
-    &:last-child {
-      border-right: 1px solid #ddd;
-    }*/
-}
-
 
 .tlv {
   margin-left: .5rem;
 }
 
-.tlv-array {
-
-}
-.tlv-attribute {
-  display: inline-block;
-}
 .tag {
+  display: inline-block;
   background: #999;
   color: #000;
 }
 .length {
+  display: inline-block;
   background: #aaa;
   color: #333;
 }
 .value {
+  display: inline-block;
   background: #ccc;
   color: #000;
+}
+.empty-cell {
+  display: inline-block;
+  width: 2rem;
 }

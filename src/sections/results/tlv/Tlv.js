@@ -114,6 +114,10 @@ let emvTags = {
     'BF0C': 'FCI ISSUER DD'
 };
 
+const emvLookup = (tag) => {
+    return emvTags[tag.toString(16).toUpperCase()];
+};
+
 function leftpad (str, len, ch) {
     str = String(str);
     var i = -1;
@@ -125,85 +129,57 @@ function leftpad (str, len, ch) {
     return str;
 }
 
-const emvLookup = (tag) => {
-    return emvTags[tag.toString(16).toUpperCase()];
-};
-
-const Tlv = ({tlv, lookup, index}) => {
-
-    index = index || 0;
-
-    console.log(`index ${index}`);
-
-    if (Array.isArray(tlv)) {
-        return (
-            <div className="tlv-array">
-                { tlv.map((child, key) => {return <Tlv tlv={child} index={index} lookup={lookup} key={key}/>}) }
-            </div>
-        )
-    }
-
-
-    var emptyCells = Array(index).fill().map((_, key) => <div className="empty cell" key={key}></div> );
-
-    if (tlv.constructed && tlv.value) {
-        index += tlv.value.length;
-    }
-
-    console.log(`new index ${index}`);
-
-    return (
-        <div className="tlv">
-            {emptyCells}
-            <Tag tag={tlv.tag} description={lookup(tlv.tag)} />
-            <Length length={tlv.originalLength}/>
-            {tlv.constructed?<Tlv tlv={tlv.value} index={index} lookup={lookup} />:tlv.value?<Value value={tlv.value}/>:''}
-        </div>
-    );
-};
-
-
-const Tag = ({tag, description}) => {
-    return (
-        <div className="tlv-attribute tag">
-            <span className="tag-value" title={description?description:''}>
-                <Bytes bytes={hexify.toByteArray(tag.toString(16))} />
-            </span>
-        </div>
-    )
+const Tag = ({tag}) => {
+    return <div className="tag">
+        <span className="description">{emvLookup(tag.toString('16')).toUpperCase()}</span>
+        {tag.toString('16')}
+    </div>;
 };
 const Length = ({length}) => {
-    return (
-        <div className="tlv-attribute length cell" title={length}>{leftpad(length.toString('16'), 2, '0')}</div>
-    )
+    return <div className="length">{leftpad(length, 2, '0')}</div>;
 };
 const Value = ({value}) => {
-    console.log(`value ${value.toString('hex')} ${value.toString('ascii')} ${value.toString('ascii').length}`);
     return (
-        <div className="tlv-attribute value">
-            {(value.toString('ascii'.length === 0))?
-                <span className="ascii">{value.toString('ascii').split('').map((char, key) => { return <Char char={char} key={key} />})}</span>:
-                <span className="hex">{value.toString('hex').split('').map((char, key) => { return <Byte byte={char} key={key} />})}</span>
-            }
-        </div>
-    )
-};
-
-const Bytes = ({bytes}) => {
-    return (
-        <div className="bytes">{
-            bytes.map((byte, key) => { return <Byte byte={byte} key={key}/> })}
+        <div className="value">
+            <span className="ascii">{value.toString()}</span>
+            <span className="hex">{value.toString('hex')}</span>
         </div>
     );
 };
 
-const Byte = ({byte}) => { return <div className="byte cell">{leftpad(byte.toString('16'), 2, '0')}</div> };
-const Char = ({char}) => { return <div className="char cell">{char}</div> };
+const Tlv = ({tlv, index}) => {
+
+    console.log(`<Tlv tlv='${tlv}' index='${index}' /> ${tlv.constructed}`);
+
+    index++;
+    const tabs = new Array(index).join('   ');
+
+    if (tlv.constructed) {
+        const arr = tlv.value;
+        const children =  arr.map(function(child, key) {
+            return <Tlv tlv={child} index={index} key={key} />
+        });
+        return (<div className="tlv">{children}</div>);
+    } else {
+        const empties =  Array(index).map(function() {
+            return (<div className="empty-cell"></div>);
+        });
+        return (
+            <div className="tlv">
+                {empties}
+                <Tag tag={tlv.tag} />
+                <Length length={tlv.originalLength} />
+                <Value value={tlv.value} />
+            </div>
+        );
+    }
+};
 
 export default ({data}) => {
     var bytes = hexify.toByteArray(data);
     var parsedTlv = tlv.parse(new Buffer(bytes));
-    return <Tlv tlv={parsedTlv} lookup={emvLookup}/>
+    console.log(`parsedTlv ${parsedTlv}`);
+    return <Tlv tlv={parsedTlv} index={0} />
 };
 
 /*
