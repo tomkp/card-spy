@@ -15,6 +15,11 @@ const BrowserWindow = electron.BrowserWindow;
 // be closed automatically when the JavaScript object is garbage collected.
 let mainWindow;
 
+const Devices = smartcard.Devices;
+const Iso7816Application = smartcard.Iso7816Application;
+const CommandApdu = smartcard.CommandApdu;
+
+
 function createWindow() {
     // Create the browser window.
     mainWindow = new BrowserWindow({width: 600, height: 600, icon:'./tomkp.png', title: 'Card Explorer'});
@@ -41,11 +46,7 @@ function createWindow() {
 
         setTimeout(function () {
 
-            const Devices = smartcard.Devices;
-            const Iso7816Application = smartcard.Iso7816Application;
-
             const devices = new Devices();
-
 
             devices.on('device-activated', function (event) {
 
@@ -97,11 +98,12 @@ function createWindow() {
 
 
     function selectPse(application) {
+        let sfi;
         application.selectFile([0x31, 0x50, 0x41, 0x59, 0x2E, 0x53, 0x59, 0x53, 0x2E, 0x44, 0x44, 0x46, 0x30, 0x31])
             .then(function (response) {
                 console.info(`Select PSE Response:\n${format(response)}`);
-                let sfi = findTag(response, 0x88).toString('hex');
-                let records = [0, 1, 2, 3, 4, 5, 6];
+                sfi = findTag(response, 0x88).toString('hex');
+                let records = [0, 1, 2, 3, 4, 5, 6, 7, 8];
                 return readAllRecords(application, sfi, records)
             }).then(function(applicationIds) {
                 console.info(`Application IDs: '${applicationIds}'`);
@@ -110,8 +112,13 @@ function createWindow() {
             }).then(function(applicationIds) {
                 const aid = applicationIds[0];
                 return application.selectFile(hexify.toByteArray(aid));
-            }).then(function(response) {
-                console.info(`Select Application Response: '${response}'`);
+            }).then(function (response) {
+                return application.issueCommand(new CommandApdu({bytes: [0x80, 0xa8, 0x00, 0x00, 0x02, 0x83, 0x00, 0x00]}));
+            }).then(function (response) {
+                let records = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+                return readAllRecords(application, 2, records)
+                }).then(function(response) {
+                console.info(`Read All Records Response: '${response}'`);
             }).catch(function (error) {
                 console.error('Error:', error, error.stack);
             });
