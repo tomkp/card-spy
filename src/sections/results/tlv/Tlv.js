@@ -158,7 +158,7 @@ const Ascii = ({value}) => { return <span className="ascii">{value.toString()}</
 
 const Tlv = ({tlv, index}) => {
 
-    console.log(`<Tlv tlv='${tlv}' index='${index}' /> ${tlv.constructed}`);
+    //console.log(`<Tlv tlv='${tlv}' index='${index}' /> ${tlv.constructed}`);
 
     index++;
 
@@ -181,7 +181,7 @@ const Tlv = ({tlv, index}) => {
 export default ({data}) => {
     var bytes = hexify.toByteArray(data);
     var parsedTlv = tlv.parse(new Buffer(bytes));
-    console.log(`parsedTlv ${parsedTlv}`);
+    //console.log(`parsedTlv ${parsedTlv}`);
     return <Tlv tlv={parsedTlv} index={-1} />
 };
 
