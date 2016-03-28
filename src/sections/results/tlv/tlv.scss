@@ -9,12 +9,25 @@
 
 .tlv {
   margin-left: .5rem;
+  &:first-child {
+    margin-left: 0;
+  }
 }
 
 .tag {
   display: inline-block;
-  background: #999;
-  color: #000;
+  //background: #999;
+
+  .tag-value {
+    color: #666;
+    margin-right: 1rem;
+  }
+
+  .description {
+    color: #000;
+    margin-right: 1rem;
+  }
+
 }
 .length {
   display: inline-block;
@@ -23,10 +36,14 @@
 }
 .value {
   display: inline-block;
-  background: #ccc;
-  color: #000;
 }
-.empty-cell {
-  display: inline-block;
-  width: 2rem;
+.ascii {
+  background: #eee;
+  color: #000;
+  margin-right: 1rem;
+}
+.hex {
+  background: #eee;
+  color: #000;
+  margin-right: 1rem;
 }

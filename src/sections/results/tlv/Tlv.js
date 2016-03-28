@@ -131,22 +131,30 @@ function leftpad (str, len, ch) {
 
 const Tag = ({tag, index}) => {
     return <div className="tag">
-        <span>{index}</span>
-        <span className="description">{emvLookup(tag.toString('16'))}</span>
         <span className="tag-value">{tag.toString('16')}</span>
+        <span className="description">{emvLookup(tag.toString('16'))}</span>
     </div>;
 };
 const Length = ({length}) => {
     return <div className="length">{leftpad(length, 2, '0')}</div>;
 };
 const Value = ({value}) => {
+    const nonAscii = /[\x00-\x08\x0E-\x1F]/.test(value.toString());
     return (
         <div className="value">
-            <span className="ascii">{value.toString()}</span>
-            <span className="hex">{value.toString('hex')}</span>
+            {nonAscii?
+                <Hex value={value} />
+                :
+                <span>
+                    <Hex value={value} />
+                    <Ascii value={value} />
+                </span>
+            }
         </div>
     );
 };
+const Hex = ({value}) => { return <span className="hex" title="Hex">{value.toString('hex')}</span>};
+const Ascii = ({value}) => { return <span className="ascii">{value.toString()}</span>};
 
 const Tlv = ({tlv, index}) => {
 
@@ -161,15 +169,9 @@ const Tlv = ({tlv, index}) => {
         });
         return (<div className="tlv">{children}</div>);
     } else {
-        const empties = Array(index).map(function() {
-            return (<div className="empty-cell">x</div>);
-        });
-        console.log(`empties ${empties.length}`);
         return (
             <div className="tlv">
-                {empties}
                 <Tag tag={tlv.tag} index={index} />
-                <Length length={tlv.originalLength} />
                 <Value value={tlv.value} />
             </div>
         );
@@ -183,9 +185,5 @@ export default ({data}) => {
     return <Tlv tlv={parsedTlv} index={-1} />
 };
 
-/*
-  <Bytes bytes={bytes} />
-  <br />
- */
-
+// <Length length={tlv.originalLength} />
 
