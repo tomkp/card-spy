@@ -127,30 +127,6 @@ function createWindow() {
     }
 
 
-    /*function readAllRecords(application, sfi, records) {
-        let aids = [];
-        let queue = Promise.resolve();
-        records.forEach(function (record) {
-            queue = queue.then(function () {
-                return application.readRecord(sfi, record).then(function (response) {
-                    if (response.isOk()) {
-                        console.info(`Read Record Response: \n${format(response)}`);
-                        let aid = findTag(response, 0x4f);
-                        if (aid) {
-                            console.info(`Application ID: '${aid.toString('hex')}`);
-                            aids.push(aid.toString('hex'));
-                        }
-                    }
-                    return aids;
-                }).catch(function (error) {
-                    console.error('Read Record Error:', error, error.stack);
-                });
-            });
-        });
-        return queue;
-    }
-*/
-
     function readAllRecords(application, sfi, records) {
         let recordResponses = [];
         let queue = Promise.resolve();
@@ -169,6 +145,7 @@ function createWindow() {
         });
         return queue;
     }
+    
 
     function filterApplicationIds(recordResponses) {
         return recordResponses.map(function(response) {
