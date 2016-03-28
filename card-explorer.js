@@ -112,18 +112,52 @@ function createWindow() {
                 webContents.send('applications-found', {ids: applicationIds});
                 return applicationIds;
             }).then(function(applicationIds) {
-                const aid = applicationIds[0];
-                return application.selectFile(hexify.toByteArray(aid));
-            }).then(function (response) {
-                return application.issueCommand(new CommandApdu({bytes: [0x80, 0xa8, 0x00, 0x00, 0x02, 0x83, 0x00, 0x00]}));
-            }).then(function (response) {
-                let records = [0, 1, 2, 3, 4, 5, 6, 7, 8];
-                return readAllRecords(application, 2, records)
+                return selectAllApplications(application, applicationIds);
             }).then(function(responses) {
-                console.info(`Read All Records Response: '${responses}'`);
+                console.info(`Select All Applications Response: '${responses}'`);
+            // }).then(function(applicationIds) {
+            //     const aid = applicationIds[0];
+            //     return application.selectFile(hexify.toByteArray(aid));
+            // }).then(function (response) {
+            //     return application.issueCommand(new CommandApdu({bytes: [0x80, 0xa8, 0x00, 0x00, 0x02, 0x83, 0x00, 0x00]}));
+            // }).then(function (response) {
+            //     let records = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+            //     return readAllRecords(application, 2, records)
+            // }).then(function(responses) {
+            //     console.info(`Read All Records Response: '${responses}'`);
             }).catch(function (error) {
                 console.error('Error:', error, error.stack);
             });
+    }
+
+
+    function selectAllApplications(application, applicationIds) {
+        console.log(`selectAllApplications`);
+        let returnValues = [];
+        let queue = Promise.resolve();
+        applicationIds.forEach(function (aid) {
+            queue = queue.then(function () {
+                return application.selectFile(hexify.toByteArray(aid))
+                    .then(function (response) {
+                        console.info(`Select Application '${aid}' Response: \n${format(response)}`);
+                        if (response.isOk()) {
+                            returnValues.push(response);
+                        }
+                        return returnValues;
+                    }).then(function() {
+                        return application.issueCommand(new CommandApdu({bytes: [0x80, 0xa8, 0x00, 0x00, 0x02, 0x83, 0x00, 0x00]}));
+                    }).then(function (response) {
+                        let records = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+                        return readAllRecords(application, 2, records)
+                    }).then(function(responses) {
+                        console.info(`Read All Records Response: '${responses}'`);
+                        return responses;
+                    }).catch(function (error) {
+                        console.error('Select Application:', error, error.stack);
+                    });
+            });
+        });
+        return queue;
     }
 
 
