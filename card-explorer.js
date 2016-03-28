@@ -96,7 +96,6 @@ function createWindow() {
     });
 
 
-
     function selectPse(application) {
         application.selectFile([0x31, 0x50, 0x41, 0x59, 0x2E, 0x53, 0x59, 0x53, 0x2E, 0x44, 0x44, 0x46, 0x30, 0x31])
             .then(function (response) {
@@ -117,6 +116,7 @@ function createWindow() {
                 console.error('Error:', error, error.stack);
             });
     }
+
 
     function readAllRecords(application, sfi, records) {
         let aids = [];
@@ -139,6 +139,37 @@ function createWindow() {
             });
         });
         return queue;
+    }
+
+
+    function readAllRecords2(application, sfi, records) {
+        let recordResponses = [];
+        let queue = Promise.resolve();
+        records.forEach(function (record) {
+            queue = queue.then(function () {
+                if (response.isOk()) {
+                    console.info(`Read Record Response: \n${format(response)}`);
+                    recordResponses.push(response);
+                }
+                return recordResponses;
+                }).catch(function (error) {
+                    console.error('Read Record Error:', error, error.stack);
+                });
+            });
+        return queue;
+    }
+
+    function filterApplicationIds(recordResponses) {
+        return recordResponses.map(function(response) {
+            console.info(`Read Record Response: \n${format(response)}`);
+            let aid = findTag(response, 0x4f);
+            return aid;
+            // if (aid) {
+            //     console.info(`Application ID: '${aid.toString('hex')}`);
+            //     aids.push(aid.toString('hex'));
+            // }
+            // return aids;
+        });
     }
 }
 
