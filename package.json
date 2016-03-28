@@ -12,7 +12,8 @@
     "compile:watch": "webpack -w",
     "build:all": "electron-packager . --overwrite --out='build' --icon='tomkp.icns' --ignore=node_modules/ --all --appname='Card Explorer'",
     "build:win": "electron-packager . --overwrite --out='build' --ignore=node_modules/ --platform=win32 --appname='Card Explorer' --arch=x64",
-    "build:osx": "electron-packager . --overwrite --out='build' --icon='tomkp.icns' --ignore=node_modules/ --platform=darwin --appname='Card Explorer' --arch=x64"
+    "build:osx": "electron-packager . --overwrite --out='build' --icon='tomkp.icns' --ignore=node_modules/ --platform=darwin --appname='Card Explorer' --arch=x64",
+    "publish:win": "npm run build:win && zip -r -X './website/Card Explorer.zip' './build/Card Explorer-win32-x64' && surge website explorer.surge.sh"
   },
   "dependencies": {
     "babel-polyfill": "^6.7.4",
