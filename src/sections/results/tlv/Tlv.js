@@ -129,10 +129,11 @@ function leftpad (str, len, ch) {
     return str;
 }
 
-const Tag = ({tag}) => {
+const Tag = ({tag, index}) => {
     return <div className="tag">
+        <span>{index}</span>
         <span className="description">{emvLookup(tag.toString('16'))}</span>
-        {tag.toString('16')}
+        <span className="tag-value">{tag.toString('16')}</span>
     </div>;
 };
 const Length = ({length}) => {
@@ -152,7 +153,6 @@ const Tlv = ({tlv, index}) => {
     console.log(`<Tlv tlv='${tlv}' index='${index}' /> ${tlv.constructed}`);
 
     index++;
-    const tabs = new Array(index).join('   ');
 
     if (tlv.constructed) {
         const arr = tlv.value;
@@ -161,13 +161,14 @@ const Tlv = ({tlv, index}) => {
         });
         return (<div className="tlv">{children}</div>);
     } else {
-        const empties =  Array(index).map(function() {
-            return (<div className="empty-cell"></div>);
+        const empties = Array(index).map(function() {
+            return (<div className="empty-cell">x</div>);
         });
+        console.log(`empties ${empties.length}`);
         return (
             <div className="tlv">
                 {empties}
-                <Tag tag={tlv.tag} />
+                <Tag tag={tlv.tag} index={index} />
                 <Length length={tlv.originalLength} />
                 <Value value={tlv.value} />
             </div>
@@ -179,7 +180,7 @@ export default ({data}) => {
     var bytes = hexify.toByteArray(data);
     var parsedTlv = tlv.parse(new Buffer(bytes));
     console.log(`parsedTlv ${parsedTlv}`);
-    return <Tlv tlv={parsedTlv} index={0} />
+    return <Tlv tlv={parsedTlv} index={-1} />
 };
 
 /*
