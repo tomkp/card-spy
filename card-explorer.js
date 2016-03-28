@@ -105,6 +105,8 @@ function createWindow() {
                 sfi = findTag(response, 0x88).toString('hex');
                 let records = [0, 1, 2, 3, 4, 5, 6, 7, 8];
                 return readAllRecords(application, sfi, records)
+            }).then(function(responses) {
+                return filterApplicationIds(responses);
             }).then(function(applicationIds) {
                 console.info(`Application IDs: '${applicationIds}'`);
                 webContents.send('applications-found', {ids: applicationIds});
@@ -117,15 +119,15 @@ function createWindow() {
             }).then(function (response) {
                 let records = [0, 1, 2, 3, 4, 5, 6, 7, 8];
                 return readAllRecords(application, 2, records)
-                }).then(function(response) {
-                console.info(`Read All Records Response: '${response}'`);
+            }).then(function(responses) {
+                console.info(`Read All Records Response: '${responses}'`);
             }).catch(function (error) {
                 console.error('Error:', error, error.stack);
             });
     }
 
 
-    function readAllRecords(application, sfi, records) {
+    /*function readAllRecords(application, sfi, records) {
         let aids = [];
         let queue = Promise.resolve();
         records.forEach(function (record) {
@@ -147,22 +149,24 @@ function createWindow() {
         });
         return queue;
     }
+*/
 
-
-    function readAllRecords2(application, sfi, records) {
+    function readAllRecords(application, sfi, records) {
         let recordResponses = [];
         let queue = Promise.resolve();
         records.forEach(function (record) {
             queue = queue.then(function () {
-                if (response.isOk()) {
-                    console.info(`Read Record Response: \n${format(response)}`);
-                    recordResponses.push(response);
-                }
-                return recordResponses;
+                return application.readRecord(sfi, record).then(function (response) {
+                    if (response.isOk()) {
+                        console.info(`Read Record Response: \n${format(response)}`);
+                        recordResponses.push(response);
+                    }
+                    return recordResponses;
                 }).catch(function (error) {
                     console.error('Read Record Error:', error, error.stack);
                 });
             });
+        });
         return queue;
     }
 
@@ -170,12 +174,9 @@ function createWindow() {
         return recordResponses.map(function(response) {
             console.info(`Read Record Response: \n${format(response)}`);
             let aid = findTag(response, 0x4f);
-            return aid;
-            // if (aid) {
-            //     console.info(`Application ID: '${aid.toString('hex')}`);
-            //     aids.push(aid.toString('hex'));
-            // }
-            // return aids;
+            if (aid) {
+                return aid.toString('hex');
+            }
         });
     }
 }
