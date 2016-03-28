@@ -80,43 +80,7 @@ function createWindow() {
                     });
 
                     const application = new Iso7816Application(card);
-                    application.selectFile([0x31, 0x50, 0x41, 0x59, 0x2E, 0x53, 0x59, 0x53, 0x2E, 0x44, 0x44, 0x46, 0x30, 0x31])
-                        .then(function (response) {
-                                console.info(`Select PSE Response:\n${format(response)}`);
-                                let sfi = findTag(response, 0x88).toString('hex');
-                                let records = [0, 1, 2, 3, 4, 5, 6];
-                                let aids = [];
-                                let queue = Promise.resolve();
-                                records.forEach(function (record) {
-                                    queue = queue.then(function () {
-                                        return application.readRecord(sfi, record).then(function (response) {
-                                            if (response.isOk()) {
-                                                console.info(`Read Record Response: \n${format(response)}`);
-                                                let aid = findTag(response, 0x4f);
-                                                if (aid) {
-                                                    console.info(`Application ID: '${aid.toString('hex')}`);
-                                                    aids.push(aid.toString('hex'));
-                                                }
-                                            }
-                                            return aids;
-                                        }).catch(function (error) {
-                                            console.error('Read Record Error:', error, error.stack);
-                                        });
-                                    });
-                                });
-                                return queue;
-                            }).then(function(applicationIds) {
-                                console.info(`Application IDs: '${applicationIds}'`);
-                                webContents.send('applications-found', {ids: applicationIds});
-                                return applicationIds;
-                            }).then(function(applicationIds) {
-                                const aid = applicationIds[0];
-                                return application.selectFile(hexify.toByteArray(aid));
-                            }).then(function(response) {
-                                console.info(`Select Application Response: '${response}'`);
-                            }).catch(function (error) {
-                                console.error('Error:', error, error.stack);
-                            });
+                    selectPse(application);
                 });
                 device.on('card-removed', function (event) {
                     console.log(`Card removed from '${event.name}' `);
@@ -132,7 +96,53 @@ function createWindow() {
     });
 
 
+
+    function selectPse(application) {
+        application.selectFile([0x31, 0x50, 0x41, 0x59, 0x2E, 0x53, 0x59, 0x53, 0x2E, 0x44, 0x44, 0x46, 0x30, 0x31])
+            .then(function (response) {
+                console.info(`Select PSE Response:\n${format(response)}`);
+                let sfi = findTag(response, 0x88).toString('hex');
+                let records = [0, 1, 2, 3, 4, 5, 6];
+                return readAllRecords(application, sfi, records)
+            }).then(function(applicationIds) {
+                console.info(`Application IDs: '${applicationIds}'`);
+                webContents.send('applications-found', {ids: applicationIds});
+                return applicationIds;
+            }).then(function(applicationIds) {
+                const aid = applicationIds[0];
+                return application.selectFile(hexify.toByteArray(aid));
+            }).then(function(response) {
+                console.info(`Select Application Response: '${response}'`);
+            }).catch(function (error) {
+                console.error('Error:', error, error.stack);
+            });
+    }
+
+    function readAllRecords(application, sfi, records) {
+        let aids = [];
+        let queue = Promise.resolve();
+        records.forEach(function (record) {
+            queue = queue.then(function () {
+                return application.readRecord(sfi, record).then(function (response) {
+                    if (response.isOk()) {
+                        console.info(`Read Record Response: \n${format(response)}`);
+                        let aid = findTag(response, 0x4f);
+                        if (aid) {
+                            console.info(`Application ID: '${aid.toString('hex')}`);
+                            aids.push(aid.toString('hex'));
+                        }
+                    }
+                    return aids;
+                }).catch(function (error) {
+                    console.error('Read Record Error:', error, error.stack);
+                });
+            });
+        });
+        return queue;
+    }
 }
+
+
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
