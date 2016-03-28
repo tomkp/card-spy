@@ -1,8 +1,15 @@
 @import "../../colours.scss";
 
 
-.command {
+.command-response {
+  padding: .5rem 1rem;
+  border-top: 1px solid #ddd;
+  &:first-child {
+    border-top: none;
+  }
+}
 
+.command {
 
 }
 .response {
@@ -14,4 +21,8 @@
     color: $alizarin;
   }
 
+  .meaning {
+    margin-left: 1rem;
+    color: #333;
+  }
 }

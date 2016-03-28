@@ -146,8 +146,8 @@ const Value = ({value}) => {
                 <Hex value={value} />
                 :
                 <span>
-                    <Hex value={value} />
                     <Ascii value={value} />
+                    <Hex value={value} />
                 </span>
             }
         </div>
