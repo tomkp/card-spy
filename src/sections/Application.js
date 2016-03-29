@@ -72,6 +72,12 @@ class Application extends React.Component {
                 ids: ids
             })
         });
+
+        ipc.on('application-selected', (event, {command, response}) => {
+            console.log(`* Application Selected ${command} ${response}`);
+        });
+
+
         ipc.on('error', (event, message) => {
             console.log(event, message);
         });

@@ -81,6 +81,15 @@ function createWindow() {
                     });
 
                     const application = new Iso7816Application(card);
+
+                    application.on('application-selected', function(event) {
+                        console.log(`Application Selected ${event.command} ${event.response}`);
+                        webContents.send('application-selected', {
+                            command: event.command.toString(),
+                            response: event.response.toString()
+                        });
+                    });
+
                     selectPse(application);
                 });
                 device.on('card-removed', function (event) {
