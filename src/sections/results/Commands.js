@@ -1,5 +1,6 @@
 import React from 'react';
 import CommandResponse from './CommandResponse';
+import TreePane from './tree/TreePane';
 import SplitPane from 'react-split-pane';
 import './commands.scss';
 import {Layout, Fixed, Flex} from 'react-layout-pane';
@@ -8,7 +9,14 @@ import {Layout, Fixed, Flex} from 'react-layout-pane';
 const ApplicationId = ({id}) => { return <li className="aid">{id}</li>};
 
 
-export default ({commands, ids, clear}) => {
+
+
+
+
+export default ({commands, ids, clear, applications}) => {
+
+    const model = {name: 'root', children: Object.values(applications)};
+
     return (
         <SplitPane split="vertical" minSize="50" defaultSize="400">
             <Layout type="row">
@@ -26,10 +34,17 @@ export default ({commands, ids, clear}) => {
                     }
                 </Flex>
             </Layout>
-            <ul className="aids">
-                {ids.map((id, key) => <ApplicationId id={id} key={key} />)}
-            </ul>
+            <div>
+            <TreePane model={model} />
+            </div>
         </SplitPane>
 
     )
 };
+
+
+/*
+<ul className="aids">
+    {ids.map((id, key) => <ApplicationId id={id} key={key} />)}
+</ul>
+*/

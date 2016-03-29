@@ -46,7 +46,9 @@ class Application extends React.Component {
             console.log(`* Card removed from '${name}' `);
 
             this.setState({
-                card: null
+                card: null,
+                current: null,
+                applications: {}
             });
         });
         ipc.on('command-issued', (event, {atr, command}) => {
@@ -62,9 +64,20 @@ class Application extends React.Component {
                 ok: ok,
                 meaning: meaning
             });
+
+            let current = this.state.current;
+            let applications = this.state.applications;
+
+            //var application = applications[current];
+            //console.log(`app ${application} ${current} ${application.children}`);
+            if (applications[current]) applications[current].children.push(response);
+
             this.setState({
-                commands: commands
-            })
+                commands: commands,
+                applications: applications
+            });
+
+
         });
         ipc.on('applications-found', (event, {ids}) => {
             console.log(`* Applications found '${ids}'`);
@@ -73,8 +86,16 @@ class Application extends React.Component {
             })
         });
 
-        ipc.on('application-selected', (event, {command, response}) => {
-            console.log(`* Application Selected ${command} ${response}`);
+        ipc.on('application-selected', (event, {application}) => {
+            console.log(`* Application Selected ${application}`);
+            let applications = this.state.applications;
+            //applications.map((aid) => {return {name: aid}
+            applications[application] = {name: application, children: []};
+
+            this.setState({
+                current: application,
+                applications: applications
+            });
         });
 
 
@@ -86,7 +107,9 @@ class Application extends React.Component {
             device: null,
             card: null,
             ids: [],
-            commands: []
+            commands: [],
+            current: null,
+            applications: {}
         };
     }
 
@@ -103,7 +126,13 @@ class Application extends React.Component {
             <Layout type="column">
                 <Flex className="application">
                     {this.props.children &&
-                    React.cloneElement(this.props.children, { commands: this.state.commands, ids: this.state.ids, clear: () => {this.clear()}})
+                    React.cloneElement(this.props.children, {
+                        commands: this.state.commands,
+                        ids: this.state.ids,
+                        clear: () => {this.clear()},
+                        current: this.state.current,
+                        applications: this.state.applications
+                    })
                     }
                 </Flex>
                 <Fixed>

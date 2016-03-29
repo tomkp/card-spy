@@ -22,7 +22,7 @@ const CommandApdu = smartcard.CommandApdu;
 
 function createWindow() {
     // Create the browser window.
-    mainWindow = new BrowserWindow({width: 600, height: 600, icon:'./tomkp.png', title: 'Card Explorer'});
+    mainWindow = new BrowserWindow({width: 800, height: 600, icon:'./tomkp.png', title: 'Card Explorer'});
 
     // and load the index.html of the app.
     mainWindow.loadURL('file://' + __dirname + '/dist/index.html');
@@ -84,10 +84,7 @@ function createWindow() {
 
                     application.on('application-selected', function(event) {
                         console.log(`Application Selected ${event.command} ${event.response}`);
-                        webContents.send('application-selected', {
-                            command: event.command.toString(),
-                            response: event.response.toString()
-                        });
+                        webContents.send('application-selected', {application: event.application});
                     });
 
                     selectPse(application);

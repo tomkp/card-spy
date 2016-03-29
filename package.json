@@ -32,7 +32,7 @@
     "react-router": "^2.0.1",
     "react-split-pane": "^0.1.27",
     "redux": "^3.3.1",
-    "smartcard": "^1.0.8",
+    "smartcard": "^1.0.9",
     "tlv": "^1.1.1"
   },
   "devDependencies": {
