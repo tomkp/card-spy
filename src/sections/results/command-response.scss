@@ -1,9 +1,13 @@
 @import "../../colours.scss";
+@import "../../mixins.scss";
 
 
 .command-response {
+
   padding: .5rem 1rem;
   border-top: 1px solid #ddd;
+  @extend .truncate;
+
   &:first-child {
     border-top: none;
   }
