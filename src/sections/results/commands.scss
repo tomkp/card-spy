@@ -4,11 +4,11 @@
 
 .commands-control {
   background: #eee;
-  //border-bottom: 1px solid #aaa;
+  // border-bottom: 1px solid #aaa;
   padding: .5rem 1rem;
   text-align: right;
   z-index: 2;
-  @extend .shadow;
+  /*@extend .shadow;*/
 }
 
 .commands {

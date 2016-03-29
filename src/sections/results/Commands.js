@@ -11,8 +11,10 @@ const ApplicationId = ({id}) => { return <li className="aid">{id}</li>};
 export default ({commands, ids, clear}) => {
     return (
         <SplitPane split="vertical" minSize="50" defaultSize="400">
-            <Layout type="column">
-                <Fixed className="commands-control"><button onClick={clear}>Clear</button></Fixed>
+            <Layout type="row">
+                <Fixed className="commands-control">
+                    <span className="button" onClick={clear}>x</span>
+                </Fixed>
                 <Flex className="commands">
                     { commands.map((result, key) => {
                         return <CommandResponse key={key}
