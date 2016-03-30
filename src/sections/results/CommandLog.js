@@ -2,7 +2,7 @@ import React from 'react';
 import CommandResponse from './CommandResponse';
 import TreePane from './tree/TreePane';
 import SplitPane from 'react-split-pane';
-import './commands.scss';
+import './command-log.scss';
 import {Layout, Fixed, Flex} from 'react-layout-pane';
 
 

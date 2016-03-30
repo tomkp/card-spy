@@ -5,7 +5,7 @@ import {Layout, Fixed, Flex} from 'react-layout-pane';
 
 import Header from './header/Header';
 import Footer from './footer/Footer';
-import Commands from './results/Commands';
+import CommandLog from './results/CommandLog';
 import Sidebar from './sidebar/Sidebar';
 
 
