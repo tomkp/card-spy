@@ -48,7 +48,7 @@ class Application extends React.Component {
             this.setState({
                 card: null,
                 current: null,
-                applications: {}
+                applications: []
             });
         });
         ipc.on('command-issued', (event, {atr, command}) => {
@@ -66,15 +66,26 @@ class Application extends React.Component {
             });
 
             let current = this.state.current;
-            let applications = this.state.applications;
+            let newApplications = [...this.state.applications];
 
             //var application = applications[current];
-            //console.log(`app ${application} ${current} ${application.children}`);
-            if (applications[current]) applications[current].children.push(response);
+
+            console.log(`\tCurrent application ${current}`);
+
+            let x = newApplications.find((app) => { return app.name === current});
+            if (x) {
+                console.log(`\tFound ${x.name} [${x.children}]`);
+                x.children = [...x.children, response];
+            }
+            //     var children = newApplications[current].children;
+            //     console.log(`app ${newApplications[current]} ${children} ${response}`);
+            //     children.push(response);
+            //     newApplications[current].children = children;
+            // }
 
             this.setState({
                 commands: commands,
-                applications: applications
+                applications: newApplications
             });
 
 
@@ -88,13 +99,14 @@ class Application extends React.Component {
 
         ipc.on('application-selected', (event, {application}) => {
             console.log(`* Application Selected ${application}`);
-            let applications = this.state.applications;
             //applications.map((aid) => {return {name: aid}
-            applications[application] = {name: application, children: []};
+            let newApplications = [...this.state.applications, {name: application, children: []}];
+
+            //newApplications[application] = ;
 
             this.setState({
                 current: application,
-                applications: applications
+                applications: newApplications
             });
         });
 
@@ -109,7 +121,7 @@ class Application extends React.Component {
             ids: [],
             commands: [],
             current: null,
-            applications: {}
+            applications: []
         };
     }
 

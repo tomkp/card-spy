@@ -15,7 +15,15 @@ const ApplicationId = ({id}) => { return <li className="aid">{id}</li>};
 
 export default ({commands, ids, clear, applications}) => {
 
-    const model = {name: 'root', children: Object.values(applications)};
+     var children = Object.values(applications);
+    // //console.log(`children ${children} ${Object.keys(children)} ${Object.values(applications)} ${Object.keys(applications)} ${applications[children]}`);
+    //
+    let model = {};
+    if (children) {
+        console.log(`children ${children}`);
+
+        model = {name: 'root', children: children};
+    }
 
     return (
         <SplitPane split="vertical" minSize="50" defaultSize="400">

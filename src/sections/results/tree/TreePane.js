@@ -29,6 +29,7 @@ let Node = React.createClass({
     },
 
     render() {
+        console.log(`Node.render ${this.props.model.name} ${this.props.model.children} `);
         let childNodes = [];
         let classes = [];
         const children = this.props.model.children;

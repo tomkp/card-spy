@@ -30,7 +30,7 @@ function createWindow() {
     // Open the DevTools.
     let webContents = mainWindow.webContents;
 
-    //webContents.openDevTools();
+    webContents.openDevTools();
 
     // Emitted when the window is closed.
     mainWindow.on('closed', function () {
