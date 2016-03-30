@@ -26,7 +26,7 @@ export default ({commands, ids, clear, applications}) => {
     }
 
     return (
-        <SplitPane split="vertical" minSize="50" defaultSize="400">
+        <SplitPane split="vertical" minSize={50} defaultSize={400}>
             <Layout type="row">
                 <Fixed className="commands-control">
                     <span className="button" onClick={clear}>x</span>
