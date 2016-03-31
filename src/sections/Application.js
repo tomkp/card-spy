@@ -135,6 +135,7 @@ class Application extends React.Component {
     }
 
     clearRepl() {
+        console.log(`clear repl`);
         this.setState({
             repl: ''
         });

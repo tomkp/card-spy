@@ -32,6 +32,8 @@ export default ({
     }
 */
 
+    console.log(`${repl}`);
+
     return (
         <SplitPane split="horizontal" minSize={50} defaultSize={400}>
             <Layout type="row">
@@ -53,7 +55,7 @@ export default ({
                 <Fixed className="commands-control">
                     <span className="button" onClick={clearRepl}>x</span>
                 </Fixed>
-                <textarea onChange={replChange} onKeyUp={replKeyUp} >{repl}</textarea>
+                <textarea onChange={replChange} onKeyUp={replKeyUp} value={repl} />
             </Layout>
         </SplitPane>
 
