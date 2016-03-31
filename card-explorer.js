@@ -1,10 +1,19 @@
 'use strict';
 
+process.env.NODE_ENV = process.env.NODE_ENV || 'production';
+
+
 const electron = require('electron');
 
 const smartcard = require('smartcard');
 const tlv = require('tlv');
 const hexify = require('hexify');
+
+
+if (process.env.NODE_ENV === 'development') {
+    require('electron-debug')();
+}
+
 
 // Module to control application life.
 const app = electron.app;
@@ -30,7 +39,10 @@ function createWindow() {
     // Open the DevTools.
     let webContents = mainWindow.webContents;
 
-    webContents.openDevTools();
+    //webContents.openDevTools();
+    if (process.env.NODE_ENV === 'development') {
+        webContents.openDevTools();
+    }
 
     // Emitted when the window is closed.
     mainWindow.on('closed', function () {
