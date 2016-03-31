@@ -5,12 +5,14 @@ import {Layout, Fixed, Flex} from 'react-layout-pane';
 
 import Header from './header/Header';
 import Footer from './footer/Footer';
-import CommandLog from './results/CommandLog';
+import CommandLog from './console/Console';
 import Sidebar from './sidebar/Sidebar';
 
 
 import electron from 'electron';
 
+
+const ipc = electron.ipcRenderer;
 
 
 
@@ -19,7 +21,7 @@ class Application extends React.Component {
     constructor(props) {
         super(props);
         
-        const ipc = electron.ipcRenderer;
+
 
         ipc.on('device-activated', (event, {device, devices}) => {
             console.log(`* Device '${device.name}' activated, devices: [${devices}]`);
@@ -57,8 +59,8 @@ class Application extends React.Component {
         ipc.on('response-received', (event, {atr, command, response, ok, meaning}) => {
             console.log(`* Response '${response}' received from '${atr}' in response to '${command}'`);
 
-            let commands = this.state.commands;
-            commands.push({
+            let log = this.state.log;
+            log.push({
                 command: command,
                 response: response,
                 ok: ok,
@@ -84,7 +86,7 @@ class Application extends React.Component {
             // }
 
             this.setState({
-                commands: commands,
+                log: log,
                 applications: newApplications
             });
 
@@ -119,16 +121,39 @@ class Application extends React.Component {
             device: null,
             card: null,
             ids: [],
-            commands: [],
+            log: [],
             current: null,
             applications: []
         };
     }
 
 
-    clear() {
+    clearLog() {
         this.setState({
-           commands: []
+           log: []
+        });
+    }
+
+    clearRepl() {
+        this.setState({
+            repl: ''
+        });
+    }
+
+    replKeyUp(e) {
+        //console.log(`keyUp ${e.target.value} ${e.keyCode}`);
+        if (e.keyCode === 13 && this.state.repl.length > 0) {
+            // enter
+            ipc.send('repl', this.state.repl);
+        }
+    }
+
+    replChange(e) {
+        var value = e.target.value;
+        console.log(`replChange ${value}`);
+        //e.keyCode ===
+        this.setState({
+           repl: value
         });
     }
 
@@ -139,9 +164,13 @@ class Application extends React.Component {
                 <Flex className="application">
                     {this.props.children &&
                     React.cloneElement(this.props.children, {
-                        commands: this.state.commands,
+                        log: this.state.log,
                         ids: this.state.ids,
-                        clear: () => {this.clear()},
+                        clearLog: () => {this.clearLog()},
+                        repl: this.state.repl,
+                        clearRepl: () => {this.clearRepl()},
+                        replChange: (e) => {this.replChange(e)},
+                        replKeyUp: (e) => {this.replKeyUp(e)},
                         current: this.state.current,
                         applications: this.state.applications
                     })

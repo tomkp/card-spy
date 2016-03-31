@@ -8,7 +8,7 @@ import { Router, Route, hashHistory, IndexRoute } from 'react-router';
 import Application from './sections/Application';
 import Content from './sections/content/Content';
 import NoContent from './sections/content/NoContent';
-import CommandLog from './sections/results/CommandLog';
+import CommandLog from './sections/console/Console';
 
 
 render((

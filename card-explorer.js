@@ -28,6 +28,9 @@ const Devices = smartcard.Devices;
 const Iso7816Application = smartcard.Iso7816Application;
 const CommandApdu = smartcard.CommandApdu;
 
+const ipcMain = require('electron').ipcMain;
+
+
 
 function createWindow() {
     // Create the browser window.
@@ -99,6 +102,11 @@ function createWindow() {
                         webContents.send('application-selected', {application: event.application});
                     });
 
+                    ipcMain.on('repl', function (event, message) {
+                        console.log(`REPL ${message}`);
+                        application.issueCommand(new CommandApdu({bytes: hexify.toByteArray(message)}))
+                    });
+
                     selectPse(application);
                 });
                 device.on('card-removed', function (event) {
@@ -113,6 +121,9 @@ function createWindow() {
             });
         }, 500);
     });
+
+
+
 
 
     function selectPse(application) {

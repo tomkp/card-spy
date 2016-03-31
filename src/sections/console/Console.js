@@ -2,7 +2,7 @@ import React from 'react';
 import CommandResponse from './CommandResponse';
 import TreePane from './tree/TreePane';
 import SplitPane from 'react-split-pane';
-import './command-log.scss';
+import './console.scss';
 import {Layout, Fixed, Flex} from 'react-layout-pane';
 
 
@@ -13,26 +13,33 @@ const ApplicationId = ({id}) => { return <li className="aid">{id}</li>};
 
 
 
-export default ({commands, ids, clear, applications}) => {
+export default ({
+    ids,
+    log, 
+    clearLog,
+    repl,
+    clearRepl,
+    replChange,
+    replKeyUp,
+    applications}) => {
 
-     var children = Object.values(applications);
-    // //console.log(`children ${children} ${Object.keys(children)} ${Object.values(applications)} ${Object.keys(applications)} ${applications[children]}`);
-    //
+/*
+    var children = Object.values(applications);
     let model = {};
     if (children) {
         console.log(`children ${children}`);
-
         model = {name: 'root', children: children};
     }
+*/
 
     return (
-        <SplitPane split="vertical" minSize={50} defaultSize={400}>
+        <SplitPane split="horizontal" minSize={50} defaultSize={400}>
             <Layout type="row">
                 <Fixed className="commands-control">
-                    <span className="button" onClick={clear}>x</span>
+                    <span className="button" onClick={clearLog}>x</span>
                 </Fixed>
                 <Flex className="commands">
-                    { commands.map((result, key) => {
+                    { log.map((result, key) => {
                         return <CommandResponse key={key}
                                                 command={result.command}
                                                 ok={result.ok}
@@ -42,9 +49,12 @@ export default ({commands, ids, clear, applications}) => {
                     }
                 </Flex>
             </Layout>
-            <div>
-            <TreePane model={model} />
-            </div>
+            <Layout type="row">
+                <Fixed className="commands-control">
+                    <span className="button" onClick={clearRepl}>x</span>
+                </Fixed>
+                <textarea onChange={replChange} onKeyUp={replKeyUp} >{repl}</textarea>
+            </Layout>
         </SplitPane>
 
     )
@@ -52,6 +62,7 @@ export default ({commands, ids, clear, applications}) => {
 
 
 /*
+ <TreePane model={model} />
 <ul className="aids">
     {ids.map((id, key) => <ApplicationId id={id} key={key} />)}
 </ul>

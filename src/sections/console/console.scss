@@ -19,6 +19,11 @@
   z-index: 1;
 }
 
+textarea {
+  flex: 1;
+  border: 0;
+  outline: none;
+}
 
 .aids {
   font-family: "Menlo", "Lucida Console", monospace;
