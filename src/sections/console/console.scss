@@ -3,12 +3,21 @@
 
 
 .commands-control {
+  font-family: "Menlo", "Lucida Console", monospace;
+
   background: #eee;
   // border-bottom: 1px solid #aaa;
   padding: .5rem 1rem;
   text-align: right;
   z-index: 2;
   /*@extend .shadow;*/
+
+
+  .button {
+    display: block;
+    margin-bottom: .5rem;
+  }
+
 }
 
 .commands {
@@ -26,6 +35,7 @@ textarea {
   padding: .5rem 1rem;
   font-family: "Menlo", "Lucida Console", monospace;
 }
+
 
 .aids {
   font-family: "Menlo", "Lucida Console", monospace;

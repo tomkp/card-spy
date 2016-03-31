@@ -158,6 +158,10 @@ class Application extends React.Component {
         });
     }
 
+    replRun() {
+        ipc.send('repl', this.state.repl);
+    }
+
     render() {
         //console.log(`Application.state: ${JSON.stringify(this.state)}`);
         return (
@@ -172,6 +176,7 @@ class Application extends React.Component {
                         clearRepl: () => {this.clearRepl()},
                         replChange: (e) => {this.replChange(e)},
                         replKeyUp: (e) => {this.replKeyUp(e)},
+                        replRun: () => this.replRun(),
                         current: this.state.current,
                         applications: this.state.applications
                     })

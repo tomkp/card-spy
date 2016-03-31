@@ -21,6 +21,7 @@ export default ({
     clearRepl,
     replChange,
     replKeyUp,
+    replRun,
     applications}) => {
 
 /*
@@ -38,7 +39,7 @@ export default ({
         <SplitPane split="horizontal" minSize={50} defaultSize={400}>
             <Layout type="row">
                 <Fixed className="commands-control">
-                    <span className="button" onClick={clearLog}>x</span>
+                    <div className="button" onClick={clearLog}>x</div>
                 </Fixed>
                 <Flex className="commands">
                     { log.map((result, key) => {
@@ -53,7 +54,8 @@ export default ({
             </Layout>
             <Layout type="row">
                 <Fixed className="commands-control">
-                    <span className="button" onClick={clearRepl}>x</span>
+                    <div className="button" onClick={clearRepl}>x</div>
+                    <div className="button" onClick={replRun}>&gt;</div>
                 </Fixed>
                 <textarea onChange={replChange} onKeyUp={replKeyUp} value={repl} />
             </Layout>
