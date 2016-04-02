@@ -2,7 +2,7 @@
 @import "../../mixins.scss";
 
 
-.command-response {
+.console-entry {
 
   padding: .5rem 1rem;
   border-top: 1px solid #ddd;
@@ -10,23 +10,5 @@
 
   &:first-child {
     border-top: none;
-  }
-}
-
-.command {
-
-}
-.response {
-
-  &.ok {
-    color: $nephritis;
-  }
-  &.error {
-    color: $alizarin;
-  }
-
-  .meaning {
-    margin-left: 1rem;
-    color: #333;
   }
 }

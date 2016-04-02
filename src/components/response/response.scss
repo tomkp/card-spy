@@ -1,0 +1,18 @@
+@import "../../colours.scss";
+@import "../../mixins.scss";
+
+
+.response {
+
+  &.ok {
+    color: $nephritis;
+  }
+  &.error {
+    color: $alizarin;
+  }
+
+  .meaning {
+    margin-left: 1rem;
+    color: #333;
+  }
+}

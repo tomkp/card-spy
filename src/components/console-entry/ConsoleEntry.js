@@ -1,12 +1,11 @@
 import React from 'react';
-import './command-response.scss';
-import hexify from 'hexify';
-import Command from './Command';
-import Response from './Response';
+import Command from '../command/Command';
+import Response from '../response/Response';
+import './control-entry.scss';
 
 export default ({command, response, ok, meaning}) => {
     return (
-        <div className="command-response">
+        <div className="console-entry">
             <Command command={command} />
             <Response response={response} ok={ok} meaning={meaning} />
         </div>

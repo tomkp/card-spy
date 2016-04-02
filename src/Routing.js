@@ -5,10 +5,8 @@ import React from 'react';
 import {render} from 'react-dom';
 import { Router, Route, hashHistory, IndexRoute } from 'react-router';
 
-import Application from './sections/Application';
-import Content from './sections/content/Content';
-import NoContent from './sections/content/NoContent';
-import Console from './sections/console/Console';
+import Application from './components/Application';
+import Console from './components/console/Console';
 
 
 render((

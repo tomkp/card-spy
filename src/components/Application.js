@@ -3,10 +3,7 @@ import './application.scss';
 
 import {Layout, Fixed, Flex} from 'react-layout-pane';
 
-import Header from './header/Header';
-import Footer from './footer/Footer';
-import CommandLog from './console/Console';
-import Sidebar from './sidebar/Sidebar';
+import Footer from './status-bar/StatusBar';
 
 
 import electron from 'electron';

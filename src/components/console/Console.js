@@ -1,14 +1,9 @@
 import React from 'react';
-import CommandResponse from './CommandResponse';
-import ScrollToBottom from './ScrollToBottom';
-import TreePane from './tree/TreePane';
+import ConsoleEntry from '../console-entry/ConsoleEntry';
+import ScrollToBottom from '../scroll-to-bottom/ScrollToBottom';
 import SplitPane from 'react-split-pane';
+import {Layout, Fixed} from 'react-layout-pane';
 import './console.scss';
-import {Layout, Fixed, Flex} from 'react-layout-pane';
-
-
-const ApplicationId = ({id}) => { return <li className="aid">{id}</li>};
-
 
 
 
@@ -24,16 +19,6 @@ export default ({
     replRun,
     applications}) => {
 
-/*
-    var children = Object.values(applications);
-    let model = {};
-    if (children) {
-        console.log(`children ${children}`);
-        model = {name: 'root', children: children};
-    }
-*/
-
-    //console.log(`${repl}`);
 
     return (
         <SplitPane split="horizontal" minSize={50} defaultSize={500}>
@@ -44,7 +29,7 @@ export default ({
                 </Fixed>
                 <ScrollToBottom className="commands">
                     { log.map((result, key) => {
-                        return <CommandResponse key={key}
+                        return <ConsoleEntry key={key}
                                                 command={result.command}
                                                 ok={result.ok}
                                                 meaning={result.meaning}
@@ -64,11 +49,3 @@ export default ({
 
     )
 };
-
-
-/*
- <TreePane model={model} />
-<ul className="aids">
-    {ids.map((id, key) => <ApplicationId id={id} key={key} />)}
-</ul>
-*/

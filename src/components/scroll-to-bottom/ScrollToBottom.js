@@ -1,6 +1,6 @@
 import React, {Component, PropTypes} from "react";
 import ReactDOM from "react-dom";
-import "./scroll-to-bottom.css";
+import "./scroll-to-bottom.scss";
 
 export default class ScrollToBottom extends Component {
 

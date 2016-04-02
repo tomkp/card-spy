@@ -1,7 +1,7 @@
 import React from 'react';
+import './response.scss';
 
-import './command-response.scss';
-import Tlv from './tlv/Tlv';
+import Tlv from '../tlv/Tlv';
 
 export default ({response, ok, meaning}) => {
     return (
