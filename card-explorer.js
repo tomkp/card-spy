@@ -34,7 +34,7 @@ const ipcMain = require('electron').ipcMain;
 
 function createWindow() {
     // Create the browser window.
-    mainWindow = new BrowserWindow({width: 480, height: 640, icon:'./tomkp.png', title: 'Card Explorer'});
+    mainWindow = new BrowserWindow({width: 640, height: 740, icon:'./tomkp.png', title: 'Card Explorer'});
 
     // and load the index.html of the app.
     mainWindow.loadURL('file://' + __dirname + '/dist/index.html');
