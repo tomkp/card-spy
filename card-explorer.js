@@ -107,7 +107,12 @@ function createWindow() {
                         application.issueCommand(new CommandApdu({bytes: hexify.toByteArray(message)}))
                     });
 
-                    selectPse(application);
+                    ipcMain.on('interrogate', function (event, message) {
+                        console.log(`interrogate`);
+                        selectPse(application);
+                    });
+
+
                 });
                 device.on('card-removed', function (event) {
                     console.log(`Card removed from '${event.name}' `);

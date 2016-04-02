@@ -14,7 +14,8 @@ const ApplicationId = ({id}) => { return <li className="aid">{id}</li>};
 
 export default ({
     ids,
-    log, 
+    log,
+    interrogate,
     clearLog,
     repl,
     clearRepl,
@@ -39,6 +40,7 @@ export default ({
             <Layout type="row">
                 <Fixed className="commands-control">
                     <div className="button" onClick={clearLog}>x</div>
+                    <div className="button" onClick={interrogate}>&gt;</div>
                 </Fixed>
                 <ScrollToBottom className="commands">
                     { log.map((result, key) => {

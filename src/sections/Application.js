@@ -156,6 +156,10 @@ class Application extends React.Component {
         });
     }
 
+    interrogate() {
+        ipc.send('interrogate', {});
+    }
+
     replRun() {
         ipc.send('repl', this.state.repl);
     }
@@ -169,6 +173,7 @@ class Application extends React.Component {
                     React.cloneElement(this.props.children, {
                         log: this.state.log,
                         ids: this.state.ids,
+                        interrogate: () => {this.interrogate()},
                         clearLog: () => {this.clearLog()},
                         repl: this.state.repl,
                         clearRepl: () => {this.clearRepl()},
