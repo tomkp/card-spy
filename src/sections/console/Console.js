@@ -36,7 +36,7 @@ export default ({
     //console.log(`${repl}`);
 
     return (
-        <SplitPane split="horizontal" minSize={50} defaultSize={400}>
+        <SplitPane split="horizontal" minSize={50} defaultSize={500}>
             <Layout type="row">
                 <Fixed className="commands-control">
                     <div className="button" onClick={clearLog}>x</div>
