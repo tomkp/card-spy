@@ -31,10 +31,9 @@ const CommandApdu = smartcard.CommandApdu;
 const ipcMain = require('electron').ipcMain;
 
 
-
 function createWindow() {
     // Create the browser window.
-    mainWindow = new BrowserWindow({width: 640, height: 740, icon:'./tomkp.png', title: 'Card Explorer'});
+    mainWindow = new BrowserWindow({width: 640, height: 740, icon: './tomkp.png', title: 'Card Explorer'});
 
     // and load the index.html of the app.
     mainWindow.loadURL('file://' + __dirname + '/dist/index.html');
@@ -58,77 +57,70 @@ function createWindow() {
 
     webContents.on('did-finish-load', function () {
 
+        const devices = new Devices();
 
-        setTimeout(function () {
+        devices.on('device-activated', function (event) {
 
-            const devices = new Devices();
+            const currentDevices = event.devices;
+            let device = event.device;
+            console.log(`Device '${device}' activated, devices: ${currentDevices}`);
+            for (let prop in currentDevices) {
+                console.log("Devices: " + currentDevices[prop]);
+            }
 
-            devices.on('device-activated', function (event) {
+            webContents.send('device-activated', {device: device, devices: currentDevices});
 
-                const currentDevices = event.devices;
-                let device = event.device;
-                console.log(`Device '${device}' activated, devices: ${currentDevices}`);
-                for (let prop in currentDevices) {
-                    console.log("Devices: " + currentDevices[prop]);
-                }
+            device.on('card-inserted', function (event) {
+                let card = event.card;
+                console.log(`Card '${event.card}' inserted into '${event.device}'`);
+                webContents.send('card-inserted', {atr: event.card.getAtr(), device: device.toString()});
 
-                webContents.send('device-activated', {device: device, devices: currentDevices});
-
-                device.on('card-inserted', function (event) {
-                    let card = event.card;
-                    console.log(`Card '${event.card}' inserted into '${event.device}'`);
-                    webContents.send('card-inserted', {atr: event.card.getAtr(), device: device.toString()});
-
-                    card.on('command-issued', function (event) {
-                        console.log(`Command '${event.command}' issued to '${event.card}' `);
-                        webContents.send('command-issued', {command: event.command.toString(), atr: event.card.getAtr()});
-                    });
-
-                    card.on('response-received', function (event) {
-                        console.log(`Response '${event.response}' received from '${event.card}' in response to '${event.command}'`);
-                        webContents.send('response-received', {
-                            command: event.command.toString(),
-                            response: event.response.toString(),
-                            ok: event.response.isOk(),
-                            meaning: event.response.meaning(),
-                            atr: event.card.getAtr()
-                        });
-                    });
-
-                    const application = new Iso7816Application(card);
-
-                    application.on('application-selected', function(event) {
-                        console.log(`Application Selected ${event.command} ${event.response}`);
-                        webContents.send('application-selected', {application: event.application});
-                    });
-
-                    ipcMain.on('repl', function (event, message) {
-                        console.log(`REPL ${message}`);
-                        application.issueCommand(new CommandApdu({bytes: hexify.toByteArray(message)}))
-                    });
-
-                    ipcMain.on('interrogate', function (event, message) {
-                        console.log(`interrogate`);
-                        selectPse(application);
-                    });
-
-
+                card.on('command-issued', function (event) {
+                    console.log(`Command '${event.command}' issued to '${event.card}' `);
+                    webContents.send('command-issued', {command: event.command.toString(), atr: event.card.getAtr()});
                 });
-                device.on('card-removed', function (event) {
-                    console.log(`Card removed from '${event.name}' `);
-                    webContents.send('card-removed', event);
-                });
-            });
 
-            devices.on('device-deactivated', function (event) {
-                console.log(`Device '${event.reader.name}' deactivated, devices: ${devices.listDevices()}`);
-                webContents.send('device-deactivated', event);
+                card.on('response-received', function (event) {
+                    console.log(`Response '${event.response}' received from '${event.card}' in response to '${event.command}'`);
+                    webContents.send('response-received', {
+                        command: event.command.toString(),
+                        response: event.response.toString(),
+                        ok: event.response.isOk(),
+                        meaning: event.response.meaning(),
+                        atr: event.card.getAtr()
+                    });
+                });
+
+                const application = new Iso7816Application(card);
+
+                application.on('application-selected', function (event) {
+                    console.log(`Application Selected ${event.command} ${event.response}`);
+                    webContents.send('application-selected', {application: event.application});
+                });
+
+                ipcMain.on('repl', function (event, message) {
+                    console.log(`REPL ${message}`);
+                    application.issueCommand(new CommandApdu({bytes: hexify.toByteArray(message)}))
+                });
+
+                ipcMain.on('interrogate', function (event, message) {
+                    console.log(`interrogate`);
+                    selectPse(application);
+                });
+
+
             });
-        }, 500);
+            device.on('card-removed', function (event) {
+                console.log(`Card removed from '${event.name}' `);
+                webContents.send('card-removed', event);
+            });
+        });
+
+        devices.on('device-deactivated', function (event) {
+            console.log(`Device '${event.reader.name}' deactivated, devices: ${devices.listDevices()}`);
+            webContents.send('device-deactivated', event);
+        });
     });
-
-
-
 
 
     function selectPse(application) {
@@ -139,29 +131,19 @@ function createWindow() {
                 sfi = findTag(response, 0x88).toString('hex');
                 let records = [0, 1, 2, 3, 4, 5, 6, 7, 8];
                 return readAllRecords(application, sfi, records)
-            }).then(function(responses) {
-                return filterApplicationIds(responses);
-            }).then(function(applicationIds) {
-                console.info(`Application IDs: '${applicationIds}'`);
-                webContents.send('applications-found', {ids: applicationIds});
-                return applicationIds;
-            }).then(function(applicationIds) {
-                return selectAllApplications(application, applicationIds);
-            }).then(function(responses) {
-                console.info(`Select All Applications Response: '${responses}'`);
-            // }).then(function(applicationIds) {
-            //     const aid = applicationIds[0];
-            //     return application.selectFile(hexify.toByteArray(aid));
-            // }).then(function (response) {
-            //     return application.issueCommand(new CommandApdu({bytes: [0x80, 0xa8, 0x00, 0x00, 0x02, 0x83, 0x00, 0x00]}));
-            // }).then(function (response) {
-            //     let records = [0, 1, 2, 3, 4, 5, 6, 7, 8];
-            //     return readAllRecords(application, 2, records)
-            // }).then(function(responses) {
-            //     console.info(`Read All Records Response: '${responses}'`);
-            }).catch(function (error) {
-                console.error('Error:', error, error.stack);
-            });
+            }).then(function (responses) {
+            return filterApplicationIds(responses);
+        }).then(function (applicationIds) {
+            console.info(`Application IDs: '${applicationIds}'`);
+            webContents.send('applications-found', {ids: applicationIds});
+            return applicationIds;
+        }).then(function (applicationIds) {
+            return selectAllApplications(application, applicationIds);
+        }).then(function (responses) {
+            console.info(`Select All Applications Response: '${responses}'`);
+        }).catch(function (error) {
+            console.error('Error:', error, error.stack);
+        });
     }
 
 
@@ -178,12 +160,12 @@ function createWindow() {
                             returnValues.push(response);
                         }
                         return returnValues;
-                    }).then(function() {
+                    }).then(function () {
                         return application.issueCommand(new CommandApdu({bytes: [0x80, 0xa8, 0x00, 0x00, 0x02, 0x83, 0x00, 0x00]}));
                     }).then(function (response) {
                         let records = [0, 1, 2, 3, 4, 5, 6, 7, 8];
                         return readAllRecords(application, 2, records)
-                    }).then(function(responses) {
+                    }).then(function (responses) {
                         console.info(`Read All Records Response: '${responses}'`);
                         return responses;
                     }).catch(function (error) {
@@ -213,10 +195,10 @@ function createWindow() {
         });
         return queue;
     }
-    
+
 
     function filterApplicationIds(recordResponses) {
-        return recordResponses.map(function(response) {
+        return recordResponses.map(function (response) {
             console.info(`Read Record Response: \n${format(response)}`);
             let aid = findTag(response, 0x4f);
             if (aid) {
@@ -225,7 +207,6 @@ function createWindow() {
         });
     }
 }
-
 
 
 // This method will be called when Electron has finished
@@ -248,7 +229,6 @@ app.on('activate', function () {
         createWindow();
     }
 });
-
 
 
 let emvTags = {
