@@ -55,7 +55,10 @@ function createWindow() {
     });
 
 
-    webContents.on('did-finish-load', function () {
+    webContents.on('did-finish-load', onLoaded);
+
+
+    function onLoaded() {
 
         const devices = new Devices();
 
@@ -105,7 +108,7 @@ function createWindow() {
 
                 ipcMain.on('interrogate', function (event, message) {
                     console.log(`interrogate`);
-                    selectPse(application);
+                    selectPse(webContents, application);
                 });
 
 
@@ -120,93 +123,93 @@ function createWindow() {
             console.log(`Device '${event.reader.name}' deactivated, devices: ${devices.listDevices()}`);
             webContents.send('device-deactivated', event);
         });
-    });
-
-
-    function selectPse(application) {
-        let sfi;
-        application.selectFile([0x31, 0x50, 0x41, 0x59, 0x2E, 0x53, 0x59, 0x53, 0x2E, 0x44, 0x44, 0x46, 0x30, 0x31])
-            .then(function (response) {
-                console.info(`Select PSE Response:\n${format(response)}`);
-                sfi = findTag(response, 0x88).toString('hex');
-                let records = [0, 1, 2, 3, 4, 5, 6, 7, 8];
-                return readAllRecords(application, sfi, records)
-            }).then(function (responses) {
-            return filterApplicationIds(responses);
-        }).then(function (applicationIds) {
-            console.info(`Application IDs: '${applicationIds}'`);
-            webContents.send('applications-found', {ids: applicationIds});
-            return applicationIds;
-        }).then(function (applicationIds) {
-            return selectAllApplications(application, applicationIds);
-        }).then(function (responses) {
-            console.info(`Select All Applications Response: '${responses}'`);
-        }).catch(function (error) {
-            console.error('Error:', error, error.stack);
-        });
-    }
-
-
-    function selectAllApplications(application, applicationIds) {
-        console.log(`selectAllApplications`);
-        let returnValues = [];
-        let queue = Promise.resolve();
-        applicationIds.forEach(function (aid) {
-            queue = queue.then(function () {
-                return application.selectFile(hexify.toByteArray(aid))
-                    .then(function (response) {
-                        console.info(`Select Application '${aid}' Response: \n${format(response)}`);
-                        if (response.isOk()) {
-                            returnValues.push(response);
-                        }
-                        return returnValues;
-                    }).then(function () {
-                        return application.issueCommand(new CommandApdu({bytes: [0x80, 0xa8, 0x00, 0x00, 0x02, 0x83, 0x00, 0x00]}));
-                    }).then(function (response) {
-                        let records = [0, 1, 2, 3, 4, 5, 6, 7, 8];
-                        return readAllRecords(application, 2, records)
-                    }).then(function (responses) {
-                        console.info(`Read All Records Response: '${responses}'`);
-                        return responses;
-                    }).catch(function (error) {
-                        console.error('Select Application:', error, error.stack);
-                    });
-            });
-        });
-        return queue;
-    }
-
-
-    function readAllRecords(application, sfi, records) {
-        let recordResponses = [];
-        let queue = Promise.resolve();
-        records.forEach(function (record) {
-            queue = queue.then(function () {
-                return application.readRecord(sfi, record).then(function (response) {
-                    if (response.isOk()) {
-                        console.info(`Read Record Response: \n${format(response)}`);
-                        recordResponses.push(response);
-                    }
-                    return recordResponses;
-                }).catch(function (error) {
-                    console.error('Read Record Error:', error, error.stack);
-                });
-            });
-        });
-        return queue;
-    }
-
-
-    function filterApplicationIds(recordResponses) {
-        return recordResponses.map(function (response) {
-            console.info(`Read Record Response: \n${format(response)}`);
-            let aid = findTag(response, 0x4f);
-            if (aid) {
-                return aid.toString('hex');
-            }
-        });
     }
 }
+
+function selectPse(webContents, application) {
+    let sfi;
+    application.selectFile([0x31, 0x50, 0x41, 0x59, 0x2E, 0x53, 0x59, 0x53, 0x2E, 0x44, 0x44, 0x46, 0x30, 0x31])
+        .then(function (response) {
+            console.info(`Select PSE Response:\n${format(response)}`);
+            sfi = findTag(response, 0x88).toString('hex');
+            let records = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+            return readAllRecords(application, sfi, records)
+        }).then(function (responses) {
+        return filterApplicationIds(responses);
+    }).then(function (applicationIds) {
+        console.info(`Application IDs: '${applicationIds}'`);
+        webContents.send('applications-found', {ids: applicationIds});
+        return applicationIds;
+    }).then(function (applicationIds) {
+        return selectAllApplications(application, applicationIds);
+    }).then(function (responses) {
+        console.info(`Select All Applications Response: '${responses}'`);
+    }).catch(function (error) {
+        console.error('Error:', error, error.stack);
+    });
+}
+
+
+function selectAllApplications(application, applicationIds) {
+    console.log(`selectAllApplications`);
+    let returnValues = [];
+    let queue = Promise.resolve();
+    applicationIds.forEach(function (aid) {
+        queue = queue.then(function () {
+            return application.selectFile(hexify.toByteArray(aid))
+                .then(function (response) {
+                    console.info(`Select Application '${aid}' Response: \n${format(response)}`);
+                    if (response.isOk()) {
+                        returnValues.push(response);
+                    }
+                    return returnValues;
+                }).then(function () {
+                    return application.issueCommand(new CommandApdu({bytes: [0x80, 0xa8, 0x00, 0x00, 0x02, 0x83, 0x00, 0x00]}));
+                }).then(function (response) {
+                    let records = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+                    return readAllRecords(application, 2, records)
+                }).then(function (responses) {
+                    console.info(`Read All Records Response: '${responses}'`);
+                    return responses;
+                }).catch(function (error) {
+                    console.error('Select Application:', error, error.stack);
+                });
+        });
+    });
+    return queue;
+}
+
+
+function readAllRecords(application, sfi, records) {
+    let recordResponses = [];
+    let queue = Promise.resolve();
+    records.forEach(function (record) {
+        queue = queue.then(function () {
+            return application.readRecord(sfi, record).then(function (response) {
+                if (response.isOk()) {
+                    console.info(`Read Record Response: \n${format(response)}`);
+                    recordResponses.push(response);
+                }
+                return recordResponses;
+            }).catch(function (error) {
+                console.error('Read Record Error:', error, error.stack);
+            });
+        });
+    });
+    return queue;
+}
+
+
+function filterApplicationIds(recordResponses) {
+    return recordResponses.map(function (response) {
+        console.info(`Read Record Response: \n${format(response)}`);
+        let aid = findTag(response, 0x4f);
+        if (aid) {
+            return aid.toString('hex');
+        }
+    });
+}
+
 
 
 // This method will be called when Electron has finished
