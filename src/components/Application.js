@@ -2,15 +2,9 @@ import React from 'react';
 import './application.scss';
 
 import {Layout, Fixed, Flex} from 'react-layout-pane';
-
 import Footer from './status-bar/StatusBar';
-
-
 import electron from 'electron';
-
-
 const ipc = electron.ipcRenderer;
-
 
 
 class Application extends React.Component {
@@ -65,20 +59,7 @@ class Application extends React.Component {
             let current = this.state.current;
             let newApplications = [...this.state.applications];
 
-            //var application = applications[current];
-
             console.log(`\tCurrent application ${current}`);
-
-            let x = newApplications.find((app) => { return app.name === current});
-            if (x) {
-                //console.log(`\tFound ${x.name} [${x.children}]`);
-                x.children = [...x.children, response];
-            }
-            //     var children = newApplications[current].children;
-            //     console.log(`app ${newApplications[current]} ${children} ${response}`);
-            //     children.push(response);
-            //     newApplications[current].children = children;
-            // }
 
             this.setState({
                 log: log,
@@ -96,11 +77,7 @@ class Application extends React.Component {
 
         ipc.on('application-selected', (event, {application}) => {
             console.log(`* Application Selected ${application}`);
-            //applications.map((aid) => {return {name: aid}
             let newApplications = [...this.state.applications, {name: application, children: []}];
-
-            //newApplications[application] = ;
-
             this.setState({
                 current: application,
                 applications: newApplications
@@ -130,24 +107,19 @@ class Application extends React.Component {
     }
 
     clearRepl() {
-        //console.log(`clear repl`);
         this.setState({
             repl: ''
         });
     }
 
     replKeyUp(e) {
-        //console.log(`keyUp ${e.target.value} ${e.keyCode}`);
         if (e.keyCode === 13 && this.state.repl.length > 0) {
-            // enter
             ipc.send('repl', this.state.repl);
         }
     }
 
     replChange(e) {
         var value = e.target.value;
-        //console.log(`replChange ${value}`);
-        //e.keyCode ===
         this.setState({
            repl: value
         });
