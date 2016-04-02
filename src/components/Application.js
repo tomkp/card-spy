@@ -2,7 +2,7 @@ import React from 'react';
 import './application.scss';
 
 import {Layout, Fixed, Flex} from 'react-layout-pane';
-import Footer from './status-bar/StatusBar';
+import StatusBar from './status-bar/StatusBar';
 import electron from 'electron';
 const ipc = electron.ipcRenderer;
 
@@ -155,7 +155,7 @@ class Application extends React.Component {
                     }
                 </Flex>
                 <Fixed>
-                    <Footer device={this.state.device}
+                    <StatusBar device={this.state.device}
                             card={this.state.card} />
                 </Fixed>
             </Layout>
