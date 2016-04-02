@@ -8,13 +8,13 @@ import { Router, Route, hashHistory, IndexRoute } from 'react-router';
 import Application from './sections/Application';
 import Content from './sections/content/Content';
 import NoContent from './sections/content/NoContent';
-import CommandLog from './sections/console/Console';
+import Console from './sections/console/Console';
 
 
 render((
     <Router history={hashHistory}>
         <Route path="/" component={Application} >
-            <IndexRoute component={CommandLog} />
+            <IndexRoute component={Console} />
         </Route>
     </Router>
 ), document.getElementById('root'));

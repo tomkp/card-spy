@@ -1,5 +1,6 @@
 import React from 'react';
 import CommandResponse from './CommandResponse';
+import ScrollToBottom from './ScrollToBottom';
 import TreePane from './tree/TreePane';
 import SplitPane from 'react-split-pane';
 import './console.scss';
@@ -7,8 +8,6 @@ import {Layout, Fixed, Flex} from 'react-layout-pane';
 
 
 const ApplicationId = ({id}) => { return <li className="aid">{id}</li>};
-
-
 
 
 
@@ -33,7 +32,7 @@ export default ({
     }
 */
 
-    console.log(`${repl}`);
+    //console.log(`${repl}`);
 
     return (
         <SplitPane split="horizontal" minSize={50} defaultSize={400}>
@@ -41,7 +40,7 @@ export default ({
                 <Fixed className="commands-control">
                     <div className="button" onClick={clearLog}>x</div>
                 </Fixed>
-                <Flex className="commands">
+                <ScrollToBottom className="commands">
                     { log.map((result, key) => {
                         return <CommandResponse key={key}
                                                 command={result.command}
@@ -50,7 +49,7 @@ export default ({
                                                 response={result.response} />
                         })
                     }
-                </Flex>
+                </ScrollToBottom>
             </Layout>
             <Layout type="row">
                 <Fixed className="commands-control">

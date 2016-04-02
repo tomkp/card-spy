@@ -21,8 +21,6 @@ class Application extends React.Component {
     constructor(props) {
         super(props);
         
-
-
         ipc.on('device-activated', (event, {device, devices}) => {
             console.log(`* Device '${device.name}' activated, devices: [${devices}]`);
             this.setState({
@@ -76,7 +74,7 @@ class Application extends React.Component {
 
             let x = newApplications.find((app) => { return app.name === current});
             if (x) {
-                console.log(`\tFound ${x.name} [${x.children}]`);
+                //console.log(`\tFound ${x.name} [${x.children}]`);
                 x.children = [...x.children, response];
             }
             //     var children = newApplications[current].children;
@@ -135,7 +133,7 @@ class Application extends React.Component {
     }
 
     clearRepl() {
-        console.log(`clear repl`);
+        //console.log(`clear repl`);
         this.setState({
             repl: ''
         });
@@ -151,7 +149,7 @@ class Application extends React.Component {
 
     replChange(e) {
         var value = e.target.value;
-        console.log(`replChange ${value}`);
+        //console.log(`replChange ${value}`);
         //e.keyCode ===
         this.setState({
            repl: value
