@@ -2,18 +2,16 @@
 @import "../../mixins.scss";
 
 
-.commands-control {
-  font-family: "Menlo", "Lucida Console", monospace;
+.sidebar-control {
 
   background: #eee;
-  // border-bottom: 1px solid #aaa;
-  padding: .5rem 1rem;
+  padding: 1rem 1rem;
   text-align: right;
   z-index: 2;
-  /*@extend .shadow;*/
-
 
   .button {
+    font-size: 1.2rem;
+    padding: .5rem .75rem;
     display: block;
     margin-bottom: .5rem;
   }
@@ -21,10 +19,8 @@
 }
 
 .commands {
-  //width: 14rem;
   background: $white;
   font-family: "Menlo", "Lucida Console", monospace;
-  //overflow-y: auto;
 }
 
 textarea {
@@ -35,11 +31,3 @@ textarea {
   font-family: "Menlo", "Lucida Console", monospace;
 }
 
-
-.aids {
-  font-family: "Menlo", "Lucida Console", monospace;
-}
-
-.aid {
-
-}

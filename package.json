@@ -24,6 +24,7 @@
     "electron-debug": "^0.5.2",
     "emv": "^1.0.6",
     "es6-promise": "^3.1.2",
+    "font-awesome": "^4.5.0",
     "hexify": "^1.0.1",
     "history": "^2.0.1",
     "iso7816": "^1.0.20",

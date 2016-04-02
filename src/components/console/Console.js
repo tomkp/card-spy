@@ -23,9 +23,9 @@ export default ({
     return (
         <SplitPane split="horizontal" minSize={50} defaultSize={500}>
             <Layout type="row">
-                <Fixed className="commands-control">
-                    <div title="Interrogate Card" className="button" onClick={interrogate}>&gt;</div>
-                    <div title="Clear Console Log" className="button" onClick={clearLog}>x</div>
+                <Fixed className="sidebar-control">
+                    <div title="Interrogate Card" className="button fa fa-play-circle" onClick={interrogate}></div>
+                    <div title="Clear Console Log" className="button fa fa-trash" onClick={clearLog}></div>
                 </Fixed>
                 <ScrollToBottom className="commands">
                     { log.map((result, key) => {
@@ -39,9 +39,9 @@ export default ({
                 </ScrollToBottom>
             </Layout>
             <Layout type="row">
-                <Fixed className="commands-control">
-                    <div title="Issue Command" className="button" onClick={replRun}>&gt;</div>
-                    <div title="Clear" className="button" onClick={clearRepl}>x</div>
+                <Fixed className="sidebar-control">
+                    <div title="Issue Command" className="button fa fa-play-circle" onClick={replRun}></div>
+                    <div title="Clear" className="button fa fa-trash" onClick={clearRepl}></div>
                 </Fixed>
                 <textarea onChange={replChange} onKeyUp={replKeyUp} value={repl} />
             </Layout>
