@@ -72,10 +72,8 @@ class Application extends React.Component {
 
         ipc.on('application-selected', (event, {application}) => {
             console.log(`* Application Selected ${application}`);
-            //let newApplications = [...this.state.applications, {name: application, children: []}];
             this.setState({
                 current: application
-                //applications: newApplications
             });
         });
 
@@ -149,7 +147,6 @@ class Application extends React.Component {
                 </Flex>
                 <StatusBar device={this.state.device} card={this.state.card} />
             </Layout>
-
         );
     }
 }
