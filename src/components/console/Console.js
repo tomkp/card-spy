@@ -5,6 +5,7 @@ import SplitPane from 'react-split-pane';
 import {Layout, Fixed} from 'react-layout-pane';
 import './console.scss';
 
+import EmvTags from '../../EmvTags';
 
 
 export default ({

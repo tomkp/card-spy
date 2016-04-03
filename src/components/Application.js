@@ -67,7 +67,8 @@ class Application extends React.Component {
             let newApplications = [...this.state.applications, applicationTemplateTlv];
             this.setState({
                 applications: newApplications
-            })
+            });
+            console.log(`Applciations ${newApplications}`);
         });
 
         ipc.on('application-selected', (event, {application}) => {
