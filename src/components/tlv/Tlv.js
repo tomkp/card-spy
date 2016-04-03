@@ -164,9 +164,11 @@ const Tlv = ({tlv, index}) => {
 
     if (tlv.constructed) {
         const arr = tlv.value;
-        const children =  arr.map(function(child, key) {
-            return <Tlv tlv={child} index={index} key={key} />
-        });
+        let children = [];
+        children.push(<Tag tag={tlv.tag} index={index} />);
+        children = children.concat(arr.map(function(child, key) {
+            return <Tlv tlv={child} index={index} key={key} />;
+        }));
         return (<div className="tlv">{children}</div>);
     } else {
         return (
