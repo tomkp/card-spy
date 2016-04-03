@@ -129,7 +129,8 @@ function selectPse(webContents, application) {
     application.selectFile([0x31, 0x50, 0x41, 0x59, 0x2E, 0x53, 0x59, 0x53, 0x2E, 0x44, 0x44, 0x46, 0x30, 0x31])
         .then(function (response) {
             console.info(`Select PSE Response:\n${format(response)}`);
-            sfi = findTag(response, 0x88).toString('hex');
+            sfi = findSfi(response);
+            console.log(`sfi '${sfi}'`);
             let records = [0, 1, 2, 3, 4, 5, 6, 7, 8];
             return readAllRecords(application, sfi, records)
         }).then(function (responses) {
@@ -148,11 +149,18 @@ function selectPse(webContents, application) {
 }
 
 
+function findSfi(response) {
+    var matched = findTags(response, 0x88);
+    console.log(`findSfi '${matched}'`);
+    return matched[0][0];
+}
+
 function selectAllApplications(application, applicationIds) {
     console.log(`selectAllApplications`);
     let returnValues = [];
     let queue = Promise.resolve();
     applicationIds.forEach(function (aid) {
+        console.log(`Select application '${aid}'`);
         queue = queue.then(function () {
             return application.selectFile(hexify.toByteArray(aid))
                 .then(function (response) {
@@ -199,15 +207,28 @@ function readAllRecords(application, sfi, records) {
 
 
 function filterApplicationIds(recordResponses) {
-    return recordResponses.map(function (response) {
+    return flatten(recordResponses.map(function (response) {
         console.info(`Read Record Response: \n${format(response)}`);
-        let aid = findTag(response, 0x4f);
-        if (aid) {
-            return aid.toString('hex');
+        let aids = findTags(response, 0x4f);
+        //let aids = findTags(response, 0x61);
+        if (aids && aids.length > 0) {
+            return aids.map(_ => _.toString('hex'));
         }
-    });
+    }));
 }
 
+
+const flatten = ([first, ...rest]) => {
+    if (first === undefined) {
+        return [];
+    }
+    else if (!Array.isArray(first)) {
+        return [first, ...flatten(rest)];
+    }
+    else {
+        return [...flatten(first), ...flatten(rest)];
+    }
+}
 
 
 
@@ -337,21 +358,30 @@ function toString(data) {
 }
 
 
-function find(data, tag) {
+function find(data, tag, arr) {
+    console.log(`Find [0x${tag.toString(16)}]`);
     if (data.tag === tag) {
-        return data.value;
+        arr.push(data.value);
+        console.log(`\tMatch !!`);
+        return arr;
     } else if (data.value && Array.isArray(data.value)) {
+        console.log(`\tCheck ${data.value.length} children`);
         for (let i = 0; i < data.value.length; i++) {
-            let result = find(data.value[i], tag);
-            if (result) return result;
+            find(data.value[i], tag, arr);
         }
+        console.log(`\t${data.value.length} Children checked`);
+    } else {
+        console.log(`\tNo match [${data.tag}]`);
     }
+    return arr;
 }
 
 function format(response) {
     return toString(tlv.parse(response.buffer));
 }
 
-function findTag(response, tag) {
-    return find(tlv.parse(response.buffer), tag)
+function findTags(response, tag) {
+    var found = find(tlv.parse(response.buffer), tag, []);
+    console.log(`findTags '${found}'`);
+    return found
 }
