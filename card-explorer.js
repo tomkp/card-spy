@@ -150,9 +150,9 @@ function selectPse(webContents, application) {
 
 
 function findSfi(response) {
-    var matched = findTag(tlv.parse(response.buffer), 0x88);
-    console.log(`findSfi '${matched}'`);
-    return matched.value.toString('hex');
+    var sfiTlv = findTag(tlv.parse(response.buffer), 0x88);
+    console.log(`findSfi '${sfiTlv}'`);
+    return sfiTlv.value.toString('hex');
 }
 
 function selectAllApplications(application, applicationIds) {
