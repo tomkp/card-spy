@@ -134,11 +134,7 @@ function selectPse(webContents, application) {
             let records = [0, 1, 2, 3, 4, 5, 6, 7, 8];
             return readAllRecords(application, sfi, records)
         }).then(function (responses) {
-        return filterApplicationIds(responses);
-    }).then(function (applicationIds) {
-        console.info(`Application IDs: '${applicationIds}'`);
-        webContents.send('applications-found', {ids: applicationIds});
-        return applicationIds;
+        return filterApplicationIds(webContents, responses);
     }).then(function (applicationIds) {
         return selectAllApplications(application, applicationIds);
     }).then(function (responses) {
@@ -206,14 +202,16 @@ function readAllRecords(application, sfi, records) {
 }
 
 
-function filterApplicationIds(recordResponses) {
+function filterApplicationIds(webContents, recordResponses) {
     return flatten(recordResponses.map(function (response) {
         console.info(`Read Record Response: \n${format(response)}`);
         let applicationTemplateTlvs = findTags(tlv.parse(response.buffer), 0x61);
+        
+        return applicationTemplateTlvs.map((applicationTemplateTlv) => {
 
-        return applicationTemplateTlvs.map((templateTlv) => {
-            console.log(`template ${Array.isArray(templateTlv)}`);
-            return findTag(templateTlv, 0x4f).value.toString('hex');
+            webContents.send('application-found', {applicationTemplateTlv});
+
+            return findTag(applicationTemplateTlv, 0x4f).value.toString('hex');
         });
     }));
 }
