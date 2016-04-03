@@ -21,7 +21,7 @@ export default ({
 
 
     return (
-        <SplitPane split="horizontal" minSize={50} defaultSize={180}>
+        <SplitPane split="horizontal" minSize={50} defaultSize={440}>
             <Layout type="row">
                 <Fixed className="sidebar-control">
                     <div title="Interrogate Card" className="button fa fa-play-circle" onClick={interrogate}></div>
