@@ -150,9 +150,9 @@ function selectPse(webContents, application) {
 
 
 function findSfi(response) {
-    var matched = findTags(response, 0x88);
+    var matched = findTag(response.buffer, 0x88);
     console.log(`findSfi '${matched}'`);
-    return matched[0][0];
+    return matched.value.toString('hex');
 }
 
 function selectAllApplications(application, applicationIds) {
@@ -209,11 +209,12 @@ function readAllRecords(application, sfi, records) {
 function filterApplicationIds(recordResponses) {
     return flatten(recordResponses.map(function (response) {
         console.info(`Read Record Response: \n${format(response)}`);
-        let aids = findTags(response, 0x4f);
-        //let aids = findTags(response, 0x61);
-        if (aids && aids.length > 0) {
-            return aids.map(_ => _.toString('hex'));
-        }
+        let applicationTemplates = findTags(response, 0x61);
+
+        return applicationTemplates.map((template) => {
+            console.log(`template ${Array.isArray(template)}`);
+            return findTagInTlv(template, 0x4f).value.toString('hex');
+        });
     }));
 }
 
@@ -358,10 +359,15 @@ function toString(data) {
 }
 
 
+function format(response) {
+    return toString(tlv.parse(response.buffer));
+}
+
+
 function find(data, tag, arr) {
     console.log(`Find [0x${tag.toString(16)}]`);
     if (data.tag === tag) {
-        arr.push(data.value);
+        arr.push(data);
         console.log(`\tMatch !!`);
         return arr;
     } else if (data.value && Array.isArray(data.value)) {
@@ -376,12 +382,46 @@ function find(data, tag, arr) {
     return arr;
 }
 
-function format(response) {
-    return toString(tlv.parse(response.buffer));
-}
 
 function findTags(response, tag) {
     var found = find(tlv.parse(response.buffer), tag, []);
     console.log(`findTags '${found}'`);
+    return found
+}
+
+
+function findFirst(data, tag) {
+    console.log(`Find [0x${tag.toString(16)}]`);
+    if (data.tag === tag) {
+        console.log(`\tMatch !!`);
+        return data;
+    } else if (data.value && Array.isArray(data.value)) {
+        console.log(`\tCheck ${data.value.length} children`);
+        for (let i = 0; i < data.value.length; i++) {
+            var result = findFirst(data.value[i], tag);
+            if (result) {
+                return result;
+            }
+        }
+        console.log(`\t${data.value.length} Children checked`);
+    } else {
+        console.log(`\tNo match [${data.tag}]`);
+    }
+}
+
+// function findTag(response, tag) {
+//     var found = findFirst(tlv.parse(response.buffer), tag);
+//     console.log(`findTag '${found}'`);
+//     return found
+// }
+
+function findTag(buffer, tag) {
+    var found = findFirst(tlv.parse(buffer), tag);
+    console.log(`findTag '${found}'`);
+    return found
+}
+function findTagInTlv(tlv, tag) {
+    var found = findFirst(tlv, tag);
+    console.log(`findTag '${found}'`);
     return found
 }
