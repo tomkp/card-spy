@@ -8,7 +8,6 @@ import './console.scss';
 
 
 export default ({
-    ids,
     log,
     interrogate,
     clearLog,

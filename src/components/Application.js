@@ -29,7 +29,6 @@ class Application extends React.Component {
             console.log(`* Card '${atr}' inserted into '${device}'`);
 
             this.setState({
-                //device: device,
                 card: atr
             });
         });
@@ -57,30 +56,26 @@ class Application extends React.Component {
             });
 
             let current = this.state.current;
-            let newApplications = [...this.state.applications];
-
             console.log(`\tCurrent application ${current}`);
 
             this.setState({
-                log: log,
-                applications: newApplications
+                log: log
             });
-
-
         });
-        ipc.on('applications-found', (event, {ids}) => {
-            console.log(`* Applications found '${ids}'`);
+        ipc.on('emv-application-found', (event, {applicationTemplateTlv}) => {
+            console.log(`* EMV Application found '${applicationTemplateTlv}'`);
+            let newApplications = [...this.state.applications, applicationTemplateTlv];
             this.setState({
-                ids: ids
+                applications: newApplications
             })
         });
 
         ipc.on('application-selected', (event, {application}) => {
             console.log(`* Application Selected ${application}`);
-            let newApplications = [...this.state.applications, {name: application, children: []}];
+            //let newApplications = [...this.state.applications, {name: application, children: []}];
             this.setState({
-                current: application,
-                applications: newApplications
+                current: application
+                //applications: newApplications
             });
         });
 
@@ -92,7 +87,6 @@ class Application extends React.Component {
         this.state = {
             device: null,
             card: null,
-            ids: [],
             log: [],
             current: null,
             applications: []
@@ -141,7 +135,6 @@ class Application extends React.Component {
                     {this.props.children &&
                     React.cloneElement(this.props.children, {
                         log: this.state.log,
-                        ids: this.state.ids,
                         interrogate: () => {this.interrogate()},
                         clearLog: () => {this.clearLog()},
                         repl: this.state.repl,

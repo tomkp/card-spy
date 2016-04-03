@@ -209,7 +209,7 @@ function filterApplicationIds(webContents, recordResponses) {
         
         return applicationTemplateTlvs.map((applicationTemplateTlv) => {
 
-            webContents.send('application-found', {applicationTemplateTlv});
+            webContents.send('emv-application-found', {applicationTemplateTlv});
 
             return findTag(applicationTemplateTlv, 0x4f).value.toString('hex');
         });
