@@ -40,7 +40,7 @@ app.on('activate', function () {
 
 
 function createWindow() {
-    mainWindow = new BrowserWindow({width: 640, height: 740, icon: './tomkp.png', title: 'Card Explorer'});
+    mainWindow = new BrowserWindow({width: 480, height: 320, icon: './tomkp.png', title: 'Card Explorer'});
     mainWindow.loadURL('file://' + __dirname + '/dist/index.html');
     let webContents = mainWindow.webContents;
     if (process.env.NODE_ENV === 'development') {
