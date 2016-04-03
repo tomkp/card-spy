@@ -3,6 +3,7 @@
 
 
 .status-bar {
+
   background: $silver;
   color: #555;
   height: 3rem;
@@ -11,8 +12,19 @@
 
   font-family: "Menlo", "Lucida Console", monospace;
 
-  .atr {
+  @extend .truncate;
 
+  .atr {
+    margin-right: 1rem;
+    &:hover {
+      color: #333;
+    }
   }
 
+  .device {
+    margin-right: 1rem;
+    &:hover {
+      color: #333;
+    }
+  }
 }

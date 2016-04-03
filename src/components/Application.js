@@ -29,7 +29,7 @@ class Application extends React.Component {
             console.log(`* Card '${atr}' inserted into '${device}'`);
 
             this.setState({
-                device: device,
+                //device: device,
                 card: atr
             });
         });
@@ -154,10 +154,7 @@ class Application extends React.Component {
                     })
                     }
                 </Flex>
-                <Fixed>
-                    <StatusBar device={this.state.device}
-                            card={this.state.card} />
-                </Fixed>
+                <StatusBar device={this.state.device} card={this.state.card} />
             </Layout>
 
         );
