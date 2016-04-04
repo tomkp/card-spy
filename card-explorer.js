@@ -24,23 +24,9 @@ const CommandApdu = smartcard.CommandApdu;
 const ipcMain = require('electron').ipcMain;
 
 
-app.on('ready', createWindow);
-
-app.on('window-all-closed', function () {
-    if (process.platform !== 'darwin') {
-        app.quit();
-    }
-});
-
-app.on('activate', function () {
-    if (mainWindow === null) {
-        createWindow();
-    }
-});
 
 
-
-function createWindow() {
+const createWindow = () => {
     mainWindow = new BrowserWindow({width: 480, height: 640, icon: './tomkp.png', title: 'Card Explorer'});
     mainWindow.loadURL('file://' + __dirname + '/dist/index.html');
     let webContents = mainWindow.webContents;
@@ -48,21 +34,21 @@ function createWindow() {
         webContents.openDevTools();
     }
 
-    mainWindow.on('closed', function () {
+    mainWindow.on('closed', () => {
         mainWindow = null;
     });
 
-    webContents.on('did-finish-load', function() {
+    webContents.on('did-finish-load', () => {
         onLoaded(webContents)
     });
-}
+};
 
 
-function onLoaded(webContents) {
+const onLoaded = (webContents) => {
 
     const devices = new Devices();
 
-    devices.on('device-activated', function (event) {
+    devices.on('device-activated', (event) => {
 
         const currentDevices = event.devices;
         let device = event.device;
@@ -73,17 +59,17 @@ function onLoaded(webContents) {
 
         webContents.send('device-activated', {device: device, devices: currentDevices});
 
-        device.on('card-inserted', function (event) {
+        device.on('card-inserted', (event) => {
             let card = event.card;
             console.log(`Card '${event.card}' inserted into '${event.device}'`);
             webContents.send('card-inserted', {atr: event.card.getAtr(), device: device.toString()});
 
-            card.on('command-issued', function (event) {
+            card.on('command-issued', (event) => {
                 console.log(`Command '${event.command}' issued to '${event.card}' `);
                 webContents.send('command-issued', {command: event.command.toString(), atr: event.card.getAtr()});
             });
 
-            card.on('response-received', function (event) {
+            card.on('response-received', (event) => {
                 console.log(`Response '${event.response}' received from '${event.card}' in response to '${event.command}'`);
                 webContents.send('response-received', {
                     command: event.command.toString(),
@@ -96,85 +82,85 @@ function onLoaded(webContents) {
 
             const application = new Iso7816Application(card);
 
-            application.on('application-selected', function (event) {
+            application.on('application-selected', (event) => {
                 console.log(`Application Selected ${event.command} ${event.response}`);
                 webContents.send('application-selected', {application: event.application});
             });
 
-            ipcMain.on('repl', function (event, message) {
+            ipcMain.on('repl', (event, message) => {
                 console.log(`REPL ${message}`);
                 application.issueCommand(new CommandApdu({bytes: hexify.toByteArray(message)}))
             });
 
-            ipcMain.on('interrogate', function (event, message) {
+            ipcMain.on('interrogate', (event, message) => {
                 console.log(`interrogate`);
                 selectPse(webContents, application);
             });
 
 
         });
-        device.on('card-removed', function (event) {
+        device.on('card-removed', (event) => {
             console.log(`Card removed from '${event.name}' `);
             webContents.send('card-removed', event);
         });
     });
 
-    devices.on('device-deactivated', function (event) {
+    devices.on('device-deactivated', (event) => {
         console.log(`Device '${event.reader.name}' deactivated, devices: ${devices.listDevices()}`);
         webContents.send('device-deactivated', event);
     });
 }
 
-function selectPse(webContents, application) {
+const selectPse = (webContents, application) => {
     let sfi;
     application.selectFile([0x31, 0x50, 0x41, 0x59, 0x2E, 0x53, 0x59, 0x53, 0x2E, 0x44, 0x44, 0x46, 0x30, 0x31])
-        .then(function (response) {
+        .then((response) => {
             console.info(`Select PSE Response:\n${EmvTags.format(response)}`);
             sfi = findSfi(response);
             console.log(`sfi '${sfi}'`);
             let records = [0, 1, 2, 3, 4, 5, 6, 7, 8];
             return readAllRecords(application, sfi, records)
-        }).then(function (responses) {
+        }).then((responses) => {
         return filterApplicationIds(webContents, responses);
-    }).then(function (applicationIds) {
+    }).then((applicationIds) => {
         return selectAllApplications(application, applicationIds);
-    }).then(function (responses) {
+    }).then((responses) => {
         console.info(`Select All Applications Response: '${responses}'`);
-    }).catch(function (error) {
+    }).catch((error) => {
         console.error('Error:', error, error.stack);
     });
 }
 
 
-function findSfi(response) {
+const findSfi = (response) => {
     var sfiTlv = EmvTags.findTag(tlv.parse(response.buffer), 0x88);
     console.log(`findSfi '${sfiTlv}'`);
     return sfiTlv.value.toString('hex');
 }
 
-function selectAllApplications(application, applicationIds) {
+const selectAllApplications = (application, applicationIds) => {
     console.log(`selectAllApplications`);
     let returnValues = [];
     let queue = Promise.resolve();
-    applicationIds.forEach(function (aid) {
+    applicationIds.forEach((aid) => {
         console.log(`Select application '${aid}'`);
-        queue = queue.then(function () {
+        queue = queue.then(() => {
             return application.selectFile(hexify.toByteArray(aid))
-                .then(function (response) {
+                .then((response) => {
                     console.info(`Select Application '${aid}' Response: \n${EmvTags.format(response)}`);
                     if (response.isOk()) {
                         returnValues.push(response);
                     }
                     return returnValues;
-                }).then(function () {
+                }).then(() => {
                     return application.issueCommand(new CommandApdu({bytes: [0x80, 0xa8, 0x00, 0x00, 0x02, 0x83, 0x00, 0x00]}));
-                }).then(function (response) {
+                }).then((response) => {
                     let records = [0, 1, 2, 3, 4, 5, 6, 7, 8];
                     return readAllRecords(application, 2, records)
-                }).then(function (responses) {
+                }).then((responses) => {
                     console.info(`Read All Records Response: '${responses}'`);
                     return responses;
-                }).catch(function (error) {
+                }).catch((error) => {
                     console.error('Select Application:', error, error.stack);
                 });
         });
@@ -183,18 +169,18 @@ function selectAllApplications(application, applicationIds) {
 }
 
 
-function readAllRecords(application, sfi, records) {
+const readAllRecords = (application, sfi, records) => {
     let recordResponses = [];
     let queue = Promise.resolve();
-    records.forEach(function (record) {
-        queue = queue.then(function () {
-            return application.readRecord(sfi, record).then(function (response) {
+    records.forEach((record) => {
+        queue = queue.then(() => {
+            return application.readRecord(sfi, record).then((response) => {
                 if (response.isOk()) {
                     console.info(`Read Record Response: \n${EmvTags.format(response)}`);
                     recordResponses.push(response);
                 }
                 return recordResponses;
-            }).catch(function (error) {
+            }).catch((error) => {
                 console.error('Read Record Error:', error, error.stack);
             });
         });
@@ -203,8 +189,8 @@ function readAllRecords(application, sfi, records) {
 }
 
 
-function filterApplicationIds(webContents, recordResponses) {
-    return flatten(recordResponses.map(function (response) {
+const filterApplicationIds = (webContents, recordResponses) => {
+    return flatten(recordResponses.map((response) => {
         console.info(`Read Record Response: \n${EmvTags.format(response)}`);
         let applicationTemplateTlvs = EmvTags.findTags(tlv.parse(response.buffer), 0x61);
         
@@ -230,4 +216,19 @@ const flatten = ([first, ...rest]) => {
     }
 }
 
+
+
+app.on('ready', createWindow);
+
+app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') {
+        app.quit();
+    }
+});
+
+app.on('activate', () => {
+    if (mainWindow === null) {
+        createWindow();
+    }
+});
 
