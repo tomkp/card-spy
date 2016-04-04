@@ -13,14 +13,4 @@
   &:first-child {
     border-top: none;
   }
-
-  border-left: .5rem solid transparent;
-
-  &.ok {
-    border-left: .5rem solid $nephritis;
-  }
-
-  &.error {
-    border-left: .5rem solid $alizarin;
-  }
 }
