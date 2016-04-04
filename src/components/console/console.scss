@@ -1,33 +1,35 @@
 @import "../../colours.scss";
 @import "../../mixins.scss";
 
+.console {
 
-.sidebar-control {
+  .sidebar-control {
 
-  background: #eee;
-  padding: 1rem 1rem;
-  text-align: right;
-  z-index: 2;
+    background: #eee;
+    padding: 1rem 1rem;
+    text-align: right;
+    z-index: 2;
 
-  .button {
-    font-size: 1.2rem;
-    padding: .5rem .75rem;
-    display: block;
-    margin-bottom: .5rem;
+    .button {
+      font-size: 1.2rem;
+      padding: .5rem .75rem;
+      display: block;
+      margin-bottom: .5rem;
+    }
+
+  }
+
+  .commands {
+    background: #fafafa;
+    font-family: "Menlo", "Lucida Console", monospace;
+  }
+
+  textarea {
+    flex: 1;
+    border: 0;
+    outline: none;
+    padding: .5rem 1rem;
+    font-family: "Menlo", "Lucida Console", monospace;
   }
 
 }
-
-.commands {
-  background: #fafafa;
-  font-family: "Menlo", "Lucida Console", monospace;
-}
-
-textarea {
-  flex: 1;
-  border: 0;
-  outline: none;
-  padding: .5rem 1rem;
-  font-family: "Menlo", "Lucida Console", monospace;
-}
-
