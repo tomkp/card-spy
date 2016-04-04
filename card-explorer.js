@@ -97,11 +97,13 @@ const onLoaded = (webContents) => {
                 selectPse(webContents, application);
             });
 
-
         });
         device.on('card-removed', (event) => {
             console.log(`Card removed from '${event.name}' `);
             webContents.send('card-removed', event);
+
+            ipcMain.removeAllListeners('repl');
+            ipcMain.removeAllListeners('interrogate');
         });
     });
 
@@ -112,6 +114,7 @@ const onLoaded = (webContents) => {
 }
 
 const selectPse = (webContents, application) => {
+    console.log(`Select PSE`);
     let sfi;
     application.selectFile([0x31, 0x50, 0x41, 0x59, 0x2E, 0x53, 0x59, 0x53, 0x2E, 0x44, 0x44, 0x46, 0x30, 0x31])
         .then((response) => {
