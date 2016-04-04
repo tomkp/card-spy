@@ -5,7 +5,7 @@ import './control-entry.scss';
 
 export default ({command, response, ok, meaning}) => {
     return (
-        <div className="console-entry">
+        <div className={`console-entry ${ok?'ok':'error'}`}>
             <Command command={command} />
             <Response response={response} ok={ok} meaning={meaning} />
         </div>
