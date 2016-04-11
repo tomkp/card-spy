@@ -1,10 +1,10 @@
-import React from 'react';
-import './application.scss';
-
-import {Layout, Fixed, Flex} from 'react-layout-pane';
-import StatusBar from './status-bar/StatusBar';
-import electron from 'electron';
+import React from "react";
+import "./application.scss";
+import {Layout, Flex} from "react-layout-pane";
+import StatusBar from "./status-bar/StatusBar";
+import electron from "electron";
 const ipc = electron.ipcRenderer;
+
 
 
 class Application extends React.Component {
@@ -13,16 +13,23 @@ class Application extends React.Component {
         super(props);
         
         ipc.on('device-activated', (event, {device, devices}) => {
-            console.log(`* Device '${device.name}' activated, devices: [${devices}]`);
+            console.log(`* Device '${device}' activated, devices: '${devices}'`);
+
+            devices.map((device, index) => {
+                console.log(`* Device #${index + 1}: ${device}`);
+            });
+
             this.setState({
-                device: device
+                device: device,
+                devices: devices
             });
         });
         ipc.on('device-deactivated', (event, {device, devices}) => {
-            console.log(`* Device '${device.name}' deactivated, devices: ${devices}`);
+            console.log(`* Device '${device.name}' deactivated, devices: '${devices}'`);
             
             this.setState({
-                device: null
+                device: null,
+                devices: devices
             });
         });
         ipc.on('card-inserted', (event, {atr, device}) => {
@@ -85,6 +92,7 @@ class Application extends React.Component {
 
         this.state = {
             device: null,
+            devices: [],
             card: null,
             log: [],
             current: null,
@@ -126,6 +134,13 @@ class Application extends React.Component {
         ipc.send('repl', this.state.repl);
     }
 
+    onSelectDevice(device) {
+        console.log(`onSelectDevice ${device}`);
+        this.setState({
+            device: device
+        });
+    }
+
     render() {
         //console.log(`Application.state: ${JSON.stringify(this.state)}`);
         return (
@@ -146,7 +161,7 @@ class Application extends React.Component {
                     })
                     }
                 </Flex>
-                <StatusBar device={this.state.device} card={this.state.card} />
+                <StatusBar device={this.state.device} devices={this.state.devices} onSelectDevice={this.onSelectDevice} card={this.state.card} />
             </Layout>
         );
     }

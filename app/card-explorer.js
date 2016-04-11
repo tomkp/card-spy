@@ -53,11 +53,16 @@ const onLoaded = (webContents) => {
         const currentDevices = event.devices;
         let device = event.device;
         console.log(`Device '${device}' activated, devices: ${currentDevices}`);
-        for (let prop in currentDevices) {
-            console.log("Devices: " + currentDevices[prop]);
-        }
+        currentDevices.map((device, index) => {
+            console.log(`Device #${index + 1}: ${device}`);
+        });
 
-        webContents.send('device-activated', {device: device, devices: currentDevices});
+        console.log(`json: ${JSON.stringify(device)}`);
+        console.log(`json: ${JSON.stringify(currentDevices)}`);
+
+        const names = currentDevices.map(_ => _.name);
+
+        webContents.send('device-activated', {device: device.name, devices: names});
 
         device.on('card-inserted', (event) => {
             let card = event.card;

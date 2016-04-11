@@ -1,0 +1,19 @@
+@import "../../colours.scss";
+
+
+.device-selector {
+
+  display: inline-block;
+
+  background: blue;
+
+
+  .device {
+    display: inline-block;
+  }
+
+  .active {
+    font-weight: bold;
+  }
+
+}
