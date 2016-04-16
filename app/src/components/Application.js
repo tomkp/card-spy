@@ -20,15 +20,19 @@ class Application extends React.Component {
             });
 
             let dx = this.state.dx;
-
             dx[device] = {device};
 
             this.setState({
-                //device: device, //todo
-                //device: null,
                 devices: devices,
                 dx: dx
             });
+
+            // if this is the only device (or the first)
+            if (devices.length === 1) {
+                this.setState({
+                    device: device
+                });
+            }
         });
         ipc.on('device-deactivated', (event, {device, devices}) => {
             console.log(`* Device '${device.name}' deactivated, devices: '${devices}'`);
@@ -62,6 +66,7 @@ class Application extends React.Component {
             this.setState({
                 card: null,
                 current: null,
+                //device: null,
                 applications: [],
                 dx: dx
             });
@@ -160,7 +165,6 @@ class Application extends React.Component {
         this.setState({
             device: deviceName
         });
-        ipc.send('select-device', deviceName);
     }
 
     render() {

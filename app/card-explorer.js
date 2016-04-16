@@ -48,10 +48,6 @@ const onLoaded = (webContents) => {
 
     const devices = new Devices();
 
-
-    let current;
-
-
     const applications = {};
 
     devices.on('device-activated', (event) => {
@@ -134,17 +130,6 @@ const onLoaded = (webContents) => {
         console.log(`Device '${event.reader.name}' deactivated, devices: ${devices.listDevices()}`);
         webContents.send('device-deactivated', event);
     });
-
-
-    ipcMain.on('select-device', (event, deviceName)=> {
-        console.log(`select-device ${deviceName}`);
-        const device = devices.lookup(deviceName);
-        console.log(`select-device ${device}`);
-        current = device;
-    });
-
-
-
 };
 
 const selectPse = (webContents, application) => {

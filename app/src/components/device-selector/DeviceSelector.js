@@ -9,7 +9,7 @@ const Device = ({device, active, onSelectDevice}) => {
     };
 
     const d = `${device}`;
-    return (<div className={`device ${active?'active':''}`} onClick={clicked}>[{d}]</div>)
+    return (<div className={`device ${active?'active':''}`} onClick={clicked}>{d}</div>)
 };
 
 
