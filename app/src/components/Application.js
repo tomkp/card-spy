@@ -51,11 +51,22 @@ class Application extends React.Component {
 
             let dx = this.state.dx;
             dx[device] = {device, card: atr};
-
             this.setState({
                 card: atr,
                 dx: dx
             });
+
+            if (device === this.state.device) {
+                let log = this.state.log;
+                log.push({
+                    type: 'card-inserted',
+                    atr: atr,
+                    device: device
+                });
+                this.setState({
+                    log: log
+                });
+            }
         });
         ipc.on('card-removed', (event, {device}) => {
             console.log(`* Card removed from '${device}' `);

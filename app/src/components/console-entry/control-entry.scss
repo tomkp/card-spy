@@ -5,11 +5,11 @@
 .console-entry {
 
   padding: 1rem 1rem;
-  border-top: 1px solid #ddd;
+  border-bottom: 1px solid #ddd;
 
   @extend .truncate;
 
-  &:first-child {
+  /*&:first-child {
     border-top: none;
-  }
+  }*/
 }

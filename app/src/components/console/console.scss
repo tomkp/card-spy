@@ -32,4 +32,26 @@
     font-family: "Menlo", "Lucida Console", monospace;
   }
 
+
+  .card-inserted {
+
+    border-bottom: 1px solid #ddd;
+
+    .device {
+      display: inline-block;
+      padding: 1rem;
+    }
+
+    .atr {
+      display: inline-block;
+      padding: 1rem;
+      border-left: 1px solid #ddd;
+      &:before {
+        content: "Answer to reset:";
+        padding-right: .5rem;
+      }
+    }
+
+
+  }
 }

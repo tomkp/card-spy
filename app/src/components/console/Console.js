@@ -29,6 +29,17 @@ export default ({
                 </Fixed>
                 <ScrollToBottom className="commands">
                     { log.map((result, key) => {
+
+                        console.log(`result ${JSON.stringify(result)}`);
+                        if (result.type && result.type === 'card-inserted') {
+                            return (
+                                <div className={`card-inserted`} key={key}>
+                                    <div className={`device`}>{result.device}</div>
+                                    <div className={`atr`}>{result.atr}</div>
+                                </div>
+                            );
+                        }
+
                         return <ConsoleEntry key={key}
                                                 command={result.command}
                                                 ok={result.ok}
