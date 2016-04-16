@@ -48,6 +48,12 @@ const onLoaded = (webContents) => {
 
     const devices = new Devices();
 
+
+    let current;
+
+
+    const applications = {};
+
     devices.on('device-activated', (event) => {
 
         const currentDevices = event.devices;
@@ -65,9 +71,10 @@ const onLoaded = (webContents) => {
         webContents.send('device-activated', {device: device.name, devices: names});
 
         device.on('card-inserted', (event) => {
+            
             let card = event.card;
             console.log(`Card '${event.card}' inserted into '${event.device}'`);
-            webContents.send('card-inserted', {atr: event.card.getAtr(), device: device.toString()});
+            webContents.send('card-inserted', {atr: event.card.getAtr(), device: device.name});
 
             card.on('command-issued', (event) => {
                 console.log(`Command '${event.command}' issued to '${event.card}' `);
@@ -87,6 +94,8 @@ const onLoaded = (webContents) => {
 
             const application = new Iso7816Application(card);
 
+            applications[device] = application;
+
             application.on('application-selected', (event) => {
                 console.log(`Application Selected ${event.command} ${event.response}`);
                 webContents.send('application-selected', {application: event.application});
@@ -94,18 +103,23 @@ const onLoaded = (webContents) => {
 
             ipcMain.on('repl', (event, message) => {
                 console.log(`REPL ${message}`);
-                application.issueCommand(new CommandApdu({bytes: hexify.toByteArray(message)}))
+                const deviceName = message.device;
+                const application = applications[deviceName];
+                application.issueCommand(new CommandApdu({bytes: hexify.toByteArray(message.repl)}))
             });
 
             ipcMain.on('interrogate', (event, message) => {
-                console.log(`interrogate`);
+                console.log(`interrogate ${event} ${message}`);
+                const deviceName = message.device;
+                const application = applications[deviceName];
                 selectPse(webContents, application);
             });
-
         });
         device.on('card-removed', (event) => {
             console.log(`Card removed from '${event.name}' `);
-            webContents.send('card-removed', event);
+            webContents.send('card-removed', {device: event.name});
+
+            delete applications[device];
 
             ipcMain.removeAllListeners('repl');
             ipcMain.removeAllListeners('interrogate');
@@ -116,7 +130,18 @@ const onLoaded = (webContents) => {
         console.log(`Device '${event.reader.name}' deactivated, devices: ${devices.listDevices()}`);
         webContents.send('device-deactivated', event);
     });
-}
+
+
+    ipcMain.on('select-device', (event, deviceName)=> {
+        console.log(`select-device ${deviceName}`);
+        const device = devices.lookup(deviceName);
+        console.log(`select-device ${device}`);
+        current = device;
+    });
+
+
+
+};
 
 const selectPse = (webContents, application) => {
     console.log(`Select PSE`);

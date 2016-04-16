@@ -5,15 +5,15 @@
 
   display: inline-block;
 
-  background: blue;
-
-
   .device {
     display: inline-block;
+    cursor: pointer;
   }
 
   .active {
     font-weight: bold;
   }
+
+
 
 }

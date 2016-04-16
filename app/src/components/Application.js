@@ -19,33 +19,51 @@ class Application extends React.Component {
                 console.log(`* Device #${index + 1}: ${device}`);
             });
 
+            let dx = this.state.dx;
+
+            dx[device] = {device};
+
             this.setState({
-                device: device,
-                devices: devices
+                //device: device, //todo
+                //device: null,
+                devices: devices,
+                dx: dx
             });
         });
         ipc.on('device-deactivated', (event, {device, devices}) => {
             console.log(`* Device '${device.name}' deactivated, devices: '${devices}'`);
-            
+
+            let dx = this.state.dx;
+            delete dx[device];
+
             this.setState({
-                device: null,
-                devices: devices
+                //device: null,
+                devices: devices,
+                dx: dx
             });
         });
         ipc.on('card-inserted', (event, {atr, device}) => {
             console.log(`* Card '${atr}' inserted into '${device}'`);
 
+            let dx = this.state.dx;
+            dx[device] = {device, card: atr};
+
             this.setState({
-                card: atr
+                card: atr,
+                dx: dx
             });
         });
-        ipc.on('card-removed', (event, {name}) => {
-            console.log(`* Card removed from '${name}' `);
+        ipc.on('card-removed', (event, {device}) => {
+            console.log(`* Card removed from '${device}' `);
+
+            let dx = this.state.dx;
+            dx[device] = {device, card: null};
 
             this.setState({
                 card: null,
                 current: null,
-                applications: []
+                applications: [],
+                dx: dx
             });
         });
         ipc.on('command-issued', (event, {atr, command}) => {
@@ -63,7 +81,7 @@ class Application extends React.Component {
             });
 
             let current = this.state.current;
-            console.log(`\tCurrent application ${current}`);
+            console.log(`\t* Current application ${current}`);
 
             this.setState({
                 log: log
@@ -75,7 +93,7 @@ class Application extends React.Component {
             this.setState({
                 applications: newApplications
             });
-            console.log(`Applciations ${newApplications}`);
+            console.log(`Applications ${newApplications}`);
         });
 
         ipc.on('application-selected', (event, {application}) => {
@@ -91,6 +109,7 @@ class Application extends React.Component {
         });
 
         this.state = {
+            dx: {},
             device: null,
             devices: [],
             card: null,
@@ -127,22 +146,26 @@ class Application extends React.Component {
     }
 
     interrogate() {
-        ipc.send('interrogate', {});
+        console.log(`* interrogate ${this.state.device}`);
+        ipc.send('interrogate', {device: this.state.device});
     }
 
     replRun() {
-        ipc.send('repl', this.state.repl);
+        console.log(`* replRun ${this.state.device} ${this.state.repl}`);
+        ipc.send('repl', {device: this.state.device, repl: this.state.repl});
     }
 
-    onSelectDevice(device) {
-        console.log(`onSelectDevice ${device}`);
+    onSelectDevice(deviceName) {
+        console.log(`* onSelectDevice ${deviceName}`);
         this.setState({
-            device: device
+            device: deviceName
         });
+        ipc.send('select-device', deviceName);
     }
 
     render() {
         //console.log(`Application.state: ${JSON.stringify(this.state)}`);
+        console.log(`\n\tApplication.state.dx: ${JSON.stringify(this.state.dx)}`);
         return (
             <Layout type="column">
                 <Flex className="application">
@@ -161,7 +184,7 @@ class Application extends React.Component {
                     })
                     }
                 </Flex>
-                <StatusBar device={this.state.device} devices={this.state.devices} onSelectDevice={this.onSelectDevice} card={this.state.card} />
+                <StatusBar dx={this.state.dx} device={this.state.device} devices={this.state.devices} onSelectDevice={(device) => this.onSelectDevice(device)} card={this.state.card} />
             </Layout>
         );
     }
