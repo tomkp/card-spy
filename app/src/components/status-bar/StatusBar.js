@@ -11,9 +11,12 @@ export default ({dx, device, devices, onSelectDevice, card}) => {
         <Indicator name="device-status" status={device?'activated':'deactivated'} title={device?'Device activated':'Device deactivated'} />
         <Indicator name="card-status" status={cx?'inserted':'removed'} title={cx?'Card inserted':'Card removed'} />
         <DeviceSelector currentDevice={device} devices={devices} onSelectDevice={onSelectDevice} />
-        <div className="atr" title="ATR (Answer To Reset)">{cx?cx:''}</div>
-        <div className="device-name">{device?device:''}</div>
     </div>
 };
+
+/*
+ /*<div className="atr" title="ATR (Answer To Reset)">{cx?cx:''}</div>
+ <div className="device-name">{device?device:''}</div>
+ */
 
 

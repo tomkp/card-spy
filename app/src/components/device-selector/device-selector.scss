@@ -5,13 +5,21 @@
 
   display: inline-block;
 
+  .popup-handle {
+    cursor: pointer;
+  }
+
   .popup {
+
     z-index: 2;
     position: absolute;
-    bottom: 0;
-    background: #00A000;
-    border: 1px solid black;
+    left: 2rem;
+    bottom: 5rem;
+    background: #eee;
+    //border: 1px solid #ddd;
 
+    box-shadow: 0 2px 14px 0 rgba(0, 0, 0, .25);
+    padding: 1rem;
   }
 
 
