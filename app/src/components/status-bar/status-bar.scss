@@ -12,16 +12,19 @@
 
   font-family: "Menlo", "Lucida Console", monospace;
 
-  @extend .truncate;
 
   .atr {
+    @extend .truncate;
+    display: inline-block;
     margin-right: 1rem;
     &:hover {
       color: #333;
     }
   }
 
-  .device {
+  .device-name {
+    @extend .truncate;
+    display: inline-block;
     margin-right: 1rem;
     &:hover {
       color: #333;

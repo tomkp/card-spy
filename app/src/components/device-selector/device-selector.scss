@@ -5,9 +5,20 @@
 
   display: inline-block;
 
+  .popup {
+    z-index: 2;
+    position: absolute;
+    bottom: 0;
+    background: #00A000;
+    border: 1px solid black;
+
+  }
+
+
   .device {
-    display: inline-block;
+    display: block;
     cursor: pointer;
+    white-space: nowrap;
   }
 
   .active {
