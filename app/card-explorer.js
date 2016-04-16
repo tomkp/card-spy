@@ -105,14 +105,18 @@ const onLoaded = (webContents) => {
                 console.log(`REPL ${message}`);
                 const deviceName = message.device;
                 const application = applications[deviceName];
-                application.issueCommand(new CommandApdu({bytes: hexify.toByteArray(message.repl)}))
+                if (application) {
+                    application.issueCommand(new CommandApdu({bytes: hexify.toByteArray(message.repl)}))
+                }
             });
 
             ipcMain.on('interrogate', (event, message) => {
                 console.log(`interrogate ${event} ${message}`);
                 const deviceName = message.device;
                 const application = applications[deviceName];
-                selectPse(webContents, application);
+                if (application) {
+                    selectPse(webContents, application);
+                }
             });
         });
         device.on('card-removed', (event) => {
