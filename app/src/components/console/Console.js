@@ -20,6 +20,20 @@ export default ({
     applications}) => {
 
 
+    const renderEntries = () => {
+        return log.map((result, key) => {
+            console.log(`result ${JSON.stringify(result)}`);
+            if (result.type && result.type === 'card-inserted') {
+                return <CardInserted key={key} device={result.device} atr={result.atr} />;
+            }
+            return <ConsoleEntry key={key}
+                                 command={result.command}
+                                 ok={result.ok}
+                                 meaning={result.meaning}
+                                 response={result.response} />
+        })
+    };
+
     return (
         <SplitPane className="console" split="horizontal" minSize={50} defaultSize={600}>
             <Layout type="row">
@@ -28,24 +42,8 @@ export default ({
                     <div title="Clear Console Log" className="button fa fa-trash" onClick={clearLog}></div>
                 </Fixed>
                 <ScrollToBottom className="commands">
-                    { log.map((result, key) => {
-
-                        console.log(`result ${JSON.stringify(result)}`);
-                        if (result.type && result.type === 'card-inserted') {
-                            return (
-                                <div className={`card-inserted`} key={key}>
-                                    <div className={`device`}>{result.device}</div>
-                                    <div className={`atr`}>{result.atr}</div>
-                                </div>
-                            );
-                        }
-
-                        return <ConsoleEntry key={key}
-                                                command={result.command}
-                                                ok={result.ok}
-                                                meaning={result.meaning}
-                                                response={result.response} />
-                        })
+                    {
+                        renderEntries()
                     }
                 </ScrollToBottom>
             </Layout>
@@ -58,5 +56,15 @@ export default ({
             </Layout>
         </SplitPane>
 
+    )
+};
+
+
+const CardInserted = ({device, atr}) => {
+    return (
+        <div className={`card-inserted`} >
+            <div className={`device`}>{device}</div>
+            <div className={`atr`}>{atr}</div>
+        </div>
     )
 };
