@@ -6,10 +6,12 @@
 
   padding: 1rem 1rem;
   border-bottom: 1px solid #ddd;
+  border-left: 1px solid transparent;
+  margin-top: -1px;
 
   @extend .truncate;
 
-  /*&:first-child {
-    border-top: none;
-  }*/
+  &:hover {
+    border-left-color: #ddd;
+  }
 }
