@@ -41,7 +41,6 @@ class Application extends React.Component {
             delete dx[device];
 
             this.setState({
-                //device: null,
                 devices: devices,
                 dx: dx
             });
@@ -77,7 +76,6 @@ class Application extends React.Component {
             this.setState({
                 card: null,
                 current: null,
-                //device: null,
                 applications: [],
                 dx: dx
             });
