@@ -1,20 +1,20 @@
 {
-  "name": "card-explorer",
-  "productName": "Card Explorer",
+  "name": "card-spy",
+  "productName": "Card Spy",
   "version": "1.0.0",
   "description": "Smartcard REPL",
   "author": "tomkp <tom@tomkp.com>",
   "license": "MIT",
-  "main": "./app/card-explorer.js",
+  "main": "./app/card-spy.js",
   "scripts": {
     "clean": "rimraf ./build",
-    "clean:osx": "rimraf ./build/Card Explorer-darwin-x64",
-    "clean:win": "rimraf ./build/Card Explorer-win32-x64",
-    "start": "cross-env NODE_ENV=development electron ./app/card-explorer.js",
+    "clean:osx": "rimraf ./build/Card Spy-darwin-x64",
+    "clean:win": "rimraf ./build/Card Spy-win32-x64",
+    "start": "cross-env NODE_ENV=development electron ./app/card-spy.js",
     "compile": "webpack",
     "compile:watch": "webpack -w",
-    "build:osx": "npm run clean:osx && cross-env NODE_ENV=development electron-packager ./app --overwrite --out='build' --icon='tomkp.icns' --platform=darwin --appname='Card Explorer' --arch=x64",
-    "build:win": "npm run clean:win && cross-env NODE_ENV=development electron-packager . --overwrite --out='build' --platform=win32 --appname='Card Explorer' --arch=x64",
+    "build:osx": "npm run clean:osx && cross-env NODE_ENV=development electron-packager ./app --overwrite --out='build' --icon='tomkp.icns' --platform=darwin --appname='Card Spy' --arch=x64",
+    "build:win": "npm run clean:win && cross-env NODE_ENV=development electron-packager . --overwrite --out='build' --platform=win32 --appname='Card Spy' --arch=x64",
     "build": "npm run build:osx && npm run build:win"
   },
   "devDependencies": {

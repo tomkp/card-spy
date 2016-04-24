@@ -1,11 +1,11 @@
 {
-  "name": "card-explorer",
-  "productName": "Card Explorer",
+  "name": "card-spy",
+  "productName": "Card Spy",
   "version": "1.0.0",
   "description": "",
   "author": "tomkp <tom@tomkp.com>",
   "license": "MIT",
-  "main": "card-explorer.js",
+  "main": "card-spy.js",
   "dependencies": {
     "babel-polyfill": "^6.7.4",
     "card-reader": "^1.0.3",

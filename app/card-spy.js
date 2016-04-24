@@ -27,7 +27,7 @@ const ipcMain = require('electron').ipcMain;
 
 
 const createWindow = () => {
-    mainWindow = new BrowserWindow({width: 640, height: 800, icon: './tomkp.png', title: 'Card Explorer'});
+    mainWindow = new BrowserWindow({width: 640, height: 800, icon: './tomkp.png', title: 'Card Spy'});
     mainWindow.loadURL('file://' + __dirname + '/dist/index.html');
     let webContents = mainWindow.webContents;
     if (process.env.NODE_ENV === 'development') {
