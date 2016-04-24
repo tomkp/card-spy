@@ -22,7 +22,6 @@
   .commands {
     background: #fafafa;
     font-family: "Menlo", "Lucida Console", monospace;
-    padding-bottom: 5rem;
   }
 
   textarea {
@@ -36,17 +35,34 @@
 
   .card-inserted {
 
-    border-bottom: 1px solid #ddd;
+    //border-bottom: 1px solid #ddd;
+
+    //border-left: 1px solid #ddd;
+
+    border-top: 1px solid #ddd;
+    border-left: 1px solid transparent;
+    margin-top: -1px;
+
+    @extend .truncate;
+
+    &:first-child {
+      border-top: none;
+    }
+    &:hover {
+      border-left-color: #ddd;
+    }
+
 
     .device {
-      display: inline-block;
+      background: #fafafa;
+      display: block;
       padding: 1rem;
     }
 
     .atr {
-      display: inline-block;
+      display: block;
       padding: 1rem;
-      border-left: 1px solid #ddd;
+
       &:before {
         content: "Answer to reset:";
         padding-right: .5rem;
