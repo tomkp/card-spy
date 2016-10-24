@@ -166,7 +166,9 @@ class Application extends React.Component {
 
     replRun() {
         console.log(`* replRun ${this.state.device} ${this.state.repl}`);
-        ipc.send('repl', {device: this.state.device, repl: this.state.repl});
+        if (this.state.repl) {
+            ipc.send('repl', {device: this.state.device, repl: this.state.repl});
+        }
     }
 
     onSelectDevice(deviceName) {
