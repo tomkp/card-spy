@@ -1,4 +1,4 @@
 # Card Spy
 
-An open source smartcard REPL.
+ISO7816 / EMV diagnostic tool
 
