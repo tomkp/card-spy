@@ -24,8 +24,6 @@ const CommandApdu = smartcard.CommandApdu;
 const ipcMain = require('electron').ipcMain;
 
 
-
-
 const createWindow = () => {
     mainWindow = new BrowserWindow({width: 640, height: 800, icon: './tomkp.png', title: 'Card Spy'});
     mainWindow.loadURL('file://' + __dirname + '/dist/index.html');
@@ -151,14 +149,14 @@ const selectPse = (webContents, application) => {
     }).catch((error) => {
         console.error('Error:', error, error.stack);
     });
-}
+};
 
 
 const findSfi = (response) => {
     var sfiTlv = EmvTags.findTag(tlv.parse(response.buffer), 0x88);
     console.log(`findSfi '${sfiTlv}'`);
     return sfiTlv.value.toString('hex');
-}
+};
 
 const selectAllApplications = (application, applicationIds) => {
     console.log(`selectAllApplications`);
@@ -188,7 +186,7 @@ const selectAllApplications = (application, applicationIds) => {
         });
     });
     return queue;
-}
+};
 
 
 const readAllRecords = (application, sfi, records) => {
@@ -208,7 +206,7 @@ const readAllRecords = (application, sfi, records) => {
         });
     });
     return queue;
-}
+};
 
 
 const filterApplicationIds = (webContents, recordResponses) => {
@@ -223,7 +221,7 @@ const filterApplicationIds = (webContents, recordResponses) => {
             return EmvTags.findTag(applicationTemplateTlv, 0x4f).value.toString('hex');
         });
     }));
-}
+};
 
 
 const flatten = ([first, ...rest]) => {
@@ -236,8 +234,7 @@ const flatten = ([first, ...rest]) => {
     else {
         return [...flatten(first), ...flatten(rest)];
     }
-}
-
+};
 
 
 app.on('ready', createWindow);
