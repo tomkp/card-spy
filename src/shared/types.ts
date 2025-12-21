@@ -6,6 +6,13 @@ export interface Device {
 export interface Card {
   atr: string;
   protocol: number;
+  deviceName?: string;
+}
+
+export interface ReaderSession {
+  device: Device;
+  card: Card | null;
+  log: LogEntry[];
 }
 
 export interface Command {

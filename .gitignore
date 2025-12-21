@@ -20,6 +20,3 @@ npm-debug.log*
 *.map
 .DS_Store
 website/*.zip
-
-# Old app directory (can be removed after migration verified)
-app/
