@@ -1,5 +1,5 @@
 import { BrowserWindow } from 'electron';
-import { Devices, Card, Reader } from 'smartcard';
+import { Devices, Card, Reader, Context } from 'smartcard';
 import type { Device, Command, Response } from '../shared/types';
 
 export class SmartcardService {
@@ -16,33 +16,55 @@ export class SmartcardService {
 
   start(): void {
     this.devices.on('reader-attached', (reader: Reader) => {
+      console.log('Reader attached:', reader.name);
       this.readers.set(reader.name, reader);
       this.send('device-activated', { name: reader.name, isActivated: true });
     });
 
     this.devices.on('reader-detached', (reader: Reader) => {
+      console.log('Reader detached:', reader.name);
       this.readers.delete(reader.name);
       this.send('device-deactivated', { name: reader.name, isActivated: false });
     });
 
     this.devices.on('card-inserted', ({ reader, card }: { reader: Reader; card: Card }) => {
+      console.log('Card inserted in:', reader.name);
       this.activeCard = card;
       this.send('card-inserted', {
         atr: card.atr?.toString('hex') ?? '',
-        protocol: card.protocol
+        protocol: card.protocol,
+        deviceName: reader.name
       });
     });
 
-    this.devices.on('card-removed', ({ reader }: { reader: Reader; card: Card | null }) => {
+    this.devices.on('card-removed', ({ reader }: { reader: Reader }) => {
+      console.log('Card removed from:', reader.name);
       this.activeCard = null;
-      this.send('card-removed', null);
+      this.send('card-removed', { deviceName: reader.name });
     });
 
     this.devices.on('error', (error: Error) => {
       console.error('Smartcard error:', error);
     });
 
+    console.log('Starting smartcard device monitoring...');
     this.devices.start();
+
+    // Get already-connected readers using low-level API
+    try {
+      const ctx = new Context();
+      const existingReaders = ctx.listReaders();
+      console.log('Found existing readers:', existingReaders.map(r => r.name));
+      for (const reader of existingReaders) {
+        if (!this.readers.has(reader.name)) {
+          this.readers.set(reader.name, reader as unknown as Reader);
+          this.send('device-activated', { name: reader.name, isActivated: true });
+        }
+      }
+      ctx.close();
+    } catch (err) {
+      console.error('Error listing existing readers:', err);
+    }
   }
 
   stop(): void {
