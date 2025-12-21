@@ -1,0 +1,55 @@
+.console {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
+  &__toolbar {
+    display: flex;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    align-items: center;
+  }
+
+  &__status {
+    margin-left: auto;
+    color: var(--text-secondary);
+    font-size: 11px;
+  }
+
+  &__log {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  &__empty {
+    color: var(--text-secondary);
+    text-align: center;
+    padding: 60px 20px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  &__repl {
+    display: flex;
+    gap: 8px;
+    padding: 12px;
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border);
+
+    textarea {
+      flex: 1;
+      height: 50px;
+    }
+
+    button {
+      align-self: flex-end;
+      min-width: 60px;
+    }
+  }
+}

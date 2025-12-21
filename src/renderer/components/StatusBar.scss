@@ -1,0 +1,44 @@
+.status-bar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 6px 12px;
+  background: var(--bg-tertiary);
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  &__indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-secondary);
+    transition: background 0.2s;
+
+    &--active {
+      background: var(--success);
+    }
+  }
+
+  &__select {
+    margin-left: auto;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    padding: 3px 6px;
+    font-size: 11px;
+    border-radius: 3px;
+    cursor: pointer;
+    min-width: 150px;
+
+    &:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+  }
+}
