@@ -77,7 +77,7 @@ export function App() {
   }, []);
 
   return (
-    <div className="app">
+    <div className="flex flex-col h-full">
       <Console
         log={log}
         repl={repl}

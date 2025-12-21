@@ -1,5 +1,11 @@
 import type { Device, Card } from '../../shared/types';
-import './StatusBar.scss';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select';
 
 interface StatusBarProps {
   devices: Device[];
@@ -10,15 +16,17 @@ interface StatusBarProps {
 
 export function StatusBar({ devices, activeDevice, card, onSelectDevice }: StatusBarProps) {
   return (
-    <div className="status-bar">
-      <div className="status-bar__item">
-        <span className={`status-bar__indicator ${devices.length > 0 ? 'status-bar__indicator--active' : ''}`} />
-        <span>{devices.length} reader{devices.length !== 1 ? 's' : ''}</span>
+    <div className="flex items-center gap-4 px-3 py-2 bg-card border-t border-border text-xs">
+      <div className="flex items-center gap-2">
+        <span className={`w-2 h-2 rounded-full ${devices.length > 0 ? 'bg-success' : 'bg-muted-foreground'}`} />
+        <span className="text-muted-foreground">
+          {devices.length} reader{devices.length !== 1 ? 's' : ''}
+        </span>
       </div>
 
-      <div className="status-bar__item">
-        <span className={`status-bar__indicator ${card ? 'status-bar__indicator--active' : ''}`} />
-        <span>
+      <div className="flex items-center gap-2">
+        <span className={`w-2 h-2 rounded-full ${card ? 'bg-success' : 'bg-muted-foreground'}`} />
+        <span className="text-muted-foreground font-mono">
           {card
             ? `ATR: ${card.atr.substring(0, 24).toUpperCase()}${card.atr.length > 24 ? '...' : ''}`
             : 'No card inserted'}
@@ -26,21 +34,26 @@ export function StatusBar({ devices, activeDevice, card, onSelectDevice }: Statu
       </div>
 
       {devices.length > 0 && (
-        <select
-          className="status-bar__select"
-          value={activeDevice?.name ?? ''}
-          onChange={e => {
-            const device = devices.find(d => d.name === e.target.value);
-            if (device) onSelectDevice(device);
-          }}
-        >
-          <option value="">Select reader...</option>
-          {devices.map(device => (
-            <option key={device.name} value={device.name}>
-              {device.name}
-            </option>
-          ))}
-        </select>
+        <div className="ml-auto">
+          <Select
+            value={activeDevice?.name ?? ''}
+            onValueChange={(value) => {
+              const device = devices.find(d => d.name === value);
+              if (device) onSelectDevice(device);
+            }}
+          >
+            <SelectTrigger className="w-[220px] h-7 text-xs">
+              <SelectValue placeholder="Select reader..." />
+            </SelectTrigger>
+            <SelectContent>
+              {devices.map(device => (
+                <SelectItem key={device.name} value={device.name}>
+                  {device.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       )}
     </div>
   );

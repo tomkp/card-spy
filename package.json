@@ -3,6 +3,7 @@
   "productName": "Card Spy",
   "version": "2.0.0",
   "description": "ISO7816/EMV Smartcard Diagnostic Tool",
+  "type": "module",
   "main": ".vite/build/main.js",
   "author": "tomkp <tom@tomkp.com>",
   "license": "MIT",
@@ -17,20 +18,30 @@
     "@electron-forge/maker-dmg": "^7.6.0",
     "@electron-forge/maker-zip": "^7.6.0",
     "@electron-forge/plugin-vite": "^7.6.0",
+    "@tailwindcss/postcss": "^4.1.18",
     "@types/node": "^22.10.2",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.0",
+    "autoprefixer": "^10.4.23",
     "electron": "^34.0.0",
-    "sass": "^1.83.0",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.18",
     "typescript": "^5.7.0",
     "vite": "^6.0.0"
   },
   "dependencies": {
+    "@radix-ui/react-scroll-area": "^1.2.10",
+    "@radix-ui/react-select": "^2.2.6",
+    "@radix-ui/react-slot": "^1.2.4",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.562.0",
     "normalize.css": "^8.0.1",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
     "react-resizable-panels": "^2.1.0",
-    "smartcard": "^2.0.0"
+    "smartcard": "^2.0.0",
+    "tailwind-merge": "^3.4.0"
   }
 }
