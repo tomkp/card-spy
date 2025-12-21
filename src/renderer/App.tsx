@@ -1,13 +1,17 @@
-import { useState, useEffect, useCallback } from 'react';
-import type { Device, Card, LogEntry, ReaderSession } from '../shared/types';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
+import type { Device, Card, ReaderSession, CardInsertedLogEntry, CommandLogEntry, Command, Response } from '../shared/types';
 import { ReaderPanel } from './components/ReaderPanel';
 import { DeviceSelector } from './components/DeviceSelector';
+import { Repl } from './components/Repl';
+import { parseTlv } from './utils/tlv-parser';
 
 export function App() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [activeDevice, setActiveDevice] = useState<Device | null>(null);
   const [cards, setCards] = useState<Map<string, Card>>(new Map());
   const [sessions, setSessions] = useState<Map<string, ReaderSession>>(new Map());
+  const logIdCounter = useRef(0);
 
   useEffect(() => {
     window.electronAPI.getDevices().then((devs) => {
@@ -63,7 +67,18 @@ export function App() {
           const newSessions = new Map(prev);
           const session = newSessions.get(deviceName);
           if (session) {
-            newSessions.set(deviceName, { ...session, card });
+            // Add card inserted log entry
+            const cardInsertedEntry: CardInsertedLogEntry = {
+              type: 'card-inserted',
+              id: `card-${++logIdCounter.current}`,
+              device: deviceName,
+              atr: card.atr,
+            };
+            newSessions.set(deviceName, {
+              ...session,
+              card,
+              log: [...session.log, cardInsertedEntry],
+            });
           }
           return newSessions;
         });
@@ -90,15 +105,20 @@ export function App() {
     });
 
     window.electronAPI.onCommandIssued((command) => {
-      const cmd = command as LogEntry['command'];
+      const cmd = command as Command;
       if (activeDevice) {
         setSessions((prev) => {
           const newSessions = new Map(prev);
           const session = newSessions.get(activeDevice.name);
           if (session) {
+            const newEntry: CommandLogEntry = {
+              type: 'command',
+              id: cmd.id,
+              command: cmd,
+            };
             newSessions.set(activeDevice.name, {
               ...session,
-              log: [...session.log, { id: cmd.id, command: cmd }],
+              log: [...session.log, newEntry],
             });
           }
           return newSessions;
@@ -107,8 +127,21 @@ export function App() {
     });
 
     window.electronAPI.onResponseReceived((response) => {
-      const res = response as LogEntry['response'];
+      const res = response as Response;
       if (res && activeDevice) {
+        // Try to parse TLV data from response
+        let tlvData = undefined;
+        if (res.data && res.data.length > 0) {
+          try {
+            const parsed = parseTlv(res.data);
+            if (parsed.length > 0) {
+              tlvData = parsed;
+            }
+          } catch {
+            // TLV parsing failed, that's ok - not all responses are TLV
+          }
+        }
+
         setSessions((prev) => {
           const newSessions = new Map(prev);
           const session = newSessions.get(activeDevice.name);
@@ -116,7 +149,9 @@ export function App() {
             newSessions.set(activeDevice.name, {
               ...session,
               log: session.log.map((entry) =>
-                entry.id === res.id ? { ...entry, response: res } : entry
+                entry.type === 'command' && entry.id === res.id
+                  ? { ...entry, response: res, tlv: tlvData }
+                  : entry
               ),
             });
           }
@@ -163,50 +198,57 @@ export function App() {
     });
   }, []);
 
+  const handleRepl = useCallback((command: string) => {
+    window.electronAPI.repl(command);
+  }, []);
+
   // Get sessions as array for rendering
   const sessionArray = Array.from(sessions.values());
 
+  const hasCard = activeDevice ? cards.has(activeDevice.name) : false;
+
   return (
     <div className="flex flex-col h-full">
-      {/* Main content area with reader panels */}
-      <div className="flex-1 overflow-auto">
-        {sessionArray.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-muted-foreground">
-            <div className="text-center">
-              <p className="text-lg">No card readers detected</p>
-              <p className="text-sm mt-1">Connect a smart card reader to get started</p>
-            </div>
+      <PanelGroup direction="vertical" className="flex-1">
+        {/* Main content area with reader panels */}
+        <Panel defaultSize={75} minSize={30}>
+          <div className="h-full overflow-auto">
+            {sessionArray.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-muted-foreground">
+                <div className="text-center">
+                  <p className="text-lg">No card readers detected</p>
+                  <p className="text-sm mt-1">Connect a smart card reader to get started</p>
+                </div>
+              </div>
+            ) : (
+              sessionArray.map((session) => (
+                <ReaderPanel
+                  key={session.device.name}
+                  session={session}
+                  onInterrogate={() => handleInterrogate(session.device.name)}
+                  onClear={() => handleClearLog(session.device.name)}
+                />
+              ))
+            )}
           </div>
-        ) : (
-          sessionArray.map((session) => (
-            <ReaderPanel
-              key={session.device.name}
-              session={session}
-              onInterrogate={() => handleInterrogate(session.device.name)}
-              onClear={() => handleClearLog(session.device.name)}
-            />
-          ))
-        )}
-      </div>
+        </Panel>
 
-      {/* Bottom panel with device selector and current device status */}
-      <div className="border-t border-border bg-card p-2 flex items-end gap-4">
+        <PanelResizeHandle className="h-1 bg-border hover:bg-primary transition-colors cursor-row-resize" />
+
+        {/* REPL panel */}
+        <Panel defaultSize={25} minSize={10}>
+          <Repl onSubmit={handleRepl} disabled={!hasCard} />
+        </Panel>
+      </PanelGroup>
+
+      {/* Bottom panel with device selector */}
+      <div className="border-t border-border bg-card p-2">
         <DeviceSelector
           devices={devices}
           activeDevice={activeDevice}
           cards={cards}
           onSelectDevice={handleSelectDevice}
         />
-        {activeDevice && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span
-              className={`w-2 h-2 rounded-full ${
-                cards.has(activeDevice.name) ? 'bg-success' : 'bg-muted-foreground'
-              }`}
-            />
-            <span>{activeDevice.name}</span>
-          </div>
-        )}
       </div>
     </div>
   );

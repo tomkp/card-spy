@@ -20,6 +20,7 @@ const electronAPI = {
   selectDevice: (name: string) => ipcRenderer.invoke('select-device', name),
   sendCommand: (apdu: number[]) => ipcRenderer.invoke('send-command', apdu),
   interrogate: () => ipcRenderer.invoke('interrogate'),
+  repl: (command: string) => ipcRenderer.invoke('repl', command),
 
   // Cleanup
   removeAllListeners: (channel: string) => ipcRenderer.removeAllListeners(channel)

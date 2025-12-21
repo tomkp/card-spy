@@ -63,3 +63,7 @@ ipcMain.handle('send-command', async (_, apdu: number[]) => {
 ipcMain.handle('interrogate', async () => {
   await smartcardService?.interrogate();
 });
+
+ipcMain.handle('repl', async (_, command: string) => {
+  return smartcardService?.repl(command);
+});

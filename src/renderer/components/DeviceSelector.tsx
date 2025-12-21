@@ -1,4 +1,5 @@
 import type { Device, Card } from '../../shared/types';
+import { Indicator } from './Indicator';
 
 interface DeviceSelectorProps {
   devices: Device[];
@@ -14,11 +15,15 @@ export function DeviceSelector({
   onSelectDevice,
 }: DeviceSelectorProps) {
   if (devices.length === 0) {
-    return null;
+    return (
+      <div className="text-xs text-muted-foreground">
+        No readers connected
+      </div>
+    );
   }
 
   return (
-    <div className="border border-border rounded bg-card p-2 space-y-1 text-sm">
+    <div className="flex gap-2">
       {devices.map((device) => {
         const hasCard = cards.has(device.name);
         const isActive = activeDevice?.name === device.name;
@@ -27,23 +32,23 @@ export function DeviceSelector({
           <button
             key={device.name}
             onClick={() => onSelectDevice(device)}
-            className={`flex items-center gap-2 w-full px-2 py-1 rounded text-left hover:bg-accent ${
-              isActive ? 'bg-accent' : ''
+            className={`flex items-center gap-2 px-3 py-1.5 rounded border text-sm transition-colors ${
+              isActive
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'bg-card border-border hover:bg-accent'
             }`}
           >
-            {/* Connection indicator (green = activated) */}
-            <span
-              className={`w-2 h-2 rounded-full ${
-                device.isActivated ? 'bg-success' : 'bg-muted-foreground'
-              }`}
+            <Indicator
+              status={device.isActivated ? 'activated' : 'deactivated'}
+              title={device.isActivated ? 'Reader activated' : 'Reader deactivated'}
+              size="sm"
             />
-            {/* Card indicator (green = card present, red = no card) */}
-            <span
-              className={`w-2 h-2 rounded-full ${
-                hasCard ? 'bg-success' : 'bg-error'
-              }`}
+            <Indicator
+              status={hasCard ? 'inserted' : 'removed'}
+              title={hasCard ? 'Card inserted' : 'No card'}
+              size="sm"
             />
-            <span className="truncate">{device.name}</span>
+            <span className="truncate max-w-[200px]">{device.name}</span>
           </button>
         );
       })}

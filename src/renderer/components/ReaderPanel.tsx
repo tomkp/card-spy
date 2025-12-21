@@ -1,4 +1,4 @@
-import type { ReaderSession, LogEntry, TlvNode } from '../../shared/types';
+import type { ReaderSession, LogEntry, TlvNode, CommandLogEntry, CardInsertedLogEntry } from '../../shared/types';
 import { Play, Trash2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
@@ -32,10 +32,10 @@ function isSwSuccess(sw1: number, sw2: number): boolean {
 
 function renderTlvTree(nodes: TlvNode[], indent: number = 0): React.ReactNode[] {
   const result: React.ReactNode[] = [];
-  const indentStr = '   '.repeat(indent);
+  const indentPx = indent * 16;
 
   for (const node of nodes) {
-    const tagName = node.description?.toUpperCase() || '';
+    const tagName = node.description || '';
     const valueStr = Array.isArray(node.value) && !node.isConstructed
       ? formatHex(node.value as number[])
       : '';
@@ -50,11 +50,11 @@ function renderTlvTree(nodes: TlvNode[], indent: number = 0): React.ReactNode[] 
     }
 
     result.push(
-      <div key={`${node.tagHex}-${result.length}`} className="leading-relaxed">
-        <span className="text-foreground">{indentStr}{node.tagHex}</span>
-        {tagName && <span className="text-foreground">  {tagName}</span>}
-        {valueStr && <span className="text-foreground">  {valueStr}</span>}
-        {asciiValue && <span className="text-foreground">  {asciiValue}</span>}
+      <div key={`${node.tagHex}-${result.length}`} className="leading-relaxed" style={{ paddingLeft: indentPx }}>
+        <span className="text-primary font-semibold">{node.tagHex}</span>
+        {tagName && <span className="text-muted-foreground ml-2">{tagName}</span>}
+        {valueStr && <span className="text-foreground ml-2">{valueStr}</span>}
+        {asciiValue && <span className="text-success ml-2">"{asciiValue}"</span>}
       </div>
     );
 
@@ -66,7 +66,17 @@ function renderTlvTree(nodes: TlvNode[], indent: number = 0): React.ReactNode[] 
   return result;
 }
 
-function LogEntryDisplay({ entry }: { entry: LogEntry }) {
+function CardInsertedDisplay({ entry }: { entry: CardInsertedLogEntry }) {
+  return (
+    <div className="border-b border-border py-2 bg-accent/30">
+      <div className="text-primary font-semibold">Card Inserted</div>
+      <div className="text-muted-foreground text-xs">{entry.device}</div>
+      <div className="text-foreground mt-1">ATR: {entry.atr}</div>
+    </div>
+  );
+}
+
+function CommandEntryDisplay({ entry }: { entry: CommandLogEntry }) {
   const sw1 = entry.response?.sw1 ?? 0;
   const sw2 = entry.response?.sw2 ?? 0;
   const swHex = `${sw1.toString(16).padStart(2, '0')}${sw2.toString(16).padStart(2, '0')}`;
@@ -101,6 +111,13 @@ function LogEntryDisplay({ entry }: { entry: LogEntry }) {
       )}
     </div>
   );
+}
+
+function LogEntryDisplay({ entry }: { entry: LogEntry }) {
+  if (entry.type === 'card-inserted') {
+    return <CardInsertedDisplay entry={entry} />;
+  }
+  return <CommandEntryDisplay entry={entry} />;
 }
 
 export function ReaderPanel({ session, onInterrogate, onClear }: ReaderPanelProps) {

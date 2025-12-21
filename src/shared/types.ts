@@ -41,12 +41,22 @@ export interface TlvNode {
   description?: string;
 }
 
-export interface LogEntry {
+export interface CommandLogEntry {
+  type: 'command';
   id: string;
   command: Command;
   response?: Response;
   tlv?: TlvNode[];
 }
+
+export interface CardInsertedLogEntry {
+  type: 'card-inserted';
+  id: string;
+  device: string;
+  atr: string;
+}
+
+export type LogEntry = CommandLogEntry | CardInsertedLogEntry;
 
 export interface ElectronAPI {
   onDeviceActivated: (callback: (device: Device) => void) => void;
@@ -59,6 +69,7 @@ export interface ElectronAPI {
   selectDevice: (deviceName: string) => Promise<void>;
   sendCommand: (apdu: number[]) => Promise<Response>;
   interrogate: () => Promise<void>;
+  repl: (command: string) => Promise<Response>;
   removeAllListeners: (channel: string) => void;
 }
 

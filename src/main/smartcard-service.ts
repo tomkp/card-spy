@@ -116,6 +116,22 @@ export class SmartcardService {
     return response;
   }
 
+  async repl(command: string): Promise<Response> {
+    // Parse hex string to byte array
+    const cleaned = command
+      .replace(/0x/gi, '')
+      .replace(/,/g, '')
+      .replace(/\s+/g, '')
+      .toUpperCase();
+
+    const bytes: number[] = [];
+    for (let i = 0; i < cleaned.length; i += 2) {
+      bytes.push(parseInt(cleaned.substring(i, i + 2), 16));
+    }
+
+    return this.sendCommand(bytes);
+  }
+
   async interrogate(): Promise<void> {
     // Select PSE (1PAY.SYS.DDF01)
     const pse = [
