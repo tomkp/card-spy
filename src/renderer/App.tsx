@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type {
   Device,
   Card,
@@ -67,7 +67,6 @@ export function App() {
 
     window.electronAPI.onDeviceActivated((device) => {
       const d = device as Device;
-      console.log('[renderer] device-activated:', d.name);
       setDevices((prev) => {
         if (prev.find((p) => p.name === d.name)) return prev;
         return [...prev, d];
@@ -83,7 +82,6 @@ export function App() {
 
     window.electronAPI.onDeviceDeactivated((device) => {
       const d = device as Device;
-      console.log('[renderer] device-deactivated:', d.name);
       setDevices((prev) => prev.filter((dev) => dev.name !== d.name));
       setSessions((prev) => {
         const newSessions = new Map(prev);
@@ -100,7 +98,6 @@ export function App() {
     window.electronAPI.onCardInserted((c) => {
       const card = c as Card;
       const deviceName = card.deviceName;
-      console.log('[renderer] card-inserted:', deviceName);
       if (deviceName) {
         setCards((prev) => {
           const newCards = new Map(prev);
@@ -111,7 +108,6 @@ export function App() {
           const newSessions = new Map(prev);
           const session = newSessions.get(deviceName);
           if (session) {
-            // Add card inserted log entry
             const cardInsertedEntry: CardInsertedLogEntry = {
               type: 'card-inserted',
               id: `card-${++logIdCounter.current}`,
@@ -131,7 +127,6 @@ export function App() {
 
     window.electronAPI.onCardRemoved((data) => {
       const { deviceName } = data;
-      console.log('[renderer] card-removed:', deviceName);
       setCards((prev) => {
         const newCards = new Map(prev);
         newCards.delete(deviceName);
@@ -174,7 +169,6 @@ export function App() {
       const res = response as Response;
       const currentDevice = activeDeviceRef.current;
       if (res && currentDevice) {
-        // Try to parse TLV data from response
         let tlvData = undefined;
         if (res.data && res.data.length > 0) {
           try {
@@ -183,7 +177,7 @@ export function App() {
               tlvData = parsed;
             }
           } catch {
-            // TLV parsing failed, that's ok - not all responses are TLV
+            // TLV parsing failed, that's ok
           }
         }
 
@@ -213,20 +207,20 @@ export function App() {
       window.electronAPI.removeAllListeners('command-issued');
       window.electronAPI.removeAllListeners('response-received');
     };
-  }, []); // Empty dependency array - only run once on mount
-
-  const handleSelectDevice = useCallback(async (device: Device) => {
-    await window.electronAPI.selectDevice(device.name);
-    setActiveDevice(device);
   }, []);
 
-  const handleInterrogate = useCallback(() => {
+  async function handleSelectDevice(device: Device) {
+    await window.electronAPI.selectDevice(device.name);
+    setActiveDevice(device);
+  }
+
+  function handleInterrogate() {
     if (activeDevice) {
       window.electronAPI.interrogate();
     }
-  }, [activeDevice]);
+  }
 
-  const handleClearLog = useCallback(() => {
+  function handleClearLog() {
     if (activeDevice) {
       setSessions((prev) => {
         const newSessions = new Map(prev);
@@ -237,18 +231,17 @@ export function App() {
         return newSessions;
       });
     }
-  }, [activeDevice]);
+  }
 
-  const handleRepl = useCallback((command: string) => {
+  function handleRepl(command: string) {
     window.electronAPI.repl(command);
-  }, []);
+  }
 
   const activeSession = activeDevice ? sessions.get(activeDevice.name) : null;
   const hasCard = activeDevice ? cards.has(activeDevice.name) : false;
 
   return (
     <div className="flex flex-col h-full">
-      {/* Main content area */}
       <div className="flex-1 flex overflow-hidden">
         {activeSession ? (
           <ReaderPanel
@@ -266,10 +259,8 @@ export function App() {
         )}
       </div>
 
-      {/* REPL panel */}
       <Repl onSubmit={handleRepl} disabled={!hasCard} />
 
-      {/* Bottom device selector */}
       <DeviceSelector
         devices={devices}
         activeDevice={activeDevice}

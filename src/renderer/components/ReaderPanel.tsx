@@ -16,9 +16,8 @@ function formatHex(bytes: number[]): string {
 function getSwMeaning(sw1: number, sw2: number): string {
   const sw = (sw1 << 8) | sw2;
   if (sw === 0x9000) return 'Normal processing';
-  if (sw1 === 0x61)
-    return `Normal processing, (sw2 indicates the number of response bytes still available)`;
-  if (sw1 === 0x6c) return `Checking error: wrong length (sw2 indicates correct length for le)`;
+  if (sw1 === 0x61) return 'Normal processing, (sw2 indicates the number of response bytes still available)';
+  if (sw1 === 0x6c) return 'Checking error: wrong length (sw2 indicates correct length for le)';
   if (sw === 0x6a86) return 'Checking error: wrong parameters (p1 or p2) (see sw2)';
   if (sw === 0x6a82) return 'File not found';
   if (sw === 0x6a83) return 'Record not found';
@@ -27,20 +26,18 @@ function getSwMeaning(sw1: number, sw2: number): string {
   return '';
 }
 
-function isSwSuccess(sw1: number, _sw2: number): boolean {
+function isSwSuccess(sw1: number): boolean {
   return sw1 === 0x90 || sw1 === 0x61;
 }
 
-function renderTlvTree(nodes: TlvNode[], indent: number = 0): React.ReactNode[] {
+function renderTlvTree(nodes: TlvNode[], indent = 0): React.ReactNode[] {
   const result: React.ReactNode[] = [];
   const indentStr = '   '.repeat(indent);
 
   for (const node of nodes) {
     const tagName = node.description || '';
-    const valueStr =
-      Array.isArray(node.value) && !node.isConstructed ? formatHex(node.value as number[]) : '';
+    const valueStr = Array.isArray(node.value) && !node.isConstructed ? formatHex(node.value as number[]) : '';
 
-    // Try to decode ASCII for certain tags like APP LABEL, LANGUAGE PREFERENCE
     let asciiValue = '';
     if (!node.isConstructed && Array.isArray(node.value)) {
       const bytes = node.value as number[];
@@ -72,26 +69,22 @@ function CommandEntryDisplay({ entry }: { entry: CommandLogEntry }) {
   const sw2 = entry.response?.sw2 ?? 0;
   const swHex = `${sw1.toString(16).padStart(2, '0')}${sw2.toString(16).padStart(2, '0')}`;
   const swMeaning = entry.response ? getSwMeaning(sw1, sw2) : '';
-  const success = entry.response ? isSwSuccess(sw1, sw2) : false;
+  const success = entry.response ? isSwSuccess(sw1) : false;
 
   return (
     <div className="py-3 border-b border-border last:border-b-0">
-      {/* Command */}
       <div className="text-foreground">{entry.command.hex.toLowerCase()}</div>
 
-      {/* Response SW with meaning */}
       {entry.response && (
         <div className={success ? 'text-success' : 'text-error'}>
           {swHex} {swMeaning}
         </div>
       )}
 
-      {/* If we have response data without TLV, show hex */}
       {entry.response && entry.response.data.length > 0 && !entry.tlv && (
         <div className="text-success mt-1">{formatHex(entry.response.data)}</div>
       )}
 
-      {/* TLV parsed data */}
       {entry.tlv && entry.tlv.length > 0 && (
         <div className="mt-1">
           <div className="text-success">{formatHex(entry.response?.data ?? [])}</div>
@@ -103,9 +96,7 @@ function CommandEntryDisplay({ entry }: { entry: CommandLogEntry }) {
 }
 
 function LogEntryDisplay({ entry }: { entry: LogEntry }) {
-  if (entry.type === 'card-inserted') {
-    return null; // Card inserted is shown in header as ATR
-  }
+  if (entry.type === 'card-inserted') return null;
   return <CommandEntryDisplay entry={entry as CommandLogEntry} />;
 }
 
@@ -113,7 +104,6 @@ export function ReaderPanel({ session, onInterrogate, onClear }: ReaderPanelProp
   const hasCard = !!session.card;
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom when log updates
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -122,7 +112,6 @@ export function ReaderPanel({ session, onInterrogate, onClear }: ReaderPanelProp
 
   return (
     <div className="flex flex-1 overflow-hidden">
-      {/* Left sidebar with controls */}
       <div className="flex flex-col gap-2 p-2 border-r border-border bg-card">
         <Button
           variant="outline"
@@ -146,9 +135,7 @@ export function ReaderPanel({ session, onInterrogate, onClear }: ReaderPanelProp
         </Button>
       </div>
 
-      {/* Main content area */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header with reader name and ATR */}
         <div className="px-4 py-3 border-b border-border bg-card">
           <div className="font-medium">{session.device.name}</div>
           {session.card && (
@@ -158,7 +145,6 @@ export function ReaderPanel({ session, onInterrogate, onClear }: ReaderPanelProp
           )}
         </div>
 
-        {/* Log entries - scrollable */}
         <div ref={scrollRef} className="flex-1 overflow-auto px-4 py-2 font-mono text-sm">
           {session.log.map((entry) => (
             <LogEntryDisplay key={entry.id} entry={entry} />

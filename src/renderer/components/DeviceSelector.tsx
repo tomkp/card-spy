@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Device, Card } from '../../shared/types';
 import { Indicator } from './Indicator';
 
@@ -19,8 +19,9 @@ export function DeviceSelector({
   const popupRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
-  // Close popup when clicking outside
   useEffect(() => {
+    if (!isOpen) return;
+
     function handleClickOutside(event: MouseEvent) {
       if (
         popupRef.current &&
@@ -32,10 +33,8 @@ export function DeviceSelector({
       }
     }
 
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen]);
 
   if (devices.length === 0) {
@@ -50,7 +49,6 @@ export function DeviceSelector({
 
   return (
     <div className="relative border-t border-border bg-card">
-      {/* Popup menu */}
       {isOpen && (
         <div
           ref={popupRef}
@@ -88,7 +86,6 @@ export function DeviceSelector({
         </div>
       )}
 
-      {/* Active device tab */}
       <div className="flex">
         <button
           ref={buttonRef}
@@ -105,9 +102,7 @@ export function DeviceSelector({
             title={activeHasCard ? 'Card inserted' : 'No card'}
             size="sm"
           />
-          <span className="truncate max-w-[200px]">
-            {activeDevice?.name || 'Select Reader'}
-          </span>
+          <span className="truncate max-w-[200px]">{activeDevice?.name || 'Select Reader'}</span>
         </button>
       </div>
     </div>
