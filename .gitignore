@@ -20,3 +20,5 @@ npm-debug.log*
 *.map
 .DS_Store
 website/*.zip
+
+coverage

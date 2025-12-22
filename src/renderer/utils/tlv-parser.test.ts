@@ -229,3 +229,108 @@ describe('parseTlvFromHex', () => {
     expect(result[0].tagHex).toBe('50');
   });
 });
+
+describe('parseTlv edge cases', () => {
+  it('should handle three-byte tag (BF0C)', () => {
+    // Tag BF0C (FCI Issuer DD), Length 02, Value
+    const data = [0xbf, 0x0c, 0x02, 0xaa, 0xbb];
+    const result = parseTlv(data);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].tagHex).toBe('BF0C');
+    expect(result[0].tag).toBe(0xbf0c);
+  });
+
+  it('should handle 5F tags (two-byte)', () => {
+    // Tag 5F20 (Cardholder Name)
+    const data = [0x5f, 0x20, 0x03, 0x41, 0x42, 0x43];
+    const result = parseTlv(data);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].tagHex).toBe('5F20');
+    expect(result[0].description).toBe('CARDHOLDER NAME');
+  });
+
+  it('should handle zero-length value', () => {
+    // Tag 50, Length 00
+    const data = [0x50, 0x00];
+    const result = parseTlv(data);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].length).toBe(0);
+    expect(result[0].value).toEqual([]);
+  });
+
+  it('should handle deeply nested constructed tags', () => {
+    // 6F containing A5 containing 50
+    const data = [
+      0x6f,
+      0x08, // FCI Template
+      0xa5,
+      0x06, // FCI Proprietary
+      0x50,
+      0x04,
+      0x56,
+      0x49,
+      0x53,
+      0x41, // APP LABEL "VISA"
+    ];
+    const result = parseTlv(data);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].isConstructed).toBe(true);
+
+    const level1 = result[0].value as typeof result;
+    expect(level1[0].tagHex).toBe('A5');
+    expect(level1[0].isConstructed).toBe(true);
+
+    const level2 = level1[0].value as typeof result;
+    expect(level2[0].tagHex).toBe('50');
+    expect(level2[0].value).toEqual([0x56, 0x49, 0x53, 0x41]);
+  });
+
+  it('should handle three-byte extended length (0x83)', () => {
+    // Tag 70, Length 0x83 0x01 0x00 0x00 (65536 bytes) - just test parsing
+    const data = [0x50, 0x83, 0x00, 0x00, 0x04, 0x41, 0x42, 0x43, 0x44];
+    const result = parseTlv(data);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].length).toBe(4);
+  });
+
+  it('should reject invalid length encoding (> 0x83)', () => {
+    // Length byte 0x84 is invalid
+    const data = [0x50, 0x84, 0x00, 0x00, 0x00, 0x04, 0x41];
+    const result = parseTlv(data);
+
+    expect(result).toEqual([]);
+  });
+
+  it('should handle only padding bytes', () => {
+    const data = [0x00, 0x00, 0xff, 0xff];
+    const result = parseTlv(data);
+
+    expect(result).toEqual([]);
+  });
+
+  it('should handle tag followed by only padding', () => {
+    const data = [0x50, 0x02, 0x41, 0x42, 0x00, 0xff, 0x00];
+    const result = parseTlv(data);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].tagHex).toBe('50');
+  });
+
+  it('should handle real FCI response', () => {
+    // Real FCI template from Mastercard
+    const hex = '6F1A840E315041592E5359532E4444463031A5088801015F2D02656E';
+    const result = parseTlvFromHex(hex);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].tagHex).toBe('6F');
+
+    const children = result[0].value as typeof result;
+    expect(children.length).toBeGreaterThanOrEqual(2);
+    expect(children[0].tagHex).toBe('84'); // DF Name
+  });
+});
