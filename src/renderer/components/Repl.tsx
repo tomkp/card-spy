@@ -66,39 +66,46 @@ export function Repl({ onSubmit, disabled }: ReplProps) {
   );
 
   return (
-    <div className="flex flex-col border-t border-border bg-card">
-      <div className="flex items-center gap-1 px-2 py-1 border-b border-border">
+    <div className="flex border-t border-border bg-card">
+      {/* Left sidebar with controls - matches ReaderPanel */}
+      <div className="flex flex-col gap-2 p-2 border-r border-border">
         <Button
-          variant="ghost"
+          variant="outline"
           size="icon"
-          className="h-6 w-6"
+          className="h-9 w-9 rounded-full"
           onClick={handleSubmit}
           disabled={disabled || !input.trim()}
           title="Send Command (Enter)"
         >
-          <Play className="h-3 w-3" />
+          <Play className="h-4 w-4" />
         </Button>
         <Button
-          variant="ghost"
+          variant="outline"
           size="icon"
-          className="h-6 w-6"
+          className="h-9 w-9 rounded-full"
           onClick={handleClear}
           disabled={!input}
           title="Clear"
         >
-          <Trash2 className="h-3 w-3" />
+          <Trash2 className="h-4 w-4" />
         </Button>
-        <span className="text-xs text-muted-foreground ml-2">APDU Command</span>
-        {error && <span className="text-xs text-error ml-auto">{error}</span>}
       </div>
-      <textarea
-        className="flex-1 min-h-[60px] p-2 bg-background text-foreground text-xs font-mono resize-none focus:outline-none"
-        placeholder="Enter APDU hex command (e.g., 00A4040007A0000000041010)"
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        onKeyUp={handleKeyUp}
-        disabled={disabled}
-      />
+
+      {/* Input area */}
+      <div className="flex-1 flex flex-col">
+        <div className="px-4 py-2 border-b border-border flex items-center">
+          <span className="text-sm text-muted-foreground">APDU Command</span>
+          {error && <span className="text-xs text-error ml-auto">{error}</span>}
+        </div>
+        <textarea
+          className="flex-1 min-h-[80px] p-4 bg-background text-foreground text-sm font-mono resize-none focus:outline-none"
+          placeholder="Enter APDU hex command (e.g., 00A4040007A0000000041010)"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyUp={handleKeyUp}
+          disabled={disabled}
+        />
+      </div>
     </div>
   );
 }

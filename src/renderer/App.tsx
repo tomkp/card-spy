@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import type {
   Device,
   Card,
@@ -221,81 +220,62 @@ export function App() {
     setActiveDevice(device);
   }, []);
 
-  const handleInterrogate = useCallback(
-    (deviceName: string) => {
-      const device = devices.find((d) => d.name === deviceName);
-      if (device) {
-        handleSelectDevice(device).then(() => {
-          window.electronAPI.interrogate();
-        });
-      }
-    },
-    [devices, handleSelectDevice]
-  );
+  const handleInterrogate = useCallback(() => {
+    if (activeDevice) {
+      window.electronAPI.interrogate();
+    }
+  }, [activeDevice]);
 
-  const handleClearLog = useCallback((deviceName: string) => {
-    setSessions((prev) => {
-      const newSessions = new Map(prev);
-      const session = newSessions.get(deviceName);
-      if (session) {
-        newSessions.set(deviceName, { ...session, log: [] });
-      }
-      return newSessions;
-    });
-  }, []);
+  const handleClearLog = useCallback(() => {
+    if (activeDevice) {
+      setSessions((prev) => {
+        const newSessions = new Map(prev);
+        const session = newSessions.get(activeDevice.name);
+        if (session) {
+          newSessions.set(activeDevice.name, { ...session, log: [] });
+        }
+        return newSessions;
+      });
+    }
+  }, [activeDevice]);
 
   const handleRepl = useCallback((command: string) => {
     window.electronAPI.repl(command);
   }, []);
 
-  // Get sessions as array for rendering
-  const sessionArray = Array.from(sessions.values());
-
+  const activeSession = activeDevice ? sessions.get(activeDevice.name) : null;
   const hasCard = activeDevice ? cards.has(activeDevice.name) : false;
 
   return (
     <div className="flex flex-col h-full">
-      <PanelGroup direction="vertical" className="flex-1">
-        {/* Main content area with reader panels */}
-        <Panel defaultSize={75} minSize={30}>
-          <div className="h-full overflow-auto">
-            {sessionArray.length === 0 ? (
-              <div className="flex items-center justify-center h-full text-muted-foreground">
-                <div className="text-center">
-                  <p className="text-lg">No card readers detected</p>
-                  <p className="text-sm mt-1">Connect a smart card reader to get started</p>
-                </div>
-              </div>
-            ) : (
-              sessionArray.map((session) => (
-                <ReaderPanel
-                  key={session.device.name}
-                  session={session}
-                  onInterrogate={() => handleInterrogate(session.device.name)}
-                  onClear={() => handleClearLog(session.device.name)}
-                />
-              ))
-            )}
+      {/* Main content area */}
+      <div className="flex-1 flex overflow-hidden">
+        {activeSession ? (
+          <ReaderPanel
+            session={activeSession}
+            onInterrogate={handleInterrogate}
+            onClear={handleClearLog}
+          />
+        ) : (
+          <div className="flex-1 flex items-center justify-center text-muted-foreground">
+            <div className="text-center">
+              <p className="text-lg">No card readers detected</p>
+              <p className="text-sm mt-1">Connect a smart card reader to get started</p>
+            </div>
           </div>
-        </Panel>
-
-        <PanelResizeHandle className="h-1 bg-border hover:bg-primary transition-colors cursor-row-resize" />
-
-        {/* REPL panel */}
-        <Panel defaultSize={25} minSize={10}>
-          <Repl onSubmit={handleRepl} disabled={!hasCard} />
-        </Panel>
-      </PanelGroup>
-
-      {/* Bottom panel with device selector */}
-      <div className="border-t border-border bg-card p-2">
-        <DeviceSelector
-          devices={devices}
-          activeDevice={activeDevice}
-          cards={cards}
-          onSelectDevice={handleSelectDevice}
-        />
+        )}
       </div>
+
+      {/* REPL panel */}
+      <Repl onSubmit={handleRepl} disabled={!hasCard} />
+
+      {/* Bottom device selector */}
+      <DeviceSelector
+        devices={devices}
+        activeDevice={activeDevice}
+        cards={cards}
+        onSelectDevice={handleSelectDevice}
+      />
     </div>
   );
 }

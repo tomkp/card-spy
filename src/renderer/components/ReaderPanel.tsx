@@ -1,13 +1,7 @@
-import type {
-  ReaderSession,
-  LogEntry,
-  TlvNode,
-  CommandLogEntry,
-  CardInsertedLogEntry,
-} from '../../shared/types';
+import { useRef, useEffect } from 'react';
+import type { ReaderSession, LogEntry, TlvNode, CommandLogEntry } from '../../shared/types';
 import { Play, Trash2 } from 'lucide-react';
 import { Button } from './ui/button';
-import { ScrollArea } from './ui/scroll-area';
 
 interface ReaderPanelProps {
   session: ReaderSession;
@@ -39,7 +33,7 @@ function isSwSuccess(sw1: number, _sw2: number): boolean {
 
 function renderTlvTree(nodes: TlvNode[], indent: number = 0): React.ReactNode[] {
   const result: React.ReactNode[] = [];
-  const indentPx = indent * 16;
+  const indentStr = '   '.repeat(indent);
 
   for (const node of nodes) {
     const tagName = node.description || '';
@@ -56,15 +50,12 @@ function renderTlvTree(nodes: TlvNode[], indent: number = 0): React.ReactNode[] 
     }
 
     result.push(
-      <div
-        key={`${node.tagHex}-${result.length}`}
-        className="leading-relaxed"
-        style={{ paddingLeft: indentPx }}
-      >
-        <span className="text-primary font-semibold">{node.tagHex}</span>
+      <div key={`${node.tagHex}-${result.length}`} className="leading-relaxed">
+        <span className="text-muted-foreground">{indentStr}</span>
+        <span className="text-primary font-medium">{node.tagHex}</span>
         {tagName && <span className="text-muted-foreground ml-2">{tagName}</span>}
-        {valueStr && <span className="text-foreground ml-2">{valueStr}</span>}
-        {asciiValue && <span className="text-success ml-2">&quot;{asciiValue}&quot;</span>}
+        {asciiValue && <span className="text-foreground ml-2">{asciiValue}</span>}
+        {valueStr && !asciiValue && <span className="text-muted-foreground ml-2">{valueStr}</span>}
       </div>
     );
 
@@ -76,16 +67,6 @@ function renderTlvTree(nodes: TlvNode[], indent: number = 0): React.ReactNode[] 
   return result;
 }
 
-function CardInsertedDisplay({ entry }: { entry: CardInsertedLogEntry }) {
-  return (
-    <div className="border-b border-border py-2 bg-accent/30">
-      <div className="text-primary font-semibold">Card Inserted</div>
-      <div className="text-muted-foreground text-xs">{entry.device}</div>
-      <div className="text-foreground mt-1">ATR: {entry.atr}</div>
-    </div>
-  );
-}
-
 function CommandEntryDisplay({ entry }: { entry: CommandLogEntry }) {
   const sw1 = entry.response?.sw1 ?? 0;
   const sw2 = entry.response?.sw2 ?? 0;
@@ -94,9 +75,9 @@ function CommandEntryDisplay({ entry }: { entry: CommandLogEntry }) {
   const success = entry.response ? isSwSuccess(sw1, sw2) : false;
 
   return (
-    <div className="border-b border-border py-2">
+    <div className="py-3 border-b border-border last:border-b-0">
       {/* Command */}
-      <div className="text-foreground">{entry.command.hex}</div>
+      <div className="text-foreground">{entry.command.hex.toLowerCase()}</div>
 
       {/* Response SW with meaning */}
       {entry.response && (
@@ -105,16 +86,16 @@ function CommandEntryDisplay({ entry }: { entry: CommandLogEntry }) {
         </div>
       )}
 
-      {/* If we have response data, show it */}
+      {/* If we have response data without TLV, show hex */}
       {entry.response && entry.response.data.length > 0 && !entry.tlv && (
-        <div className="text-foreground mt-1">{formatHex(entry.response.data)}</div>
+        <div className="text-success mt-1">{formatHex(entry.response.data)}</div>
       )}
 
       {/* TLV parsed data */}
       {entry.tlv && entry.tlv.length > 0 && (
         <div className="mt-1">
-          <div className="text-foreground">{formatHex(entry.response?.data ?? [])}</div>
-          {renderTlvTree(entry.tlv)}
+          <div className="text-success">{formatHex(entry.response?.data ?? [])}</div>
+          <div className="mt-1">{renderTlvTree(entry.tlv)}</div>
         </div>
       )}
     </div>
@@ -123,52 +104,67 @@ function CommandEntryDisplay({ entry }: { entry: CommandLogEntry }) {
 
 function LogEntryDisplay({ entry }: { entry: LogEntry }) {
   if (entry.type === 'card-inserted') {
-    return <CardInsertedDisplay entry={entry} />;
+    return null; // Card inserted is shown in header as ATR
   }
-  return <CommandEntryDisplay entry={entry} />;
+  return <CommandEntryDisplay entry={entry as CommandLogEntry} />;
 }
 
 export function ReaderPanel({ session, onInterrogate, onClear }: ReaderPanelProps) {
   const hasCard = !!session.card;
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when log updates
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [session.log]);
 
   return (
-    <div className="flex flex-col border-b border-border">
-      {/* Header with reader name and controls */}
-      <div className="flex items-center gap-2 px-3 py-2 bg-card">
+    <div className="flex flex-1 overflow-hidden">
+      {/* Left sidebar with controls */}
+      <div className="flex flex-col gap-2 p-2 border-r border-border bg-card">
         <Button
-          variant="ghost"
+          variant="outline"
           size="icon"
-          className="h-8 w-8 rounded-full"
+          className="h-9 w-9 rounded-full"
           onClick={onInterrogate}
           disabled={!hasCard}
+          title="Interrogate card"
         >
           <Play className="h-4 w-4" />
         </Button>
         <Button
-          variant="ghost"
+          variant="outline"
           size="icon"
-          className="h-8 w-8 rounded-full"
+          className="h-9 w-9 rounded-full"
           onClick={onClear}
           disabled={session.log.length === 0}
+          title="Clear log"
         >
           <Trash2 className="h-4 w-4" />
         </Button>
-        <span className="text-sm font-medium">{session.device.name}</span>
       </div>
 
-      {/* ATR if card is present */}
-      {session.card && <div className="px-3 py-1 text-xs">Answer to reset: {session.card.atr}</div>}
+      {/* Main content area */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header with reader name and ATR */}
+        <div className="px-4 py-3 border-b border-border bg-card">
+          <div className="font-medium">{session.device.name}</div>
+          {session.card && (
+            <div className="text-muted-foreground text-sm mt-1">
+              Answer to reset: {session.card.atr}
+            </div>
+          )}
+        </div>
 
-      {/* Log entries */}
-      {session.log.length > 0 && (
-        <ScrollArea className="max-h-80">
-          <div className="px-3 py-1 text-xs font-mono">
-            {session.log.map((entry) => (
-              <LogEntryDisplay key={entry.id} entry={entry} />
-            ))}
-          </div>
-        </ScrollArea>
-      )}
+        {/* Log entries - scrollable */}
+        <div ref={scrollRef} className="flex-1 overflow-auto px-4 py-2 font-mono text-sm">
+          {session.log.map((entry) => (
+            <LogEntryDisplay key={entry.id} entry={entry} />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
