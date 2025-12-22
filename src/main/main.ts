@@ -23,10 +23,16 @@ function createWindow(): void {
 
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
-    mainWindow.webContents.openDevTools();
+    mainWindow.webContents.openDevTools({
+      mode: 'detach'
+    });
   } else {
     mainWindow.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
   }
+
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
 
   smartcardService = new SmartcardService(mainWindow);
   smartcardService.start();
@@ -34,11 +40,30 @@ function createWindow(): void {
 
 app.whenReady().then(createWindow);
 
+function cleanup(): void {
+  if (smartcardService) {
+    smartcardService.stop();
+    smartcardService = null;
+  }
+
+  // Remove IPC handlers
+  ipcMain.removeHandler('get-devices');
+  ipcMain.removeHandler('get-cards');
+  ipcMain.removeHandler('select-device');
+  ipcMain.removeHandler('send-command');
+  ipcMain.removeHandler('interrogate');
+  ipcMain.removeHandler('repl');
+}
+
 app.on('window-all-closed', () => {
-  smartcardService?.stop();
+  cleanup();
   if (process.platform !== 'darwin') {
     app.quit();
   }
+});
+
+app.on('before-quit', () => {
+  cleanup();
 });
 
 app.on('activate', () => {
@@ -50,6 +75,10 @@ app.on('activate', () => {
 // IPC Handlers
 ipcMain.handle('get-devices', () => {
   return smartcardService?.getDevices() ?? [];
+});
+
+ipcMain.handle('get-cards', () => {
+  return smartcardService?.getCards() ?? [];
 });
 
 ipcMain.handle('select-device', async (_, deviceName: string) => {

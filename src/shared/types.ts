@@ -62,10 +62,11 @@ export interface ElectronAPI {
   onDeviceActivated: (callback: (device: Device) => void) => void;
   onDeviceDeactivated: (callback: (device: Device) => void) => void;
   onCardInserted: (callback: (card: Card) => void) => void;
-  onCardRemoved: (callback: () => void) => void;
+  onCardRemoved: (callback: (data: { deviceName: string }) => void) => void;
   onCommandIssued: (callback: (command: Command) => void) => void;
   onResponseReceived: (callback: (response: Response) => void) => void;
   getDevices: () => Promise<Device[]>;
+  getCards: () => Promise<Array<{ deviceName: string; atr: string; protocol: number }>>;
   selectDevice: (deviceName: string) => Promise<void>;
   sendCommand: (apdu: number[]) => Promise<Response>;
   interrogate: () => Promise<void>;

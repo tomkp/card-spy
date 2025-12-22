@@ -1,12 +1,13 @@
 import { BrowserWindow } from 'electron';
-import { Devices, Card, Reader, Context } from 'smartcard';
+import { Devices, Card, Reader } from 'smartcard';
 import type { Device, Command, Response } from '../shared/types';
 
 export class SmartcardService {
   private devices: Devices;
   private window: BrowserWindow;
   private readers: Map<string, Reader> = new Map();
-  private activeCard: Card | null = null;
+  private cards: Map<string, Card> = new Map(); // Cards per reader
+  private activeReaderName: string | null = null;
   private commandId = 0;
 
   constructor(window: BrowserWindow) {
@@ -28,19 +29,32 @@ export class SmartcardService {
     });
 
     this.devices.on('card-inserted', ({ reader, card }: { reader: Reader; card: Card }) => {
-      console.log('Card inserted in:', reader.name);
-      this.activeCard = card;
-      this.send('card-inserted', {
+      console.log('[card-inserted] Reader:', reader.name, 'ATR:', card.atr?.toString('hex'));
+      this.cards.set(reader.name, card);
+      // Auto-select this reader if none selected
+      if (!this.activeReaderName) {
+        this.activeReaderName = reader.name;
+      }
+      const payload = {
         atr: card.atr?.toString('hex') ?? '',
         protocol: card.protocol,
         deviceName: reader.name
-      });
+      };
+      console.log('[card-inserted] Sending to renderer:', payload);
+      this.send('card-inserted', payload);
     });
 
     this.devices.on('card-removed', ({ reader }: { reader: Reader }) => {
-      console.log('Card removed from:', reader.name);
-      this.activeCard = null;
-      this.send('card-removed', { deviceName: reader.name });
+      console.log('[card-removed] Reader:', reader.name);
+      this.cards.delete(reader.name);
+      if (this.activeReaderName === reader.name) {
+        // Switch to another reader with a card, if any
+        const nextReader = Array.from(this.cards.keys())[0] || null;
+        this.activeReaderName = nextReader;
+      }
+      const payload = { deviceName: reader.name };
+      console.log('[card-removed] Sending to renderer:', payload);
+      this.send('card-removed', payload);
     });
 
     this.devices.on('error', (error: Error) => {
@@ -49,26 +63,16 @@ export class SmartcardService {
 
     console.log('Starting smartcard device monitoring...');
     this.devices.start();
-
-    // Get already-connected readers using low-level API
-    try {
-      const ctx = new Context();
-      const existingReaders = ctx.listReaders();
-      console.log('Found existing readers:', existingReaders.map(r => r.name));
-      for (const reader of existingReaders) {
-        if (!this.readers.has(reader.name)) {
-          this.readers.set(reader.name, reader as unknown as Reader);
-          this.send('device-activated', { name: reader.name, isActivated: true });
-        }
-      }
-      ctx.close();
-    } catch (err) {
-      console.error('Error listing existing readers:', err);
-    }
   }
 
   stop(): void {
+    console.log('Stopping smartcard service...');
+    this.devices.removeAllListeners();
     this.devices.stop();
+    this.readers.clear();
+    this.cards.clear();
+    this.activeReaderName = null;
+    console.log('Smartcard service stopped');
   }
 
   getDevices(): Device[] {
@@ -78,12 +82,33 @@ export class SmartcardService {
     }));
   }
 
+  getCards(): Array<{ deviceName: string; atr: string; protocol: number }> {
+    const result: Array<{ deviceName: string; atr: string; protocol: number }> = [];
+
+    for (const [deviceName, card] of this.cards.entries()) {
+      result.push({
+        deviceName,
+        atr: card.atr?.toString('hex') ?? '',
+        protocol: card.protocol ?? 0
+      });
+    }
+
+    return result;
+  }
+
   async selectDevice(name: string): Promise<void> {
     console.log('Selected device:', name);
+    this.activeReaderName = name;
+  }
+
+  private getActiveCard(): Card | null {
+    if (!this.activeReaderName) return null;
+    return this.cards.get(this.activeReaderName) || null;
   }
 
   async sendCommand(apdu: number[]): Promise<Response> {
-    if (!this.activeCard) {
+    const activeCard = this.getActiveCard();
+    if (!activeCard) {
       throw new Error('No card inserted');
     }
 
@@ -97,7 +122,7 @@ export class SmartcardService {
 
     this.send('command-issued', command);
 
-    const result = await this.activeCard.transmit(Buffer.from(apdu));
+    const result = await activeCard.transmit(Buffer.from(apdu));
     const data = Array.from(result.slice(0, -2));
     const sw1 = result[result.length - 2];
     const sw2 = result[result.length - 1];

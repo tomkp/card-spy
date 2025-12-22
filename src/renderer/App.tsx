@@ -12,20 +12,56 @@ export function App() {
   const [cards, setCards] = useState<Map<string, Card>>(new Map());
   const [sessions, setSessions] = useState<Map<string, ReaderSession>>(new Map());
   const logIdCounter = useRef(0);
+  const activeDeviceRef = useRef<Device | null>(null);
 
+  // Keep ref in sync with state for use in event handlers
   useEffect(() => {
-    window.electronAPI.getDevices().then((devs) => {
+    activeDeviceRef.current = activeDevice;
+  }, [activeDevice]);
+
+  // Setup event listeners once on mount
+  useEffect(() => {
+    // Fetch devices and cards on startup
+    Promise.all([
+      window.electronAPI.getDevices(),
+      window.electronAPI.getCards()
+    ]).then(([devs, existingCards]) => {
       setDevices(devs);
+
+      // Build cards map from existing cards
+      const cardsMap = new Map<string, Card>();
+      for (const c of existingCards) {
+        cardsMap.set(c.deviceName, {
+          atr: c.atr,
+          protocol: c.protocol,
+          deviceName: c.deviceName
+        });
+      }
+      setCards(cardsMap);
+
       // Initialize sessions for each device
       const newSessions = new Map<string, ReaderSession>();
       devs.forEach((device) => {
-        newSessions.set(device.name, { device, card: null, log: [] });
+        const card = cardsMap.get(device.name) || null;
+        newSessions.set(device.name, { device, card, log: [] });
       });
       setSessions(newSessions);
+
+      // Auto-select first device with a card
+      if (!activeDeviceRef.current) {
+        for (const dev of devs) {
+          if (cardsMap.has(dev.name)) {
+            setActiveDevice(dev);
+            window.electronAPI.selectDevice(dev.name);
+            break;
+          }
+        }
+      }
     });
 
     window.electronAPI.onDeviceActivated((device) => {
       const d = device as Device;
+      console.log('[renderer] device-activated:', d.name);
       setDevices((prev) => {
         if (prev.find((p) => p.name === d.name)) return prev;
         return [...prev, d];
@@ -41,6 +77,7 @@ export function App() {
 
     window.electronAPI.onDeviceDeactivated((device) => {
       const d = device as Device;
+      console.log('[renderer] device-deactivated:', d.name);
       setDevices((prev) => prev.filter((dev) => dev.name !== d.name));
       setSessions((prev) => {
         const newSessions = new Map(prev);
@@ -56,7 +93,8 @@ export function App() {
 
     window.electronAPI.onCardInserted((c) => {
       const card = c as Card;
-      const deviceName = card.deviceName || activeDevice?.name;
+      const deviceName = card.deviceName;
+      console.log('[renderer] card-inserted:', deviceName);
       if (deviceName) {
         setCards((prev) => {
           const newCards = new Map(prev);
@@ -85,38 +123,38 @@ export function App() {
       }
     });
 
-    window.electronAPI.onCardRemoved(() => {
-      // For now, clear card from active device
-      if (activeDevice) {
-        setCards((prev) => {
-          const newCards = new Map(prev);
-          newCards.delete(activeDevice.name);
-          return newCards;
-        });
-        setSessions((prev) => {
-          const newSessions = new Map(prev);
-          const session = newSessions.get(activeDevice.name);
-          if (session) {
-            newSessions.set(activeDevice.name, { ...session, card: null });
-          }
-          return newSessions;
-        });
-      }
+    window.electronAPI.onCardRemoved((data) => {
+      const { deviceName } = data;
+      console.log('[renderer] card-removed:', deviceName);
+      setCards((prev) => {
+        const newCards = new Map(prev);
+        newCards.delete(deviceName);
+        return newCards;
+      });
+      setSessions((prev) => {
+        const newSessions = new Map(prev);
+        const session = newSessions.get(deviceName);
+        if (session) {
+          newSessions.set(deviceName, { ...session, card: null });
+        }
+        return newSessions;
+      });
     });
 
     window.electronAPI.onCommandIssued((command) => {
       const cmd = command as Command;
-      if (activeDevice) {
+      const currentDevice = activeDeviceRef.current;
+      if (currentDevice) {
         setSessions((prev) => {
           const newSessions = new Map(prev);
-          const session = newSessions.get(activeDevice.name);
+          const session = newSessions.get(currentDevice.name);
           if (session) {
             const newEntry: CommandLogEntry = {
               type: 'command',
               id: cmd.id,
               command: cmd,
             };
-            newSessions.set(activeDevice.name, {
+            newSessions.set(currentDevice.name, {
               ...session,
               log: [...session.log, newEntry],
             });
@@ -128,7 +166,8 @@ export function App() {
 
     window.electronAPI.onResponseReceived((response) => {
       const res = response as Response;
-      if (res && activeDevice) {
+      const currentDevice = activeDeviceRef.current;
+      if (res && currentDevice) {
         // Try to parse TLV data from response
         let tlvData = undefined;
         if (res.data && res.data.length > 0) {
@@ -144,9 +183,9 @@ export function App() {
 
         setSessions((prev) => {
           const newSessions = new Map(prev);
-          const session = newSessions.get(activeDevice.name);
+          const session = newSessions.get(currentDevice.name);
           if (session) {
-            newSessions.set(activeDevice.name, {
+            newSessions.set(currentDevice.name, {
               ...session,
               log: session.log.map((entry) =>
                 entry.type === 'command' && entry.id === res.id
@@ -168,7 +207,7 @@ export function App() {
       window.electronAPI.removeAllListeners('command-issued');
       window.electronAPI.removeAllListeners('response-received');
     };
-  }, [activeDevice]);
+  }, []); // Empty dependency array - only run once on mount
 
   const handleSelectDevice = useCallback(async (device: Device) => {
     await window.electronAPI.selectDevice(device.name);

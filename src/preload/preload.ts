@@ -8,8 +8,8 @@ const electronAPI = {
     ipcRenderer.on('device-deactivated', (_, data) => callback(data)),
   onCardInserted: (callback: (card: unknown) => void) =>
     ipcRenderer.on('card-inserted', (_, data) => callback(data)),
-  onCardRemoved: (callback: () => void) =>
-    ipcRenderer.on('card-removed', () => callback()),
+  onCardRemoved: (callback: (data: unknown) => void) =>
+    ipcRenderer.on('card-removed', (_, data) => callback(data)),
   onCommandIssued: (callback: (command: unknown) => void) =>
     ipcRenderer.on('command-issued', (_, data) => callback(data)),
   onResponseReceived: (callback: (response: unknown) => void) =>
@@ -17,6 +17,7 @@ const electronAPI = {
 
   // Actions (renderer → main)
   getDevices: () => ipcRenderer.invoke('get-devices'),
+  getCards: () => ipcRenderer.invoke('get-cards'),
   selectDevice: (name: string) => ipcRenderer.invoke('select-device', name),
   sendCommand: (apdu: number[]) => ipcRenderer.invoke('send-command', apdu),
   interrogate: () => ipcRenderer.invoke('interrogate'),
