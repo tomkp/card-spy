@@ -15,11 +15,7 @@ export function DeviceSelector({
   onSelectDevice,
 }: DeviceSelectorProps) {
   if (devices.length === 0) {
-    return (
-      <div className="text-xs text-muted-foreground">
-        No readers connected
-      </div>
-    );
+    return <div className="text-xs text-muted-foreground">No readers connected</div>;
   }
 
   return (

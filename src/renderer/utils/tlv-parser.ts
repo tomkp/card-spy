@@ -17,7 +17,10 @@ export function hexToBytes(hex: string): number[] {
  * Format a byte array as hex string
  */
 export function bytesToHex(bytes: number[]): string {
-  return bytes.map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+  return bytes
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+    .toUpperCase();
 }
 
 /**
@@ -31,7 +34,7 @@ export function parseTlv(data: number[]): TlvNode[] {
 
   while (offset < data.length) {
     // Skip null padding bytes
-    if (data[offset] === 0x00 || data[offset] === 0xFF) {
+    if (data[offset] === 0x00 || data[offset] === 0xff) {
       offset++;
       continue;
     }
@@ -56,7 +59,10 @@ export function parseTlv(data: number[]): TlvNode[] {
 /**
  * Parse a single TLV node starting at the given offset
  */
-function parseTlvNode(data: number[], offset: number): { node: TlvNode; nextOffset: number } | null {
+function parseTlvNode(
+  data: number[],
+  offset: number
+): { node: TlvNode; nextOffset: number } | null {
   if (offset >= data.length) {
     return null;
   }
@@ -142,7 +148,7 @@ export function tryDecodeAscii(bytes: number[]): string | null {
   if (bytes.length === 0) return null;
 
   // Check if all bytes are printable ASCII (0x20-0x7E)
-  const allPrintable = bytes.every(b => b >= 0x20 && b <= 0x7E);
+  const allPrintable = bytes.every((b) => b >= 0x20 && b <= 0x7e);
   if (allPrintable) {
     return String.fromCharCode(...bytes);
   }

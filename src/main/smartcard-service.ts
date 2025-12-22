@@ -38,7 +38,7 @@ export class SmartcardService {
       const payload = {
         atr: card.atr?.toString('hex') ?? '',
         protocol: card.protocol,
-        deviceName: reader.name
+        deviceName: reader.name,
       };
       console.log('[card-inserted] Sending to renderer:', payload);
       this.send('card-inserted', payload);
@@ -76,9 +76,9 @@ export class SmartcardService {
   }
 
   getDevices(): Device[] {
-    return Array.from(this.readers.keys()).map(name => ({
+    return Array.from(this.readers.keys()).map((name) => ({
       name,
-      isActivated: true
+      isActivated: true,
     }));
   }
 
@@ -89,7 +89,7 @@ export class SmartcardService {
       result.push({
         deviceName,
         atr: card.atr?.toString('hex') ?? '',
-        protocol: card.protocol ?? 0
+        protocol: card.protocol ?? 0,
       });
     }
 
@@ -117,7 +117,7 @@ export class SmartcardService {
       id,
       timestamp: Date.now(),
       apdu,
-      hex: Buffer.from(apdu).toString('hex').toUpperCase()
+      hex: Buffer.from(apdu).toString('hex').toUpperCase(),
     };
 
     this.send('command-issued', command);
@@ -134,7 +134,7 @@ export class SmartcardService {
       sw1,
       sw2,
       hex: result.toString('hex').toUpperCase(),
-      meaning: this.getStatusMeaning(sw1, sw2)
+      meaning: this.getStatusMeaning(sw1, sw2),
     };
 
     this.send('response-received', response);
@@ -143,11 +143,7 @@ export class SmartcardService {
 
   async repl(command: string): Promise<Response> {
     // Parse hex string to byte array
-    const cleaned = command
-      .replace(/0x/gi, '')
-      .replace(/,/g, '')
-      .replace(/\s+/g, '')
-      .toUpperCase();
+    const cleaned = command.replace(/0x/gi, '').replace(/,/g, '').replace(/\s+/g, '').toUpperCase();
 
     const bytes: number[] = [];
     for (let i = 0; i < cleaned.length; i += 2) {
@@ -160,9 +156,8 @@ export class SmartcardService {
   async interrogate(): Promise<void> {
     // Select PSE (1PAY.SYS.DDF01)
     const pse = [
-      0x00, 0xA4, 0x04, 0x00, 0x0E,
-      0x31, 0x50, 0x41, 0x59, 0x2E, 0x53, 0x59, 0x53,
-      0x2E, 0x44, 0x44, 0x46, 0x30, 0x31, 0x00
+      0x00, 0xa4, 0x04, 0x00, 0x0e, 0x31, 0x50, 0x41, 0x59, 0x2e, 0x53, 0x59, 0x53, 0x2e, 0x44,
+      0x44, 0x46, 0x30, 0x31, 0x00,
     ];
 
     try {
@@ -171,9 +166,8 @@ export class SmartcardService {
       console.error('PSE selection failed:', e);
       // Try PPSE for contactless
       const ppse = [
-        0x00, 0xA4, 0x04, 0x00, 0x0E,
-        0x32, 0x50, 0x41, 0x59, 0x2E, 0x53, 0x59, 0x53,
-        0x2E, 0x44, 0x44, 0x46, 0x30, 0x31, 0x00
+        0x00, 0xa4, 0x04, 0x00, 0x0e, 0x32, 0x50, 0x41, 0x59, 0x2e, 0x53, 0x59, 0x53, 0x2e, 0x44,
+        0x44, 0x46, 0x30, 0x31, 0x00,
       ];
       try {
         await this.sendCommand(ppse);
@@ -187,7 +181,7 @@ export class SmartcardService {
       for (let record = 1; record <= 5; record++) {
         try {
           const p2 = (sfi << 3) | 0x04;
-          await this.sendCommand([0x00, 0xB2, record, p2, 0x00]);
+          await this.sendCommand([0x00, 0xb2, record, p2, 0x00]);
         } catch {
           break;
         }
@@ -202,13 +196,13 @@ export class SmartcardService {
   private getStatusMeaning(sw1: number, sw2: number): string {
     if (sw1 === 0x90 && sw2 === 0x00) return 'Success';
     if (sw1 === 0x61) return `More data available: ${sw2} bytes`;
-    if (sw1 === 0x6A && sw2 === 0x82) return 'File not found';
-    if (sw1 === 0x6A && sw2 === 0x83) return 'Record not found';
-    if (sw1 === 0x6A && sw2 === 0x86) return 'Incorrect P1-P2';
+    if (sw1 === 0x6a && sw2 === 0x82) return 'File not found';
+    if (sw1 === 0x6a && sw2 === 0x83) return 'Record not found';
+    if (sw1 === 0x6a && sw2 === 0x86) return 'Incorrect P1-P2';
     if (sw1 === 0x69 && sw2 === 0x85) return 'Conditions not satisfied';
-    if (sw1 === 0x6C) return `Wrong Le: use ${sw2}`;
-    if (sw1 === 0x6E && sw2 === 0x00) return 'Class not supported';
-    if (sw1 === 0x6D && sw2 === 0x00) return 'Instruction not supported';
+    if (sw1 === 0x6c) return `Wrong Le: use ${sw2}`;
+    if (sw1 === 0x6e && sw2 === 0x00) return 'Class not supported';
+    if (sw1 === 0x6d && sw2 === 0x00) return 'Instruction not supported';
     return `Status: ${sw1.toString(16).padStart(2, '0').toUpperCase()}${sw2.toString(16).padStart(2, '0').toUpperCase()}`;
   }
 }

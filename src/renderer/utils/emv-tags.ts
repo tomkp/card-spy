@@ -108,8 +108,8 @@ export const emvTags: Record<string, string> = {
   '9F49': 'DDOL',
   '9F4A': 'SDA TAG LIST',
   '9F4C': 'ICC DYNAMIC NUMBER',
-  'A5': 'FCI PROPRIETARY TEMPLATE',
-  'BF0C': 'FCI ISSUER DD',
+  A5: 'FCI PROPRIETARY TEMPLATE',
+  BF0C: 'FCI ISSUER DD',
 };
 
 /**
@@ -118,9 +118,7 @@ export const emvTags: Record<string, string> = {
  * @returns Description string or undefined if not found
  */
 export function getTagDescription(tag: string | number): string | undefined {
-  const tagHex = typeof tag === 'number'
-    ? tag.toString(16).toUpperCase()
-    : tag.toUpperCase();
+  const tagHex = typeof tag === 'number' ? tag.toString(16).toUpperCase() : tag.toUpperCase();
   return emvTags[tagHex];
 }
 
@@ -137,5 +135,5 @@ export function isConstructedTag(tagByte: number): boolean {
  * Multi-byte tags have bits 1-5 of first byte all set (0x1F)
  */
 export function isMultiByteTag(tagByte: number): boolean {
-  return (tagByte & 0x1F) === 0x1F;
+  return (tagByte & 0x1f) === 0x1f;
 }

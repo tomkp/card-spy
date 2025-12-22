@@ -1,4 +1,10 @@
-import type { ReaderSession, LogEntry, TlvNode, CommandLogEntry, CardInsertedLogEntry } from '../../shared/types';
+import type {
+  ReaderSession,
+  LogEntry,
+  TlvNode,
+  CommandLogEntry,
+  CardInsertedLogEntry,
+} from '../../shared/types';
 import { Play, Trash2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
@@ -10,13 +16,14 @@ interface ReaderPanelProps {
 }
 
 function formatHex(bytes: number[]): string {
-  return bytes.map(b => b.toString(16).padStart(2, '0')).join('');
+  return bytes.map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 function getSwMeaning(sw1: number, sw2: number): string {
   const sw = (sw1 << 8) | sw2;
   if (sw === 0x9000) return 'Normal processing';
-  if (sw1 === 0x61) return `Normal processing, (sw2 indicates the number of response bytes still available)`;
+  if (sw1 === 0x61)
+    return `Normal processing, (sw2 indicates the number of response bytes still available)`;
   if (sw1 === 0x6c) return `Checking error: wrong length (sw2 indicates correct length for le)`;
   if (sw === 0x6a86) return 'Checking error: wrong parameters (p1 or p2) (see sw2)';
   if (sw === 0x6a82) return 'File not found';
@@ -26,7 +33,7 @@ function getSwMeaning(sw1: number, sw2: number): string {
   return '';
 }
 
-function isSwSuccess(sw1: number, sw2: number): boolean {
+function isSwSuccess(sw1: number, _sw2: number): boolean {
   return sw1 === 0x90 || sw1 === 0x61;
 }
 
@@ -36,25 +43,28 @@ function renderTlvTree(nodes: TlvNode[], indent: number = 0): React.ReactNode[] 
 
   for (const node of nodes) {
     const tagName = node.description || '';
-    const valueStr = Array.isArray(node.value) && !node.isConstructed
-      ? formatHex(node.value as number[])
-      : '';
+    const valueStr =
+      Array.isArray(node.value) && !node.isConstructed ? formatHex(node.value as number[]) : '';
 
     // Try to decode ASCII for certain tags like APP LABEL, LANGUAGE PREFERENCE
     let asciiValue = '';
     if (!node.isConstructed && Array.isArray(node.value)) {
       const bytes = node.value as number[];
-      if (bytes.every(b => b >= 0x20 && b <= 0x7e)) {
+      if (bytes.every((b) => b >= 0x20 && b <= 0x7e)) {
         asciiValue = String.fromCharCode(...bytes);
       }
     }
 
     result.push(
-      <div key={`${node.tagHex}-${result.length}`} className="leading-relaxed" style={{ paddingLeft: indentPx }}>
+      <div
+        key={`${node.tagHex}-${result.length}`}
+        className="leading-relaxed"
+        style={{ paddingLeft: indentPx }}
+      >
         <span className="text-primary font-semibold">{node.tagHex}</span>
         {tagName && <span className="text-muted-foreground ml-2">{tagName}</span>}
         {valueStr && <span className="text-foreground ml-2">{valueStr}</span>}
-        {asciiValue && <span className="text-success ml-2">"{asciiValue}"</span>}
+        {asciiValue && <span className="text-success ml-2">&quot;{asciiValue}&quot;</span>}
       </div>
     );
 
@@ -91,15 +101,13 @@ function CommandEntryDisplay({ entry }: { entry: CommandLogEntry }) {
       {/* Response SW with meaning */}
       {entry.response && (
         <div className={success ? 'text-success' : 'text-error'}>
-          {swHex}  {swMeaning}
+          {swHex} {swMeaning}
         </div>
       )}
 
       {/* If we have response data, show it */}
       {entry.response && entry.response.data.length > 0 && !entry.tlv && (
-        <div className="text-foreground mt-1">
-          {formatHex(entry.response.data)}
-        </div>
+        <div className="text-foreground mt-1">{formatHex(entry.response.data)}</div>
       )}
 
       {/* TLV parsed data */}
@@ -149,17 +157,13 @@ export function ReaderPanel({ session, onInterrogate, onClear }: ReaderPanelProp
       </div>
 
       {/* ATR if card is present */}
-      {session.card && (
-        <div className="px-3 py-1 text-xs">
-          Answer to reset: {session.card.atr}
-        </div>
-      )}
+      {session.card && <div className="px-3 py-1 text-xs">Answer to reset: {session.card.atr}</div>}
 
       {/* Log entries */}
       {session.log.length > 0 && (
         <ScrollArea className="max-h-80">
           <div className="px-3 py-1 text-xs font-mono">
-            {session.log.map(entry => (
+            {session.log.map((entry) => (
               <LogEntryDisplay key={entry.id} entry={entry} />
             ))}
           </div>

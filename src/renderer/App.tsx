@@ -1,6 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
-import type { Device, Card, ReaderSession, CardInsertedLogEntry, CommandLogEntry, Command, Response } from '../shared/types';
+import type {
+  Device,
+  Card,
+  ReaderSession,
+  CardInsertedLogEntry,
+  CommandLogEntry,
+  Command,
+  Response,
+} from '../shared/types';
 import { ReaderPanel } from './components/ReaderPanel';
 import { DeviceSelector } from './components/DeviceSelector';
 import { Repl } from './components/Repl';
@@ -22,42 +30,41 @@ export function App() {
   // Setup event listeners once on mount
   useEffect(() => {
     // Fetch devices and cards on startup
-    Promise.all([
-      window.electronAPI.getDevices(),
-      window.electronAPI.getCards()
-    ]).then(([devs, existingCards]) => {
-      setDevices(devs);
+    Promise.all([window.electronAPI.getDevices(), window.electronAPI.getCards()]).then(
+      ([devs, existingCards]) => {
+        setDevices(devs);
 
-      // Build cards map from existing cards
-      const cardsMap = new Map<string, Card>();
-      for (const c of existingCards) {
-        cardsMap.set(c.deviceName, {
-          atr: c.atr,
-          protocol: c.protocol,
-          deviceName: c.deviceName
+        // Build cards map from existing cards
+        const cardsMap = new Map<string, Card>();
+        for (const c of existingCards) {
+          cardsMap.set(c.deviceName, {
+            atr: c.atr,
+            protocol: c.protocol,
+            deviceName: c.deviceName,
+          });
+        }
+        setCards(cardsMap);
+
+        // Initialize sessions for each device
+        const newSessions = new Map<string, ReaderSession>();
+        devs.forEach((device) => {
+          const card = cardsMap.get(device.name) || null;
+          newSessions.set(device.name, { device, card, log: [] });
         });
-      }
-      setCards(cardsMap);
+        setSessions(newSessions);
 
-      // Initialize sessions for each device
-      const newSessions = new Map<string, ReaderSession>();
-      devs.forEach((device) => {
-        const card = cardsMap.get(device.name) || null;
-        newSessions.set(device.name, { device, card, log: [] });
-      });
-      setSessions(newSessions);
-
-      // Auto-select first device with a card
-      if (!activeDeviceRef.current) {
-        for (const dev of devs) {
-          if (cardsMap.has(dev.name)) {
-            setActiveDevice(dev);
-            window.electronAPI.selectDevice(dev.name);
-            break;
+        // Auto-select first device with a card
+        if (!activeDeviceRef.current) {
+          for (const dev of devs) {
+            if (cardsMap.has(dev.name)) {
+              setActiveDevice(dev);
+              window.electronAPI.selectDevice(dev.name);
+              break;
+            }
           }
         }
       }
-    });
+    );
 
     window.electronAPI.onDeviceActivated((device) => {
       const d = device as Device;

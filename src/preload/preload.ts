@@ -24,7 +24,7 @@ const electronAPI = {
   repl: (command: string) => ipcRenderer.invoke('repl', command),
 
   // Cleanup
-  removeAllListeners: (channel: string) => ipcRenderer.removeAllListeners(channel)
+  removeAllListeners: (channel: string) => ipcRenderer.removeAllListeners(channel),
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);

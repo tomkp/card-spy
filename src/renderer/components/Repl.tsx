@@ -13,11 +13,7 @@ interface ReplProps {
  */
 function parseHexInput(input: string): number[] | null {
   // Remove common separators and prefixes
-  const cleaned = input
-    .replace(/0x/gi, '')
-    .replace(/,/g, '')
-    .replace(/\s+/g, '')
-    .toUpperCase();
+  const cleaned = input.replace(/0x/gi, '').replace(/,/g, '').replace(/\s+/g, '').toUpperCase();
 
   // Validate hex string
   if (!/^[0-9A-F]*$/.test(cleaned)) {
