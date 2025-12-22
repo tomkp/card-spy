@@ -14,6 +14,10 @@ const electronAPI = {
     ipcRenderer.on('command-issued', (_, data) => callback(data)),
   onResponseReceived: (callback: (response: unknown) => void) =>
     ipcRenderer.on('response-received', (_, data) => callback(data)),
+  onEmvApplicationFound: (callback: (data: unknown) => void) =>
+    ipcRenderer.on('emv-application-found', (_, data) => callback(data)),
+  onApplicationSelected: (callback: (data: unknown) => void) =>
+    ipcRenderer.on('application-selected', (_, data) => callback(data)),
 
   // Actions (renderer → main)
   getDevices: () => ipcRenderer.invoke('get-devices'),

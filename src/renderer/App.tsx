@@ -7,6 +7,8 @@ import type {
   CommandLogEntry,
   Command,
   Response,
+  EmvApplicationFoundEvent,
+  ApplicationSelectedEvent,
 } from '../shared/types';
 import { ReaderPanel } from './components/ReaderPanel';
 import { DeviceSelector } from './components/DeviceSelector';
@@ -18,6 +20,9 @@ export function App() {
   const [activeDevice, setActiveDevice] = useState<Device | null>(null);
   const [cards, setCards] = useState<Map<string, Card>>(new Map());
   const [sessions, setSessions] = useState<Map<string, ReaderSession>>(new Map());
+  // Track discovered EMV applications (for future display/selection UI)
+  const [_applications, setApplications] = useState<string[]>([]);
+  const [_currentApplication, setCurrentApplication] = useState<string | null>(null);
   const logIdCounter = useRef(0);
   const activeDeviceRef = useRef<Device | null>(null);
 
@@ -140,6 +145,9 @@ export function App() {
         }
         return newSessions;
       });
+      // Clear applications when card is removed
+      setApplications([]);
+      setCurrentApplication(null);
     });
 
     window.electronAPI.onCommandIssued((command) => {
@@ -199,6 +207,21 @@ export function App() {
       }
     });
 
+    window.electronAPI.onEmvApplicationFound((data) => {
+      const event = data as EmvApplicationFoundEvent;
+      console.log('EMV Application found:', event.aid);
+      setApplications((prev) => {
+        if (prev.includes(event.aid)) return prev;
+        return [...prev, event.aid];
+      });
+    });
+
+    window.electronAPI.onApplicationSelected((data) => {
+      const event = data as ApplicationSelectedEvent;
+      console.log('Application selected:', event.aid);
+      setCurrentApplication(event.aid);
+    });
+
     return () => {
       window.electronAPI.removeAllListeners('device-activated');
       window.electronAPI.removeAllListeners('device-deactivated');
@@ -206,6 +229,8 @@ export function App() {
       window.electronAPI.removeAllListeners('card-removed');
       window.electronAPI.removeAllListeners('command-issued');
       window.electronAPI.removeAllListeners('response-received');
+      window.electronAPI.removeAllListeners('emv-application-found');
+      window.electronAPI.removeAllListeners('application-selected');
     };
   }, []);
 

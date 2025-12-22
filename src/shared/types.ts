@@ -58,6 +58,15 @@ export interface CardInsertedLogEntry {
 
 export type LogEntry = CommandLogEntry | CardInsertedLogEntry;
 
+export interface EmvApplicationFoundEvent {
+  aid: string;
+  tlv: TlvNode;
+}
+
+export interface ApplicationSelectedEvent {
+  aid: string;
+}
+
 export interface ElectronAPI {
   onDeviceActivated: (callback: (device: Device) => void) => void;
   onDeviceDeactivated: (callback: (device: Device) => void) => void;
@@ -65,6 +74,8 @@ export interface ElectronAPI {
   onCardRemoved: (callback: (data: { deviceName: string }) => void) => void;
   onCommandIssued: (callback: (command: Command) => void) => void;
   onResponseReceived: (callback: (response: Response) => void) => void;
+  onEmvApplicationFound: (callback: (data: EmvApplicationFoundEvent) => void) => void;
+  onApplicationSelected: (callback: (data: ApplicationSelectedEvent) => void) => void;
   getDevices: () => Promise<Device[]>;
   getCards: () => Promise<Array<{ deviceName: string; atr: string; protocol: number }>>;
   selectDevice: (deviceName: string) => Promise<void>;
