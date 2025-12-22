@@ -17,7 +17,8 @@
     "format": "prettier --write src",
     "format:check": "prettier --check src",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "checks": "npm run typecheck && npm run lint && npm run format && npm run test"
   },
   "devDependencies": {
     "@electron-forge/cli": "^7.6.0",

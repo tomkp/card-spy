@@ -16,7 +16,8 @@ function formatHex(bytes: number[]): string {
 function getSwMeaning(sw1: number, sw2: number): string {
   const sw = (sw1 << 8) | sw2;
   if (sw === 0x9000) return 'Normal processing';
-  if (sw1 === 0x61) return 'Normal processing, (sw2 indicates the number of response bytes still available)';
+  if (sw1 === 0x61)
+    return 'Normal processing, (sw2 indicates the number of response bytes still available)';
   if (sw1 === 0x6c) return 'Checking error: wrong length (sw2 indicates correct length for le)';
   if (sw === 0x6a86) return 'Checking error: wrong parameters (p1 or p2) (see sw2)';
   if (sw === 0x6a82) return 'File not found';
@@ -36,7 +37,8 @@ function renderTlvTree(nodes: TlvNode[], indent = 0): React.ReactNode[] {
 
   for (const node of nodes) {
     const tagName = node.description || '';
-    const valueStr = Array.isArray(node.value) && !node.isConstructed ? formatHex(node.value as number[]) : '';
+    const valueStr =
+      Array.isArray(node.value) && !node.isConstructed ? formatHex(node.value as number[]) : '';
 
     let asciiValue = '';
     if (!node.isConstructed && Array.isArray(node.value)) {

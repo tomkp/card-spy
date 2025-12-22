@@ -155,7 +155,9 @@ export class SmartcardService {
       data: allData,
       sw1,
       sw2,
-      hex: Buffer.from([...allData, sw1, sw2]).toString('hex').toUpperCase(),
+      hex: Buffer.from([...allData, sw1, sw2])
+        .toString('hex')
+        .toUpperCase(),
       meaning: this.getStatusMeaning(sw1, sw2),
     };
 

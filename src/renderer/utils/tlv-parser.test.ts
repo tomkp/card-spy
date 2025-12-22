@@ -1,11 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  hexToBytes,
-  bytesToHex,
-  parseTlv,
-  parseTlvFromHex,
-  tryDecodeAscii,
-} from './tlv-parser';
+import { hexToBytes, bytesToHex, parseTlv, parseTlvFromHex, tryDecodeAscii } from './tlv-parser';
 
 describe('hexToBytes', () => {
   it('should convert hex string to byte array', () => {
@@ -101,8 +95,22 @@ describe('parseTlv', () => {
   it('should parse multiple TLV entries', () => {
     // Tag 50 (APP LABEL) + Tag 5A (PAN)
     const data = [
-      0x50, 0x04, 0x56, 0x49, 0x53, 0x41, // 50 04 VISA
-      0x5a, 0x08, 0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56, // 5A 08 (PAN)
+      0x50,
+      0x04,
+      0x56,
+      0x49,
+      0x53,
+      0x41, // 50 04 VISA
+      0x5a,
+      0x08,
+      0x12,
+      0x34,
+      0x56,
+      0x78,
+      0x90,
+      0x12,
+      0x34,
+      0x56, // 5A 08 (PAN)
     ];
     const result = parseTlv(data);
 
@@ -115,9 +123,22 @@ describe('parseTlv', () => {
   it('should parse constructed tags with nested TLV', () => {
     // Tag 6F (FCI TEMPLATE) containing Tag 84 (DF NAME) and Tag A5 (FCI PROPRIETARY)
     const data = [
-      0x6f, 0x0e, // FCI Template, length 14
-      0x84, 0x07, 0xa0, 0x00, 0x00, 0x00, 0x04, 0x10, 0x10, // DF Name (AID)
-      0xa5, 0x03, 0x50, 0x01, 0x41, // FCI Proprietary containing APP LABEL
+      0x6f,
+      0x0e, // FCI Template, length 14
+      0x84,
+      0x07,
+      0xa0,
+      0x00,
+      0x00,
+      0x00,
+      0x04,
+      0x10,
+      0x10, // DF Name (AID)
+      0xa5,
+      0x03,
+      0x50,
+      0x01,
+      0x41, // FCI Proprietary containing APP LABEL
     ];
     const result = parseTlv(data);
 
