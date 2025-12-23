@@ -1,5 +1,15 @@
 import { describe, it, expect } from 'vitest';
-import { hexToBytes, bytesToHex, parseTlv, parseTlvFromHex, tryDecodeAscii } from './tlv-parser';
+import {
+  hexToBytes,
+  bytesToHex,
+  parseTlv,
+  parseTlvFromHex,
+  tryDecodeAscii,
+  findTag,
+  findTags,
+  getValueBytes,
+  getValueHex,
+} from './tlv';
 
 describe('hexToBytes', () => {
   it('should convert hex string to byte array', () => {
@@ -77,7 +87,7 @@ describe('parseTlv', () => {
     expect(result[0].length).toBe(4);
     expect(result[0].value).toEqual([0x56, 0x49, 0x53, 0x41]);
     expect(result[0].isConstructed).toBe(false);
-    expect(result[0].description).toBe('APP LABEL');
+    expect(result[0].description).toBe('Application Label');
   });
 
   it('should parse two-byte tag TLV', () => {
@@ -89,7 +99,7 @@ describe('parseTlv', () => {
     expect(result[0].tag).toBe(0x9f26);
     expect(result[0].tagHex).toBe('9F26');
     expect(result[0].length).toBe(8);
-    expect(result[0].description).toBe('AC');
+    expect(result[0].description).toBe('Application Cryptogram');
   });
 
   it('should parse multiple TLV entries', () => {
@@ -248,7 +258,7 @@ describe('parseTlv edge cases', () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].tagHex).toBe('5F20');
-    expect(result[0].description).toBe('CARDHOLDER NAME');
+    expect(result[0].description).toBe('Cardholder Name');
   });
 
   it('should handle zero-length value', () => {
@@ -332,5 +342,82 @@ describe('parseTlv edge cases', () => {
     const children = result[0].value as typeof result;
     expect(children.length).toBeGreaterThanOrEqual(2);
     expect(children[0].tagHex).toBe('84'); // DF Name
+  });
+});
+
+describe('findTag', () => {
+  it('should find tag at top level', () => {
+    const nodes = parseTlvFromHex('5004564953415A0412345678');
+    const result = findTag(nodes, 0x50);
+
+    expect(result).toBeDefined();
+    expect(result?.tagHex).toBe('50');
+  });
+
+  it('should find tag in nested structure', () => {
+    // 6F containing 84
+    const nodes = parseTlvFromHex('6F09840700000000041010');
+    const result = findTag(nodes, 0x84);
+
+    expect(result).toBeDefined();
+    expect(result?.tagHex).toBe('84');
+  });
+
+  it('should return undefined for missing tag', () => {
+    const nodes = parseTlvFromHex('5004564953');
+    const result = findTag(nodes, 0x99);
+
+    expect(result).toBeUndefined();
+  });
+});
+
+describe('findTags', () => {
+  it('should find all matching tags', () => {
+    // Two 50 tags
+    const nodes = parseTlvFromHex('500456495341500354455354');
+    const result = findTags(nodes, 0x50);
+
+    expect(result).toHaveLength(2);
+  });
+
+  it('should find tags in nested structures', () => {
+    // 6F containing 61 containing 4F, plus another 61 containing 4F
+    const hex = '6F0C61054F03414944610549044149443200';
+    const nodes = parseTlvFromHex(hex);
+    const result = findTags(nodes, 0x4f);
+
+    expect(result.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('should return empty array for missing tag', () => {
+    const nodes = parseTlvFromHex('5004564953');
+    const result = findTags(nodes, 0x99);
+
+    expect(result).toEqual([]);
+  });
+});
+
+describe('getValueBytes', () => {
+  it('should return value bytes for primitive tag', () => {
+    const nodes = parseTlvFromHex('5004564953');
+    const result = getValueBytes(nodes[0]);
+
+    expect(result).toEqual([0x56, 0x49, 0x53]);
+  });
+
+  it('should return empty array for constructed tag', () => {
+    const nodes = parseTlvFromHex('6F03500141');
+    const result = getValueBytes(nodes[0]);
+
+    expect(result).toEqual([]);
+  });
+});
+
+describe('getValueHex', () => {
+  it('should return value as hex string', () => {
+    const nodes = parseTlvFromHex('5004564953');
+    const result = getValueHex(nodes[0]);
+
+    expect(result).toBe('564953');
   });
 });

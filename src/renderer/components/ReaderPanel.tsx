@@ -1,7 +1,8 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import type { ReaderSession, LogEntry, TlvNode, CommandLogEntry } from '../../shared/types';
 import { Play, Trash2 } from 'lucide-react';
 import { Button } from './ui/button';
+import { SplitPane, Pane } from 'react-split-pane';
 
 interface ReaderPanelProps {
   session: ReaderSession;
@@ -66,7 +67,13 @@ function renderTlvTree(nodes: TlvNode[], indent = 0): React.ReactNode[] {
   return result;
 }
 
-function CommandEntryDisplay({ entry }: { entry: CommandLogEntry }) {
+interface CommandEntryDisplayProps {
+  entry: CommandLogEntry;
+  isSelected: boolean;
+  onSelect: () => void;
+}
+
+function CommandEntryDisplay({ entry, isSelected, onSelect }: CommandEntryDisplayProps) {
   const sw1 = entry.response?.sw1 ?? 0;
   const sw2 = entry.response?.sw2 ?? 0;
   const swHex = `${sw1.toString(16).padStart(2, '0')}${sw2.toString(16).padStart(2, '0')}`;
@@ -74,7 +81,10 @@ function CommandEntryDisplay({ entry }: { entry: CommandLogEntry }) {
   const success = entry.response ? isSwSuccess(sw1) : false;
 
   return (
-    <div className="py-3 border-b border-border last:border-b-0">
+    <div
+      className={`py-3 border-b border-border last:border-b-0 cursor-pointer hover:bg-accent/50 ${isSelected ? 'bg-accent' : ''}`}
+      onClick={onSelect}
+    >
       <div className="text-foreground">{entry.command.hex.toLowerCase()}</div>
 
       {entry.response && (
@@ -82,35 +92,89 @@ function CommandEntryDisplay({ entry }: { entry: CommandLogEntry }) {
           {swHex} {swMeaning}
         </div>
       )}
+    </div>
+  );
+}
 
-      {entry.response && entry.response.data.length > 0 && !entry.tlv && (
-        <div className="text-success mt-1">{formatHex(entry.response.data)}</div>
+interface LogEntryDisplayProps {
+  entry: LogEntry;
+  isSelected: boolean;
+  onSelect: () => void;
+}
+
+function LogEntryDisplay({ entry, isSelected, onSelect }: LogEntryDisplayProps) {
+  if (entry.type === 'card-inserted') return null;
+  return (
+    <CommandEntryDisplay
+      entry={entry as CommandLogEntry}
+      isSelected={isSelected}
+      onSelect={onSelect}
+    />
+  );
+}
+
+function DetailPanel({ entry }: { entry: CommandLogEntry | null }) {
+  if (!entry) {
+    return (
+      <div className="flex items-center justify-center h-full text-muted-foreground">
+        Select a command to view details
+      </div>
+    );
+  }
+
+  const sw1 = entry.response?.sw1 ?? 0;
+  const sw2 = entry.response?.sw2 ?? 0;
+  const swHex = `${sw1.toString(16).padStart(2, '0')}${sw2.toString(16).padStart(2, '0')}`;
+  const swMeaning = entry.response ? getSwMeaning(sw1, sw2) : '';
+  const success = entry.response ? isSwSuccess(sw1) : false;
+
+  return (
+    <div className="h-full overflow-auto p-4 font-mono text-sm">
+      <div className="mb-4">
+        <div className="text-muted-foreground text-xs mb-1">Command</div>
+        <div className="text-foreground">{entry.command.hex.toLowerCase()}</div>
+      </div>
+
+      {entry.response && (
+        <div className="mb-4">
+          <div className="text-muted-foreground text-xs mb-1">Status</div>
+          <div className={success ? 'text-success' : 'text-error'}>
+            {swHex} {swMeaning}
+          </div>
+        </div>
+      )}
+
+      {entry.response && entry.response.data.length > 0 && (
+        <div className="mb-4">
+          <div className="text-muted-foreground text-xs mb-1">Response Data</div>
+          <div className="text-success break-all">{formatHex(entry.response.data)}</div>
+        </div>
       )}
 
       {entry.tlv && entry.tlv.length > 0 && (
-        <div className="mt-1">
-          <div className="text-success">{formatHex(entry.response?.data ?? [])}</div>
-          <div className="mt-1">{renderTlvTree(entry.tlv)}</div>
+        <div>
+          <div className="text-muted-foreground text-xs mb-1">TLV Structure</div>
+          <div>{renderTlvTree(entry.tlv)}</div>
         </div>
       )}
     </div>
   );
 }
 
-function LogEntryDisplay({ entry }: { entry: LogEntry }) {
-  if (entry.type === 'card-inserted') return null;
-  return <CommandEntryDisplay entry={entry as CommandLogEntry} />;
-}
-
 export function ReaderPanel({ session, onInterrogate, onClear }: ReaderPanelProps) {
   const hasCard = !!session.card;
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [session.log]);
+
+  const selectedEntry = selectedEntryId
+    ? (session.log.find((e) => e.id === selectedEntryId) as CommandLogEntry | undefined)
+    : null;
 
   return (
     <div className="flex flex-1 overflow-hidden">
@@ -147,11 +211,23 @@ export function ReaderPanel({ session, onInterrogate, onClear }: ReaderPanelProp
           )}
         </div>
 
-        <div ref={scrollRef} className="flex-1 overflow-auto px-4 py-2 font-mono text-sm">
-          {session.log.map((entry) => (
-            <LogEntryDisplay key={entry.id} entry={entry} />
-          ))}
-        </div>
+        <SplitPane direction="horizontal" className="flex-1">
+          <Pane minSize={200} defaultSize="50%">
+            <div ref={scrollRef} className="h-full overflow-auto px-4 py-2 font-mono text-sm">
+              {session.log.map((entry) => (
+                <LogEntryDisplay
+                  key={entry.id}
+                  entry={entry}
+                  isSelected={entry.id === selectedEntryId}
+                  onSelect={() => setSelectedEntryId(entry.id)}
+                />
+              ))}
+            </div>
+          </Pane>
+          <Pane minSize={200}>
+            <DetailPanel entry={selectedEntry ?? null} />
+          </Pane>
+        </SplitPane>
       </div>
     </div>
   );

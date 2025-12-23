@@ -4,29 +4,29 @@ import { emvTags, getTagDescription, isConstructedTag, isMultiByteTag } from './
 describe('emvTags dictionary', () => {
   it('should contain common EMV tags', () => {
     expect(emvTags['4F']).toBe('AID');
-    expect(emvTags['50']).toBe('APP LABEL');
+    expect(emvTags['50']).toBe('Application Label');
     expect(emvTags['5A']).toBe('PAN');
-    expect(emvTags['6F']).toBe('FCI TEMPLATE');
-    expect(emvTags['9F26']).toBe('AC');
+    expect(emvTags['6F']).toBe('FCI Template');
+    expect(emvTags['9F26']).toBe('Application Cryptogram');
   });
 });
 
 describe('getTagDescription', () => {
   it('should return description for known tags (string input)', () => {
-    expect(getTagDescription('50')).toBe('APP LABEL');
+    expect(getTagDescription('50')).toBe('Application Label');
     expect(getTagDescription('5A')).toBe('PAN');
-    expect(getTagDescription('9F26')).toBe('AC');
+    expect(getTagDescription('9F26')).toBe('Application Cryptogram');
   });
 
   it('should handle lowercase input', () => {
     expect(getTagDescription('5a')).toBe('PAN');
-    expect(getTagDescription('9f26')).toBe('AC');
+    expect(getTagDescription('9f26')).toBe('Application Cryptogram');
   });
 
   it('should return description for known tags (number input)', () => {
-    expect(getTagDescription(0x50)).toBe('APP LABEL');
+    expect(getTagDescription(0x50)).toBe('Application Label');
     expect(getTagDescription(0x5a)).toBe('PAN');
-    expect(getTagDescription(0x9f26)).toBe('AC');
+    expect(getTagDescription(0x9f26)).toBe('Application Cryptogram');
   });
 
   it('should return undefined for unknown tags', () => {

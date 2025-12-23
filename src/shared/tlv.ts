@@ -1,4 +1,4 @@
-import type { TlvNode } from '../../shared/types';
+import type { TlvNode } from './types';
 import { getTagDescription, isConstructedTag, isMultiByteTag } from './emv-tags';
 
 /**
@@ -161,4 +161,55 @@ export function tryDecodeAscii(bytes: number[]): string | null {
 export function parseTlvFromHex(hex: string): TlvNode[] {
   const bytes = hexToBytes(hex);
   return parseTlv(bytes);
+}
+
+/**
+ * Find all TLV nodes with the specified tag (recursive)
+ */
+export function findTags(nodes: TlvNode[], tag: number): TlvNode[] {
+  const found: TlvNode[] = [];
+
+  for (const node of nodes) {
+    if (node.tag === tag) {
+      found.push(node);
+    }
+    if (node.isConstructed && Array.isArray(node.value)) {
+      found.push(...findTags(node.value as TlvNode[], tag));
+    }
+  }
+
+  return found;
+}
+
+/**
+ * Find first TLV node with the specified tag (recursive)
+ */
+export function findTag(nodes: TlvNode[], tag: number): TlvNode | undefined {
+  for (const node of nodes) {
+    if (node.tag === tag) {
+      return node;
+    }
+    if (node.isConstructed && Array.isArray(node.value)) {
+      const found = findTag(node.value as TlvNode[], tag);
+      if (found) return found;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Get the value bytes from a TLV node
+ */
+export function getValueBytes(node: TlvNode): number[] {
+  if (node.isConstructed) {
+    return [];
+  }
+  return node.value as number[];
+}
+
+/**
+ * Get the value as hex string from a TLV node
+ */
+export function getValueHex(node: TlvNode): string {
+  return bytesToHex(getValueBytes(node));
 }

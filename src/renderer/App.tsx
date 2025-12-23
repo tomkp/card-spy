@@ -13,7 +13,7 @@ import type {
 import { ReaderPanel } from './components/ReaderPanel';
 import { DeviceSelector } from './components/DeviceSelector';
 import { Repl } from './components/Repl';
-import { parseTlv } from './utils/tlv-parser';
+import { parseTlv } from '../shared/tlv';
 
 export function App() {
   const [devices, setDevices] = useState<Device[]>([]);

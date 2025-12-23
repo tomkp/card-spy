@@ -1,7 +1,7 @@
 import { BrowserWindow } from 'electron';
 import { Devices, Card, Reader } from 'smartcard';
 import type { Device, Command, Response, TlvNode } from '../shared/types';
-import { parseTlv, findTag, findTags, getValueHex } from './emv-utils';
+import { parseTlv, findTag, findTags, getValueHex } from '../shared/tlv';
 
 export class SmartcardService {
   private devices: Devices;
