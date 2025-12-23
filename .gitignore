@@ -1,8 +1,24 @@
+# IDE
 .idea
 *.iml
+.vscode
+
+# Dependencies
 node_modules/
-bundle.js
-*.log
-*.map
+
+# Build output
+.vite/
+out/
+dist/
 build/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Misc
+*.map
+.DS_Store
 website/*.zip
+
+coverage
