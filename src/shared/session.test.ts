@@ -254,7 +254,9 @@ describe('addResponse', () => {
     sessions.set('Reader 1', { device, card: null, log: [commandEntry] });
 
     const response = createResponse('cmd-1', 0x90, 0x00);
-    const tlv = [{ tag: 0x50, tagHex: '50', length: 4, value: [0x56, 0x49, 0x53, 0x41], isConstructed: false }];
+    const tlv = [
+      { tag: 0x50, tagHex: '50', length: 4, value: [0x56, 0x49, 0x53, 0x41], isConstructed: false },
+    ];
     const result = addResponse(sessions, 'Reader 1', response, tlv);
 
     const entry = result.get('Reader 1')?.log[0] as CommandLogEntry;
@@ -306,7 +308,11 @@ describe('clearLog', () => {
     const device = createDevice('Reader 1');
     const card = createCard('Reader 1');
     const sessions = new Map<string, ReaderSession>();
-    sessions.set('Reader 1', { device, card, log: [{ type: 'command', id: 'cmd-1', command: createCommand('cmd-1') }] });
+    sessions.set('Reader 1', {
+      device,
+      card,
+      log: [{ type: 'command', id: 'cmd-1', command: createCommand('cmd-1') }],
+    });
 
     const result = clearLog(sessions, 'Reader 1');
 

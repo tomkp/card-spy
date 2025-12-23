@@ -157,9 +157,7 @@ export function addResponse(
   newSessions.set(deviceName, {
     ...session,
     log: session.log.map((entry) =>
-      entry.type === 'command' && entry.id === response.id
-        ? { ...entry, response, tlv }
-        : entry
+      entry.type === 'command' && entry.id === response.id ? { ...entry, response, tlv } : entry
     ),
   });
   return newSessions;
@@ -184,10 +182,7 @@ export function clearLog(
 /**
  * Find the first device with a card inserted.
  */
-export function findDeviceWithCard(
-  devices: Device[],
-  cards: Map<string, Card>
-): Device | null {
+export function findDeviceWithCard(devices: Device[], cards: Map<string, Card>): Device | null {
   for (const device of devices) {
     if (cards.has(device.name)) {
       return device;

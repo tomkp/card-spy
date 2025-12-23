@@ -82,7 +82,7 @@ function CommandEntryDisplay({ entry, isSelected, onSelect }: CommandEntryDispla
 
   return (
     <div
-      className={`py-3 border-b border-border last:border-b-0 cursor-pointer hover:bg-accent/50 ${isSelected ? 'bg-accent' : ''}`}
+      className={`px-4 py-3 border-b border-border last:border-b-0 cursor-pointer hover:bg-accent/50 ${isSelected ? 'bg-accent' : ''}`}
       onClick={onSelect}
     >
       <div className="text-foreground">{entry.command.hex.toLowerCase()}</div>
@@ -202,7 +202,10 @@ export function ReaderPanel({ session, onInterrogate, onClear }: ReaderPanelProp
       </div>
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="px-4 py-3 border-b border-border bg-card">
+        <div
+          className="
+        px-4 py-3 border-b border-border bg-card"
+        >
           <div className="font-medium">{session.device.name}</div>
           {session.card && (
             <div className="text-muted-foreground text-sm mt-1">
@@ -213,7 +216,7 @@ export function ReaderPanel({ session, onInterrogate, onClear }: ReaderPanelProp
 
         <SplitPane direction="horizontal" className="flex-1">
           <Pane minSize={200} defaultSize="50%">
-            <div ref={scrollRef} className="h-full overflow-auto px-4 py-2 font-mono text-sm">
+            <div ref={scrollRef} className="h-full overflow-auto px-0 py-2 font-mono text-sm">
               {session.log.map((entry) => (
                 <LogEntryDisplay
                   key={entry.id}
