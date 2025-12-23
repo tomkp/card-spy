@@ -9,9 +9,13 @@ import type {
   Response,
   EmvApplicationFoundEvent,
   ApplicationSelectedEvent,
+  HandlersDetectedEvent,
+  ActiveHandlerChangedEvent,
+  DetectedHandlerInfo,
 } from '../shared/types';
 import { ReaderPanel } from './components/ReaderPanel';
 import { DeviceSelector } from './components/DeviceSelector';
+import { CommandPanel } from './components/CommandPanel';
 import { Repl } from './components/Repl';
 import { parseTlv } from '../shared/tlv';
 
@@ -23,6 +27,9 @@ export function App() {
   // Track discovered EMV applications (for future display/selection UI)
   const [_applications, setApplications] = useState<string[]>([]);
   const [_currentApplication, setCurrentApplication] = useState<string | null>(null);
+  // Handler state
+  const [handlers, setHandlers] = useState<Map<string, DetectedHandlerInfo[]>>(new Map());
+  const [activeHandlerId, setActiveHandlerId] = useState<string | null>(null);
   const logIdCounter = useRef(0);
   const activeDeviceRef = useRef<Device | null>(null);
 
@@ -57,12 +64,15 @@ export function App() {
         });
         setSessions(newSessions);
 
-        // Auto-select first device with a card
+        // Auto-select first device with a card and detect handlers
         if (!activeDeviceRef.current) {
           for (const dev of devs) {
-            if (cardsMap.has(dev.name)) {
+            const card = cardsMap.get(dev.name);
+            if (card) {
               setActiveDevice(dev);
               window.electronAPI.selectDevice(dev.name);
+              // Detect handlers for existing card
+              window.electronAPI.detectHandlers(dev.name, card.atr);
               break;
             }
           }
@@ -145,9 +155,17 @@ export function App() {
         }
         return newSessions;
       });
-      // Clear applications when card is removed
+      // Clear applications and handlers when card is removed
       setApplications([]);
       setCurrentApplication(null);
+      setHandlers((prev) => {
+        const newHandlers = new Map(prev);
+        newHandlers.delete(deviceName);
+        return newHandlers;
+      });
+      if (activeDeviceRef.current?.name === deviceName) {
+        setActiveHandlerId(null);
+      }
     });
 
     window.electronAPI.onCommandIssued((command) => {
@@ -222,6 +240,29 @@ export function App() {
       setCurrentApplication(event.aid);
     });
 
+    // Handler events
+    window.electronAPI.onHandlersDetected((data) => {
+      const event = data as HandlersDetectedEvent;
+      console.log('Handlers detected:', event.handlers.map((h) => h.name));
+      setHandlers((prev) => {
+        const newHandlers = new Map(prev);
+        newHandlers.set(event.deviceName, event.handlers);
+        return newHandlers;
+      });
+      // Set active handler to the first one if this is the active device
+      if (activeDeviceRef.current?.name === event.deviceName && event.handlers.length > 0) {
+        setActiveHandlerId(event.handlers[0].id);
+      }
+    });
+
+    window.electronAPI.onActiveHandlerChanged((data) => {
+      const event = data as ActiveHandlerChangedEvent;
+      console.log('Active handler changed:', event.handlerId);
+      if (activeDeviceRef.current?.name === event.deviceName) {
+        setActiveHandlerId(event.handlerId);
+      }
+    });
+
     return () => {
       window.electronAPI.removeAllListeners('device-activated');
       window.electronAPI.removeAllListeners('device-deactivated');
@@ -231,6 +272,8 @@ export function App() {
       window.electronAPI.removeAllListeners('response-received');
       window.electronAPI.removeAllListeners('emv-application-found');
       window.electronAPI.removeAllListeners('application-selected');
+      window.electronAPI.removeAllListeners('handlers-detected');
+      window.electronAPI.removeAllListeners('active-handler-changed');
     };
   }, []);
 
@@ -262,18 +305,38 @@ export function App() {
     window.electronAPI.repl(command);
   }
 
+  function handleSelectHandler(handlerId: string) {
+    window.electronAPI.setActiveHandler(handlerId);
+    setActiveHandlerId(handlerId);
+  }
+
+  function handleExecuteCommand(commandId: string, parameters: Record<string, unknown>) {
+    window.electronAPI.executeCommand(commandId, parameters);
+  }
+
   const activeSession = activeDevice ? sessions.get(activeDevice.name) : null;
   const hasCard = activeDevice ? cards.has(activeDevice.name) : false;
+  const activeHandlers = activeDevice ? handlers.get(activeDevice.name) || [] : [];
 
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 flex overflow-hidden">
         {activeSession ? (
-          <ReaderPanel
-            session={activeSession}
-            onInterrogate={handleInterrogate}
-            onClear={handleClearLog}
-          />
+          <>
+            <ReaderPanel
+              session={activeSession}
+              onInterrogate={handleInterrogate}
+              onClear={handleClearLog}
+            />
+            <div className="w-72 border-l border-border flex flex-col">
+              <CommandPanel
+                handlers={activeHandlers}
+                activeHandlerId={activeHandlerId}
+                onSelectHandler={handleSelectHandler}
+                onExecuteCommand={handleExecuteCommand}
+              />
+            </div>
+          </>
         ) : (
           <div className="flex-1 flex items-center justify-center text-muted-foreground">
             <div className="text-center">
