@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import type {
   Device,
   Card,
@@ -9,6 +9,7 @@ import type {
   Response,
   EmvApplicationFoundEvent,
   ApplicationSelectedEvent,
+  ApplicationFoundEvent,
   HandlersDetectedEvent,
   ActiveHandlerChangedEvent,
   DetectedHandlerInfo,
@@ -16,27 +17,92 @@ import type {
 import { ReaderPanel } from './components/ReaderPanel';
 import { DeviceSelector } from './components/DeviceSelector';
 import { CommandPanel } from './components/CommandPanel';
-import { Repl } from './components/Repl';
+import { CardInfoHeader } from './components/CardInfoHeader';
+import { Repl, ReplHandle } from './components/Repl';
+import { KeyboardShortcutsHelp } from './components/KeyboardShortcutsHelp';
+import { ApplicationsPanel, DiscoveredApp } from './components/ApplicationsPanel';
 import { parseTlv } from '../shared/tlv';
+import { useKeyboardShortcuts, KeyboardShortcut } from './hooks/useKeyboardShortcuts';
 
 export function App() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [activeDevice, setActiveDevice] = useState<Device | null>(null);
   const [cards, setCards] = useState<Map<string, Card>>(new Map());
   const [sessions, setSessions] = useState<Map<string, ReaderSession>>(new Map());
-  // Track discovered EMV applications (for future display/selection UI)
-  const [_applications, setApplications] = useState<string[]>([]);
-  const [_currentApplication, setCurrentApplication] = useState<string | null>(null);
+  // Track discovered applications per device
+  const [applications, setApplications] = useState<Map<string, DiscoveredApp[]>>(new Map());
+  const [selectedApplication, setSelectedApplication] = useState<string | null>(null);
   // Handler state
   const [handlers, setHandlers] = useState<Map<string, DetectedHandlerInfo[]>>(new Map());
   const [activeHandlerId, setActiveHandlerId] = useState<string | null>(null);
+  const [showShortcutHelp, setShowShortcutHelp] = useState(false);
   const logIdCounter = useRef(0);
   const activeDeviceRef = useRef<Device | null>(null);
+  const replRef = useRef<ReplHandle>(null);
 
   // Keep ref in sync with state for use in event handlers
   useEffect(() => {
     activeDeviceRef.current = activeDevice;
   }, [activeDevice]);
+
+  // Define keyboard shortcuts
+  const shortcuts: KeyboardShortcut[] = useMemo(
+    () => [
+      {
+        key: 'i',
+        meta: true,
+        action: () => {
+          if (activeDeviceRef.current && cards.has(activeDeviceRef.current.name)) {
+            window.electronAPI.interrogate();
+          }
+        },
+        description: 'Interrogate card',
+      },
+      {
+        key: 'l',
+        meta: true,
+        action: () => {
+          if (activeDeviceRef.current) {
+            setSessions((prev) => {
+              const newSessions = new Map(prev);
+              const session = newSessions.get(activeDeviceRef.current!.name);
+              if (session) {
+                newSessions.set(activeDeviceRef.current!.name, { ...session, log: [] });
+              }
+              return newSessions;
+            });
+          }
+        },
+        description: 'Clear log',
+      },
+      {
+        key: 'k',
+        meta: true,
+        action: () => {
+          replRef.current?.focus();
+        },
+        description: 'Focus command input',
+      },
+      {
+        key: '/',
+        meta: true,
+        action: () => {
+          setShowShortcutHelp((prev) => !prev);
+        },
+        description: 'Toggle keyboard shortcuts help',
+      },
+      {
+        key: 'Escape',
+        action: () => {
+          setShowShortcutHelp(false);
+        },
+        description: 'Close dialogs',
+      },
+    ],
+    [cards]
+  );
+
+  useKeyboardShortcuts(shortcuts);
 
   // Setup event listeners once on mount
   useEffect(() => {
@@ -64,19 +130,7 @@ export function App() {
         });
         setSessions(newSessions);
 
-        // Auto-select first device with a card and detect handlers
-        if (!activeDeviceRef.current) {
-          for (const dev of devs) {
-            const card = cardsMap.get(dev.name);
-            if (card) {
-              setActiveDevice(dev);
-              window.electronAPI.selectDevice(dev.name);
-              // Detect handlers for existing card
-              window.electronAPI.detectHandlers(dev.name, card.atr);
-              break;
-            }
-          }
-        }
+        // Don't auto-select - user should explicitly select a device
       }
     );
 
@@ -156,8 +210,12 @@ export function App() {
         return newSessions;
       });
       // Clear applications and handlers when card is removed
-      setApplications([]);
-      setCurrentApplication(null);
+      setApplications((prev) => {
+        const newApps = new Map(prev);
+        newApps.delete(deviceName);
+        return newApps;
+      });
+      setSelectedApplication(null);
       setHandlers((prev) => {
         const newHandlers = new Map(prev);
         newHandlers.delete(deviceName);
@@ -227,17 +285,38 @@ export function App() {
 
     window.electronAPI.onEmvApplicationFound((data) => {
       const event = data as EmvApplicationFoundEvent;
-      console.log('EMV Application found:', event.aid);
-      setApplications((prev) => {
-        if (prev.includes(event.aid)) return prev;
-        return [...prev, event.aid];
-      });
+      console.log('EMV Application found (legacy):', event.aid);
+    });
+
+    window.electronAPI.onApplicationFound((data) => {
+      const event = data as ApplicationFoundEvent;
+      console.log('Application found:', event.aid, event.name || event.label);
+      const currentDevice = activeDeviceRef.current;
+      if (currentDevice) {
+        setApplications((prev) => {
+          const newApps = new Map(prev);
+          const deviceApps = newApps.get(currentDevice.name) || [];
+          // Avoid duplicates
+          if (!deviceApps.some((app) => app.aid === event.aid)) {
+            newApps.set(currentDevice.name, [
+              ...deviceApps,
+              {
+                aid: event.aid,
+                name: event.name,
+                label: event.label,
+                handlerId: event.handlerId,
+              },
+            ]);
+          }
+          return newApps;
+        });
+      }
     });
 
     window.electronAPI.onApplicationSelected((data) => {
       const event = data as ApplicationSelectedEvent;
       console.log('Application selected:', event.aid);
-      setCurrentApplication(event.aid);
+      setSelectedApplication(event.aid);
     });
 
     // Handler events
@@ -271,6 +350,7 @@ export function App() {
       window.electronAPI.removeAllListeners('command-issued');
       window.electronAPI.removeAllListeners('response-received');
       window.electronAPI.removeAllListeners('emv-application-found');
+      window.electronAPI.removeAllListeners('application-found');
       window.electronAPI.removeAllListeners('application-selected');
       window.electronAPI.removeAllListeners('handlers-detected');
       window.electronAPI.removeAllListeners('active-handler-changed');
@@ -280,6 +360,12 @@ export function App() {
   async function handleSelectDevice(device: Device) {
     await window.electronAPI.selectDevice(device.name);
     setActiveDevice(device);
+
+    // Detect handlers if device has a card
+    const card = cards.get(device.name);
+    if (card) {
+      window.electronAPI.detectHandlers(device.name, card.atr);
+    }
   }
 
   function handleInterrogate() {
@@ -317,26 +403,69 @@ export function App() {
   const activeSession = activeDevice ? sessions.get(activeDevice.name) : null;
   const hasCard = activeDevice ? cards.has(activeDevice.name) : false;
   const activeHandlers = activeDevice ? handlers.get(activeDevice.name) || [] : [];
+  const activeCard = activeDevice ? cards.get(activeDevice.name) || null : null;
+  const activeApplications = activeDevice ? applications.get(activeDevice.name) || [] : [];
+
+  function handleSelectApplication(aid: string) {
+    setSelectedApplication(aid);
+    // Execute the select command for this application
+    window.electronAPI.executeCommand(`select-app-${aid}`, {});
+  }
 
   return (
     <div className="flex flex-col h-full">
+      {/* Card Info Header */}
+      {activeSession && (
+        <CardInfoHeader
+          card={activeCard}
+          handlers={activeHandlers}
+          activeHandlerId={activeHandlerId}
+        />
+      )}
+
+      {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
         {activeSession ? (
           <>
+            {/* Left Side Panel - Applications + Commands */}
+            <div className="w-64 border-r border-border flex flex-col bg-card">
+              {/* Applications Panel */}
+              {activeApplications.length > 0 && (
+                <div className="border-b border-border">
+                  <ApplicationsPanel
+                    applications={activeApplications}
+                    selectedAid={selectedApplication}
+                    onSelectApp={handleSelectApplication}
+                  />
+                </div>
+              )}
+
+              {/* Command Panel */}
+              <div className="flex-1 overflow-hidden">
+                <CommandPanel
+                  handlers={activeHandlers}
+                  activeHandlerId={activeHandlerId}
+                  onSelectHandler={handleSelectHandler}
+                  onExecuteCommand={handleExecuteCommand}
+                />
+              </div>
+            </div>
+
+            {/* Reader Panel - Center */}
             <ReaderPanel
               session={activeSession}
               onInterrogate={handleInterrogate}
               onClear={handleClearLog}
+              onShowShortcuts={() => setShowShortcutHelp(true)}
             />
-            <div className="w-72 border-l border-border flex flex-col">
-              <CommandPanel
-                handlers={activeHandlers}
-                activeHandlerId={activeHandlerId}
-                onSelectHandler={handleSelectHandler}
-                onExecuteCommand={handleExecuteCommand}
-              />
-            </div>
           </>
+        ) : devices.length > 0 ? (
+          <div className="flex-1 flex items-center justify-center text-muted-foreground">
+            <div className="text-center">
+              <p className="text-lg">Select a reader to get started</p>
+              <p className="text-sm mt-1">Click on a reader in the status bar below</p>
+            </div>
+          </div>
         ) : (
           <div className="flex-1 flex items-center justify-center text-muted-foreground">
             <div className="text-center">
@@ -347,7 +476,7 @@ export function App() {
         )}
       </div>
 
-      <Repl onSubmit={handleRepl} disabled={!hasCard} />
+      <Repl ref={replRef} onSubmit={handleRepl} disabled={!activeDevice || !hasCard} />
 
       <DeviceSelector
         devices={devices}
@@ -355,6 +484,11 @@ export function App() {
         cards={cards}
         onSelectDevice={handleSelectDevice}
       />
+
+      {/* Keyboard Shortcuts Help Overlay */}
+      {showShortcutHelp && (
+        <KeyboardShortcutsHelp onClose={() => setShowShortcutHelp(false)} />
+      )}
     </div>
   );
 }
