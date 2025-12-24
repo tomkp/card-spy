@@ -192,7 +192,7 @@ Transform Card Spy from a basic smartcard explorer into a full-featured Smartcar
 ---
 
 ### 2.3 Search and Filter
-**Status:** 🔴 Not Started
+**Status:** 🟢 Complete
 **Priority:** Medium
 **Estimated Complexity:** Medium
 
@@ -207,11 +207,19 @@ Transform Card Spy from a basic smartcard explorer into a full-featured Smartcar
 - Highlight matches
 
 **Tasks:**
-- [ ] 2.3.1 Add search input to command log header
-- [ ] 2.3.2 Implement log filtering logic
-- [ ] 2.3.3 Add status filter buttons (All/Success/Error)
-- [ ] 2.3.4 Add search to TLV inspector
-- [ ] 2.3.5 Highlight matching text
+- [x] 2.3.1 Add search input to command log header
+- [x] 2.3.2 Implement log filtering logic
+- [x] 2.3.3 Add status filter buttons (All/Success/Error)
+- [x] 2.3.4 Add search to TLV inspector
+- [x] 2.3.5 Highlight matching text
+
+**Implementation Notes:**
+- Added search input with clear button in command log header
+- Status filter buttons show counts: All, Success (green), Error (red)
+- Filters command hex, status codes, status meanings, and response data
+- Search highlights matching text in yellow throughout
+- TLV tree also highlights matching tags, descriptions, and values
+- Shows "X of Y" count when filtering is active
 
 ---
 
@@ -384,14 +392,18 @@ Transform Card Spy from a basic smartcard explorer into a full-featured Smartcar
 | Phase | Total Tasks | Completed | Progress |
 |-------|-------------|-----------|----------|
 | Phase 1 | 18 | 18 | 100% |
-| Phase 2 | 22 | 0 | 0% |
+| Phase 2 | 22 | 5 | 23% |
 | Phase 3 | 24 | 0 | 0% |
 | Layout | 5 | 0 | 0% |
-| **Total** | **69** | **18** | **26%** |
+| **Total** | **69** | **23** | **33%** |
 
 ---
 
 ## Changelog
+
+### [2024-12-23] Phase 2 Progress
+- 2.3: Search and Filter - search input, status filters, TLV search, match highlighting
+- Applications Panel - shows discovered EMV apps after interrogation
 
 ### [2024-12-23] Phase 1 Complete
 - 1.1: Card Info Header - displays card type, handler info, ATR, protocol
