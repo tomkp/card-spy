@@ -343,12 +343,7 @@ export class TransportHandler implements CardHandler {
       case 'select-application': {
         const aid = this.hexToBytes(parameters.aid as string);
         if (aid.length !== 3) {
-          return {
-            data: [],
-            sw1: 0x6a,
-            sw2: 0x80,
-            raw: 'Invalid AID length (must be 3 bytes)',
-          };
+          return this.createErrorResponse(0x6a, 0x80);
         }
         const result = await this.sendDesfireCommand(
           sendCommand,
@@ -672,11 +667,28 @@ export class TransportHandler implements CardHandler {
     data: number[];
     statusCode: number;
   }): Response {
+    const hex = this.bytesToHex([...result.data, 0x91, result.statusCode]);
     return {
+      id: `desfire-${Date.now()}`,
+      timestamp: Date.now(),
       data: result.data,
       sw1: 0x91,
       sw2: result.statusCode,
-      raw: this.bytesToHex([...result.data, 0x91, result.statusCode]),
+      hex,
+    };
+  }
+
+  /**
+   * Create an error response.
+   */
+  private createErrorResponse(sw1: number, sw2: number): Response {
+    return {
+      id: `error-${Date.now()}`,
+      timestamp: Date.now(),
+      data: [],
+      sw1,
+      sw2,
+      hex: this.bytesToHex([sw1, sw2]),
     };
   }
 

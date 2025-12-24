@@ -40,6 +40,10 @@ const ATR_PATTERNS: Array<{ pattern: RegExp; name: string; type: string }> = [
   // SIM cards
   { pattern: /^3B3F/, name: 'GSM SIM', type: 'sim' },
   { pattern: /^3B9F/, name: 'USIM', type: 'sim' },
+  { pattern: /^3B9[0-9A-F]96/, name: 'USIM', type: 'sim' },
+  { pattern: /^3B7[BD]/, name: 'SIM/USIM', type: 'sim' },
+  { pattern: /^3B1[EF]/, name: 'Mini SIM', type: 'sim' },
+  { pattern: /^3B6[89]00/, name: 'GSM SIM', type: 'sim' },
 
   // ID cards
   { pattern: /^3B7F.*00006563/, name: 'Belgian eID', type: 'identity' },
