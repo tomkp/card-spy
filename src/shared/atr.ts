@@ -47,6 +47,8 @@ const ATR_PATTERNS: Array<{ pattern: RegExp; name: string; type: string }> = [
 
   // Transport cards
   { pattern: /^3B8F80/, name: 'Calypso Transport', type: 'transport' },
+  { pattern: /^3B8180018080/, name: 'MIFARE DESFire', type: 'transport' },
+  { pattern: /^3B8[0-9A-F]80.*D276000085/, name: 'MIFARE DESFire EV', type: 'transport' },
 
   // Generic patterns
   { pattern: /^3B8[0-9A-F]80/, name: 'Contact Smart Card', type: 'generic' },
