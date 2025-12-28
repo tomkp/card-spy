@@ -4,6 +4,7 @@ import { Play, Trash2, Keyboard, Search, X, CheckCircle, XCircle, Circle } from 
 import { Button } from './ui/button';
 import { CopyButton } from './CopyButton';
 import { SplitPane, Pane } from 'react-split-pane';
+import { formatHex, getStatusWordInfo, isSuccessStatus } from '../../shared/apdu';
 
 const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
 const cmdKey = isMac ? '⌘' : 'Ctrl+';
@@ -39,28 +40,6 @@ interface ReaderPanelProps {
   onInterrogate: () => void;
   onClear: () => void;
   onShowShortcuts?: () => void;
-}
-
-function formatHex(bytes: number[]): string {
-  return bytes.map((b) => b.toString(16).padStart(2, '0')).join('');
-}
-
-function getSwMeaning(sw1: number, sw2: number): string {
-  const sw = (sw1 << 8) | sw2;
-  if (sw === 0x9000) return 'Normal processing';
-  if (sw1 === 0x61)
-    return 'Normal processing, (sw2 indicates the number of response bytes still available)';
-  if (sw1 === 0x6c) return 'Checking error: wrong length (sw2 indicates correct length for le)';
-  if (sw === 0x6a86) return 'Checking error: wrong parameters (p1 or p2) (see sw2)';
-  if (sw === 0x6a82) return 'File not found';
-  if (sw === 0x6a83) return 'Record not found';
-  if (sw === 0x6a88) return 'Referenced data not found';
-  if (sw1 === 0x6a) return 'Checking error: wrong parameters';
-  return '';
-}
-
-function isSwSuccess(sw1: number): boolean {
-  return sw1 === 0x90 || sw1 === 0x61;
 }
 
 function TlvNodeDisplay({ node, indent, searchTerm }: { node: TlvNode; indent: number; searchTerm: string }) {
@@ -135,8 +114,8 @@ function CommandEntryDisplay({ entry, isSelected, onSelect, searchTerm }: Comman
   const sw1 = entry.response?.sw1 ?? 0;
   const sw2 = entry.response?.sw2 ?? 0;
   const swHex = `${sw1.toString(16).padStart(2, '0')}${sw2.toString(16).padStart(2, '0')}`;
-  const swMeaning = entry.response ? getSwMeaning(sw1, sw2) : '';
-  const success = entry.response ? isSwSuccess(sw1) : false;
+  const swMeaning = entry.response ? getStatusWordInfo(sw1, sw2).meaning : '';
+  const success = entry.response ? isSuccessStatus(sw1) : false;
 
   return (
     <div
@@ -187,8 +166,8 @@ function DetailPanel({ entry, searchTerm }: { entry: CommandLogEntry | null; sea
   const sw1 = entry.response?.sw1 ?? 0;
   const sw2 = entry.response?.sw2 ?? 0;
   const swHex = `${sw1.toString(16).padStart(2, '0')}${sw2.toString(16).padStart(2, '0')}`;
-  const swMeaning = entry.response ? getSwMeaning(sw1, sw2) : '';
-  const success = entry.response ? isSwSuccess(sw1) : false;
+  const swMeaning = entry.response ? getStatusWordInfo(sw1, sw2).meaning : '';
+  const success = entry.response ? isSuccessStatus(sw1) : false;
   const responseDataHex = entry.response ? formatHex(entry.response.data) : '';
 
   // Build full formatted text for copy all
@@ -280,7 +259,7 @@ export function ReaderPanel({ session, onInterrogate, onClear, onShowShortcuts }
       // Status filter
       if (statusFilter !== 'all') {
         const sw1 = cmdEntry.response?.sw1 ?? 0;
-        const success = isSwSuccess(sw1);
+        const success = isSuccessStatus(sw1);
         if (statusFilter === 'success' && !success) return false;
         if (statusFilter === 'error' && success) return false;
       }
@@ -292,7 +271,7 @@ export function ReaderPanel({ session, onInterrogate, onClear, onShowShortcuts }
         const sw1 = cmdEntry.response?.sw1 ?? 0;
         const sw2 = cmdEntry.response?.sw2 ?? 0;
         const swHex = `${sw1.toString(16).padStart(2, '0')}${sw2.toString(16).padStart(2, '0')}`;
-        const swMeaning = cmdEntry.response ? getSwMeaning(sw1, sw2).toLowerCase() : '';
+        const swMeaning = cmdEntry.response ? getStatusWordInfo(sw1, sw2).meaning.toLowerCase() : '';
         const responseHex = cmdEntry.response ? formatHex(cmdEntry.response.data) : '';
 
         // Search in command, status, response data
@@ -318,7 +297,7 @@ export function ReaderPanel({ session, onInterrogate, onClear, onShowShortcuts }
   const successCount = session.log.filter((e) => {
     if (e.type !== 'command') return false;
     const cmd = e as CommandLogEntry;
-    return cmd.response && isSwSuccess(cmd.response.sw1);
+    return cmd.response && isSuccessStatus(cmd.response.sw1);
   }).length;
   const errorCount = commandCount - successCount;
 
