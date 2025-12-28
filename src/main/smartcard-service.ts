@@ -1,6 +1,7 @@
 import { BrowserWindow } from 'electron';
 import { Devices, Card, Reader } from 'smartcard';
 import type { Device, Command, Response } from '../shared/types';
+import { getStatusWordInfo } from '../shared/apdu';
 import {
   globalRegistry,
   registerBuiltinHandlers,
@@ -178,7 +179,7 @@ export class SmartcardService {
       hex: Buffer.from([...allData, sw1, sw2])
         .toString('hex')
         .toUpperCase(),
-      meaning: this.getStatusMeaning(sw1, sw2),
+      meaning: getStatusWordInfo(sw1, sw2).meaning,
     };
 
     this.send('response-received', response);
@@ -367,18 +368,5 @@ export class SmartcardService {
 
   private send(channel: string, data: unknown): void {
     this.window.webContents.send(channel, data);
-  }
-
-  private getStatusMeaning(sw1: number, sw2: number): string {
-    if (sw1 === 0x90 && sw2 === 0x00) return 'Success';
-    if (sw1 === 0x61) return `More data available: ${sw2} bytes`;
-    if (sw1 === 0x6a && sw2 === 0x82) return 'File not found';
-    if (sw1 === 0x6a && sw2 === 0x83) return 'Record not found';
-    if (sw1 === 0x6a && sw2 === 0x86) return 'Incorrect P1-P2';
-    if (sw1 === 0x69 && sw2 === 0x85) return 'Conditions not satisfied';
-    if (sw1 === 0x6c) return `Wrong Le: use ${sw2}`;
-    if (sw1 === 0x6e && sw2 === 0x00) return 'Class not supported';
-    if (sw1 === 0x6d && sw2 === 0x00) return 'Instruction not supported';
-    return `Status: ${sw1.toString(16).padStart(2, '0').toUpperCase()}${sw2.toString(16).padStart(2, '0').toUpperCase()}`;
   }
 }
