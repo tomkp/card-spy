@@ -5,6 +5,7 @@
 
 import type { Response } from '../types';
 import { hexToBytes } from '../tlv';
+import { buildSelectCommand } from '../emv';
 import type {
   CardHandler,
   CardCommand,
@@ -221,7 +222,7 @@ export class OpenPgpHandler implements CardHandler {
   ): Promise<DetectionResult> {
     try {
       // Try to select OpenPGP application
-      const selectCmd = this.buildSelectCommand(OPENPGP_AID);
+      const selectCmd = buildSelectCommand(OPENPGP_AID);
       const response = await sendCommand(selectCmd);
 
       if (response.sw1 === 0x90 || response.sw1 === 0x61) {
@@ -248,7 +249,7 @@ export class OpenPgpHandler implements CardHandler {
 
     switch (commandId) {
       case 'select-openpgp':
-        return sendCommand(this.buildSelectCommand(OPENPGP_AID));
+        return sendCommand(buildSelectCommand(OPENPGP_AID));
 
       case 'get-aid':
         return sendCommand(this.buildGetDataCommand(OPENPGP_OBJECTS.AID));
@@ -319,7 +320,7 @@ export class OpenPgpHandler implements CardHandler {
   ): Promise<InterrogationResult> {
     try {
       // Select OpenPGP application
-      const selectResponse = await sendCommand(this.buildSelectCommand(OPENPGP_AID));
+      const selectResponse = await sendCommand(buildSelectCommand(OPENPGP_AID));
       if (selectResponse.sw1 !== 0x90 && selectResponse.sw1 !== 0x61) {
         return { success: false, error: 'Failed to select OpenPGP application' };
       }
@@ -356,11 +357,6 @@ export class OpenPgpHandler implements CardHandler {
         error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
-  }
-
-  private buildSelectCommand(aid: string): number[] {
-    const aidBytes = hexToBytes(aid);
-    return [0x00, 0xa4, 0x04, 0x00, aidBytes.length, ...aidBytes];
   }
 
   private buildGetDataCommand(tag: string): number[] {

@@ -5,6 +5,7 @@
 
 import type { Response } from '../types';
 import { hexToBytes } from '../tlv';
+import { buildSelectCommand } from '../emv';
 import type {
   CardHandler,
   CardCommand,
@@ -238,7 +239,7 @@ export class FidoHandler implements CardHandler {
   ): Promise<DetectionResult> {
     try {
       // Try to select FIDO application
-      const selectCmd = this.buildSelectCommand(FIDO_U2F_AID);
+      const selectCmd = buildSelectCommand(FIDO_U2F_AID);
       const response = await sendCommand(selectCmd);
 
       if (response.sw1 === 0x90 || response.sw1 === 0x61) {
@@ -282,7 +283,7 @@ export class FidoHandler implements CardHandler {
 
     switch (commandId) {
       case 'select-fido':
-        return sendCommand(this.buildSelectCommand(FIDO_U2F_AID));
+        return sendCommand(buildSelectCommand(FIDO_U2F_AID));
 
       case 'get-version':
         return sendCommand([0x00, FIDO_INS.U2F_VERSION, 0x00, 0x00, 0x00]);
@@ -377,7 +378,7 @@ export class FidoHandler implements CardHandler {
   ): Promise<InterrogationResult> {
     try {
       // Select FIDO application
-      const selectResponse = await sendCommand(this.buildSelectCommand(FIDO_U2F_AID));
+      const selectResponse = await sendCommand(buildSelectCommand(FIDO_U2F_AID));
       if (selectResponse.sw1 !== 0x90 && selectResponse.sw1 !== 0x61) {
         return { success: false, error: 'Failed to select FIDO application' };
       }
@@ -407,11 +408,6 @@ export class FidoHandler implements CardHandler {
         error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
-  }
-
-  private buildSelectCommand(aid: string): number[] {
-    const aidBytes = hexToBytes(aid);
-    return [0x00, 0xa4, 0x04, 0x00, aidBytes.length, ...aidBytes];
   }
 
   // Simplified CBOR builders - would use a proper CBOR library in production
