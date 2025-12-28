@@ -12,6 +12,7 @@
  */
 
 import type { Response } from '../types';
+import { hexToBytes, bytesToHex } from '../tlv';
 import type {
   CardHandler,
   CardCommand,
@@ -272,7 +273,7 @@ export class MifareClassicHandler implements CardHandler {
     try {
       const uidResponse = await sendCommand([0xff, 0xca, 0x00, 0x00, 0x00]);
       if (uidResponse.sw1 === 0x90 && uidResponse.data.length >= 4) {
-        this.uid = this.bytesToHex(uidResponse.data);
+        this.uid = bytesToHex(uidResponse.data);
 
         // Try to determine card type from SAK or ATR
         this.cardType = this.determineCardType(atrUpper, uidResponse.data);
@@ -395,7 +396,7 @@ export class MifareClassicHandler implements CardHandler {
       // Step 1: Get UID
       const uidResponse = await sendCommand([0xff, 0xca, 0x00, 0x00, 0x00]);
       if (uidResponse.sw1 === 0x90) {
-        this.uid = this.bytesToHex(uidResponse.data);
+        this.uid = bytesToHex(uidResponse.data);
         applications.push({
           aid: this.uid,
           name: 'Card UID',
@@ -453,7 +454,7 @@ export class MifareClassicHandler implements CardHandler {
     key: string,
     keySlot: number
   ): Promise<Response> {
-    const keyBytes = this.hexToBytes(key);
+    const keyBytes = hexToBytes(key);
     if (keyBytes.length !== 6) {
       return this.createErrorResponse(0x6a, 0x80);
     }
@@ -510,7 +511,7 @@ export class MifareClassicHandler implements CardHandler {
           data: allData,
           sw1: response.sw1,
           sw2: response.sw2,
-          hex: this.bytesToHex(allData),
+          hex: bytesToHex(allData),
         };
       }
     }
@@ -521,7 +522,7 @@ export class MifareClassicHandler implements CardHandler {
       data: allData,
       sw1: 0x90,
       sw2: 0x00,
-      hex: this.bytesToHex(allData),
+      hex: bytesToHex(allData),
     };
   }
 
@@ -558,7 +559,7 @@ export class MifareClassicHandler implements CardHandler {
       data: allData,
       sw1: 0x90,
       sw2: 0x00,
-      hex: this.bytesToHex(allData),
+      hex: bytesToHex(allData),
     };
   }
 
@@ -621,7 +622,7 @@ export class MifareClassicHandler implements CardHandler {
       data: allData,
       sw1: 0x90,
       sw2: 0x00,
-      hex: this.bytesToHex(allData),
+      hex: bytesToHex(allData),
     };
   }
 
@@ -669,7 +670,7 @@ export class MifareClassicHandler implements CardHandler {
       data: results,
       sw1: 0x90,
       sw2: 0x00,
-      hex: this.bytesToHex(results),
+      hex: bytesToHex(results),
       meaning: this.formatKeyCheckResults(defaultKeys, results),
     };
   }
@@ -712,7 +713,7 @@ export class MifareClassicHandler implements CardHandler {
     if (data.length < 5) return 'Invalid block';
 
     // First 4 bytes are UID (or first part of 7-byte UID)
-    const uid = this.bytesToHex(data.slice(0, 4));
+    const uid = bytesToHex(data.slice(0, 4));
 
     // Byte 4 is BCC (Block Check Character) for 4-byte UID
     // For 7-byte UID, bytes 4-6 are part of UID, byte 7 is BCC
@@ -768,20 +769,7 @@ export class MifareClassicHandler implements CardHandler {
       data: [],
       sw1,
       sw2,
-      hex: this.bytesToHex([sw1, sw2]),
+      hex: bytesToHex([sw1, sw2]),
     };
-  }
-
-  private hexToBytes(hex: string): number[] {
-    const clean = hex.replace(/\s/g, '');
-    const bytes: number[] = [];
-    for (let i = 0; i < clean.length; i += 2) {
-      bytes.push(parseInt(clean.substring(i, i + 2), 16));
-    }
-    return bytes;
-  }
-
-  private bytesToHex(bytes: number[]): string {
-    return bytes.map((b) => b.toString(16).padStart(2, '0')).join('').toUpperCase();
   }
 }

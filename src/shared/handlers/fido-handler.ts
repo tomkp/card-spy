@@ -4,6 +4,7 @@
  */
 
 import type { Response } from '../types';
+import { hexToBytes } from '../tlv';
 import type {
   CardHandler,
   CardCommand,
@@ -293,16 +294,16 @@ export class FidoHandler implements CardHandler {
       }
 
       case 'u2f-register': {
-        const challenge = this.hexToBytes(parameters.challenge as string);
-        const appId = this.hexToBytes(parameters.appId as string);
+        const challenge = hexToBytes(parameters.challenge as string);
+        const appId = hexToBytes(parameters.appId as string);
         const data = [...challenge, ...appId];
         return sendCommand([0x00, FIDO_INS.U2F_REGISTER, 0x00, 0x00, data.length, ...data, 0x00]);
       }
 
       case 'u2f-authenticate-check': {
-        const challenge = this.hexToBytes(parameters.challenge as string);
-        const appId = this.hexToBytes(parameters.appId as string);
-        const keyHandle = this.hexToBytes(parameters.keyHandle as string);
+        const challenge = hexToBytes(parameters.challenge as string);
+        const appId = hexToBytes(parameters.appId as string);
+        const keyHandle = hexToBytes(parameters.keyHandle as string);
         const data = [...challenge, ...appId, keyHandle.length, ...keyHandle];
         // P1 = 0x07 = check-only (don't require user presence)
         return sendCommand([
@@ -317,9 +318,9 @@ export class FidoHandler implements CardHandler {
       }
 
       case 'u2f-authenticate': {
-        const challenge = this.hexToBytes(parameters.challenge as string);
-        const appId = this.hexToBytes(parameters.appId as string);
-        const keyHandle = this.hexToBytes(parameters.keyHandle as string);
+        const challenge = hexToBytes(parameters.challenge as string);
+        const appId = hexToBytes(parameters.appId as string);
+        const keyHandle = hexToBytes(parameters.keyHandle as string);
         const data = [...challenge, ...appId, keyHandle.length, ...keyHandle];
         // P1 = 0x03 = enforce-user-presence-and-sign
         return sendCommand([
@@ -335,7 +336,7 @@ export class FidoHandler implements CardHandler {
 
       case 'ctap2-make-credential': {
         // Build CBOR for authenticatorMakeCredential
-        const clientDataHash = this.hexToBytes(parameters.clientDataHash as string);
+        const clientDataHash = hexToBytes(parameters.clientDataHash as string);
         const rpId = parameters.rpId as string;
         const userName = parameters.userName as string;
 
@@ -345,7 +346,7 @@ export class FidoHandler implements CardHandler {
       }
 
       case 'ctap2-get-assertion': {
-        const clientDataHash = this.hexToBytes(parameters.clientDataHash as string);
+        const clientDataHash = hexToBytes(parameters.clientDataHash as string);
         const rpId = parameters.rpId as string;
 
         // Simplified CBOR encoding
@@ -409,17 +410,8 @@ export class FidoHandler implements CardHandler {
   }
 
   private buildSelectCommand(aid: string): number[] {
-    const aidBytes = this.hexToBytes(aid);
+    const aidBytes = hexToBytes(aid);
     return [0x00, 0xa4, 0x04, 0x00, aidBytes.length, ...aidBytes];
-  }
-
-  private hexToBytes(hex: string): number[] {
-    const cleanHex = hex.replace(/\s/g, '');
-    const bytes: number[] = [];
-    for (let i = 0; i < cleanHex.length; i += 2) {
-      bytes.push(parseInt(cleanHex.substring(i, i + 2), 16));
-    }
-    return bytes;
   }
 
   // Simplified CBOR builders - would use a proper CBOR library in production

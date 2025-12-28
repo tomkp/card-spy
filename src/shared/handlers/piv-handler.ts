@@ -11,6 +11,7 @@ import type {
   DetectionResult,
   InterrogationResult,
 } from './types';
+import { hexToBytes } from '../tlv';
 
 /**
  * PIV Application ID.
@@ -315,12 +316,12 @@ export class PivHandler implements CardHandler {
   }
 
   private buildSelectCommand(aid: string): number[] {
-    const aidBytes = this.hexToBytes(aid);
+    const aidBytes = hexToBytes(aid);
     return [0x00, 0xa4, 0x04, 0x00, aidBytes.length, ...aidBytes];
   }
 
   private buildGetDataCommand(tag: string): number[] {
-    const tagBytes = this.hexToBytes(tag);
+    const tagBytes = hexToBytes(tag);
     // GET DATA: 00 CB 3F FF Lc [5C len tag] Le
     const data = [0x5c, tagBytes.length, ...tagBytes];
     return [0x00, 0xcb, 0x3f, 0xff, data.length, ...data, 0x00];
@@ -334,14 +335,5 @@ export class PivHandler implements CardHandler {
     }
     // VERIFY: 00 20 00 80 08 [PIN]
     return [0x00, 0x20, 0x00, 0x80, 0x08, ...pinBytes];
-  }
-
-  private hexToBytes(hex: string): number[] {
-    const cleanHex = hex.replace(/\s/g, '');
-    const bytes: number[] = [];
-    for (let i = 0; i < cleanHex.length; i += 2) {
-      bytes.push(parseInt(cleanHex.substring(i, i + 2), 16));
-    }
-    return bytes;
   }
 }

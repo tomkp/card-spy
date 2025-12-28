@@ -8,6 +8,7 @@
  */
 
 import type { Response } from '../types';
+import { hexToBytes, bytesToHex } from '../tlv';
 import type {
   CardHandler,
   CardCommand,
@@ -450,7 +451,7 @@ export class JavaCardHandler implements CardHandler {
     sendCommand: (apdu: number[]) => Promise<Response>,
     aid: string
   ): Promise<Response> {
-    const aidBytes = this.hexToBytes(aid);
+    const aidBytes = hexToBytes(aid);
     // SELECT by DF name: 00 A4 04 00 Lc [AID] 00
     const apdu = [CLA_ISO, INS.SELECT, 0x04, 0x00, aidBytes.length, ...aidBytes, 0x00];
     const response = await sendCommand(apdu);
@@ -598,7 +599,7 @@ export class JavaCardHandler implements CardHandler {
 
       switch (tag) {
         case 0x4f: // AID
-          aid = this.bytesToHex(value);
+          aid = bytesToHex(value);
           break;
         case 0x9f70: // Life Cycle State (2-byte tag)
           // Handle 2-byte tag
@@ -637,18 +638,5 @@ export class JavaCardHandler implements CardHandler {
       response.sw1 === 0x61 ||
       (response.sw1 === 0x63 && response.sw2 === 0x10) // More data available
     );
-  }
-
-  private hexToBytes(hex: string): number[] {
-    const clean = hex.replace(/\s/g, '');
-    const bytes: number[] = [];
-    for (let i = 0; i < clean.length; i += 2) {
-      bytes.push(parseInt(clean.substring(i, i + 2), 16));
-    }
-    return bytes;
-  }
-
-  private bytesToHex(bytes: number[]): string {
-    return bytes.map((b) => b.toString(16).padStart(2, '0')).join('').toUpperCase();
   }
 }

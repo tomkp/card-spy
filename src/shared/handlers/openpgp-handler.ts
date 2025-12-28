@@ -4,6 +4,7 @@
  */
 
 import type { Response } from '../types';
+import { hexToBytes } from '../tlv';
 import type {
   CardHandler,
   CardCommand,
@@ -297,7 +298,7 @@ export class OpenPgpHandler implements CardHandler {
       }
 
       case 'internal-authenticate': {
-        const data = this.hexToBytes(parameters.data as string);
+        const data = hexToBytes(parameters.data as string);
         // INTERNAL AUTHENTICATE: 00 88 00 00 Lc [data] Le
         return sendCommand([0x00, 0x88, 0x00, 0x00, data.length, ...data, 0x00]);
       }
@@ -358,12 +359,12 @@ export class OpenPgpHandler implements CardHandler {
   }
 
   private buildSelectCommand(aid: string): number[] {
-    const aidBytes = this.hexToBytes(aid);
+    const aidBytes = hexToBytes(aid);
     return [0x00, 0xa4, 0x04, 0x00, aidBytes.length, ...aidBytes];
   }
 
   private buildGetDataCommand(tag: string): number[] {
-    const tagBytes = this.hexToBytes(tag);
+    const tagBytes = hexToBytes(tag);
     // GET DATA: 00 CA [P1 P2] Le
     // For OpenPGP, tag is split into P1 and P2
     const p1 = tagBytes.length > 1 ? tagBytes[0] : 0x00;
@@ -375,14 +376,5 @@ export class OpenPgpHandler implements CardHandler {
     const pinBytes = Array.from(pin).map((c) => c.charCodeAt(0));
     // VERIFY: 00 20 00 [PW ref] Lc [PIN]
     return [0x00, 0x20, 0x00, pwRef, pinBytes.length, ...pinBytes];
-  }
-
-  private hexToBytes(hex: string): number[] {
-    const cleanHex = hex.replace(/\s/g, '');
-    const bytes: number[] = [];
-    for (let i = 0; i < cleanHex.length; i += 2) {
-      bytes.push(parseInt(cleanHex.substring(i, i + 2), 16));
-    }
-    return bytes;
   }
 }

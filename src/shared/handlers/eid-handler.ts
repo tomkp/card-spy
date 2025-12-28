@@ -16,6 +16,7 @@
  */
 
 import type { Response } from '../types';
+import { hexToBytes, bytesToHex } from '../tlv';
 import type {
   CardHandler,
   CardCommand,
@@ -450,7 +451,7 @@ export class EidHandler implements CardHandler {
     sendCommand: (apdu: number[]) => Promise<Response>,
     aid: string
   ): Promise<Response> {
-    const aidBytes = this.hexToBytes(aid);
+    const aidBytes = hexToBytes(aid);
     const apdu = [0x00, 0xa4, 0x04, 0x0c, aidBytes.length, ...aidBytes];
     return sendCommand(apdu);
   }
@@ -459,7 +460,7 @@ export class EidHandler implements CardHandler {
     sendCommand: (apdu: number[]) => Promise<Response>,
     fileId: string
   ): Promise<Response> {
-    const fileBytes = this.hexToBytes(fileId);
+    const fileBytes = hexToBytes(fileId);
     // SELECT by file ID
     const apdu = [0x00, 0xa4, 0x02, 0x0c, fileBytes.length, ...fileBytes];
     return sendCommand(apdu);
@@ -575,7 +576,7 @@ export class EidHandler implements CardHandler {
       data: allData,
       sw1: 0x90,
       sw2: 0x00,
-      hex: this.bytesToHex(allData),
+      hex: bytesToHex(allData),
     };
   }
 
@@ -634,7 +635,7 @@ export class EidHandler implements CardHandler {
       data: infoBytes,
       sw1: 0x90,
       sw2: 0x00,
-      hex: this.bytesToHex(infoBytes),
+      hex: bytesToHex(infoBytes),
       meaning: infoStr,
     };
   }
@@ -675,20 +676,7 @@ export class EidHandler implements CardHandler {
       data: [],
       sw1,
       sw2,
-      hex: this.bytesToHex([sw1, sw2]),
+      hex: bytesToHex([sw1, sw2]),
     };
-  }
-
-  private hexToBytes(hex: string): number[] {
-    const clean = hex.replace(/\s/g, '');
-    const bytes: number[] = [];
-    for (let i = 0; i < clean.length; i += 2) {
-      bytes.push(parseInt(clean.substring(i, i + 2), 16));
-    }
-    return bytes;
-  }
-
-  private bytesToHex(bytes: number[]): string {
-    return bytes.map((b) => b.toString(16).padStart(2, '0')).join('').toUpperCase();
   }
 }
