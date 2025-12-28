@@ -16,6 +16,7 @@ import type {
   InterrogationResult,
   ApplicationInfo,
 } from './types';
+import { bytesToHex } from '../tlv';
 
 /**
  * SIM card class byte (GSM 11.11).
@@ -735,7 +736,7 @@ export class SimHandler implements CardHandler {
       const len = data[offset + 1];
 
       if (tag === 0x4f && len > 0) {
-        const aid = this.bytesToHex(data.slice(offset + 2, offset + 2 + len));
+        const aid = bytesToHex(data.slice(offset + 2, offset + 2 + len));
         let label: string | undefined;
 
         // Look for label (tag 50)
@@ -771,9 +772,5 @@ export class SimHandler implements CardHandler {
     if (aidUpper.startsWith('A0000000090001')) return 'Visa Payment';
     if (aidUpper.startsWith('A0000000041010')) return 'Mastercard Payment';
     return 'Unknown Application';
-  }
-
-  private bytesToHex(bytes: number[]): string {
-    return bytes.map((b) => b.toString(16).padStart(2, '0')).join('').toUpperCase();
   }
 }

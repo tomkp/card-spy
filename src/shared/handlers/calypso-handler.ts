@@ -23,6 +23,7 @@ import type {
   InterrogationResult,
   ApplicationInfo,
 } from './types';
+import { hexToBytes, bytesToHex } from '../tlv';
 
 /**
  * Calypso Application Identifiers.
@@ -488,7 +489,7 @@ export class CalypsoHandler implements CardHandler {
     sendCommand: (apdu: number[]) => Promise<Response>,
     aid: string
   ): Promise<Response> {
-    const aidBytes = this.hexToBytes(aid);
+    const aidBytes = hexToBytes(aid);
     // SELECT by DF name: 94 A4 04 00 Lc [AID]
     // Calypso uses CLA=0x94 for Rev 1/2, CLA=0x00 for Rev 3
     let apdu = [0x94, 0xa4, 0x04, 0x00, aidBytes.length, ...aidBytes];
@@ -520,7 +521,7 @@ export class CalypsoHandler implements CardHandler {
     sendCommand: (apdu: number[]) => Promise<Response>,
     lid: string
   ): Promise<Response> {
-    const lidBytes = this.hexToBytes(lid);
+    const lidBytes = hexToBytes(lid);
     // SELECT by LID: 94 A4 09 00 02 [LID]
     const apdu = [0x94, 0xa4, 0x09, 0x00, 0x02, ...lidBytes];
     return sendCommand(apdu);
@@ -530,7 +531,7 @@ export class CalypsoHandler implements CardHandler {
     sendCommand: (apdu: number[]) => Promise<Response>,
     tag: string
   ): Promise<Response> {
-    const tagBytes = this.hexToBytes(tag);
+    const tagBytes = hexToBytes(tag);
     // GET DATA: 94 CA [P1] [P2] 00
     const p1 = tagBytes.length > 1 ? tagBytes[0] : 0x00;
     const p2 = tagBytes.length > 1 ? tagBytes[1] : tagBytes[0];
@@ -567,7 +568,7 @@ export class CalypsoHandler implements CardHandler {
       data: allData,
       sw1: 0x90,
       sw2: 0x00,
-      hex: this.bytesToHex(allData),
+      hex: bytesToHex(allData),
     };
   }
 
@@ -594,7 +595,7 @@ export class CalypsoHandler implements CardHandler {
       data: allData,
       sw1: 0x90,
       sw2: 0x00,
-      hex: this.bytesToHex(allData),
+      hex: bytesToHex(allData),
     };
   }
 
@@ -626,7 +627,7 @@ export class CalypsoHandler implements CardHandler {
     const version = data[0];
 
     // Try to extract network/operator ID (typically bytes 1-3)
-    const networkId = this.bytesToHex(data.slice(1, 4));
+    const networkId = bytesToHex(data.slice(1, 4));
 
     return `v${version}, Network: ${networkId}`;
   }
@@ -655,16 +656,4 @@ export class CalypsoHandler implements CardHandler {
       .join('');
   }
 
-  private hexToBytes(hex: string): number[] {
-    const clean = hex.replace(/\s/g, '');
-    const bytes: number[] = [];
-    for (let i = 0; i < clean.length; i += 2) {
-      bytes.push(parseInt(clean.substring(i, i + 2), 16));
-    }
-    return bytes;
-  }
-
-  private bytesToHex(bytes: number[]): string {
-    return bytes.map((b) => b.toString(16).padStart(2, '0')).join('').toUpperCase();
-  }
 }

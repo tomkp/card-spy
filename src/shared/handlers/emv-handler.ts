@@ -12,7 +12,7 @@ import type {
   InterrogationResult,
   ApplicationInfo,
 } from './types';
-import { parseTlv, findTag, findTags, getValueHex } from '../tlv';
+import { parseTlv, findTag, findTags, getValueHex, hexToBytes } from '../tlv';
 import {
   buildSelectCommand,
   buildReadRecordCommand,
@@ -288,7 +288,7 @@ export class EmvHandler implements CardHandler {
 
       case 'get-data': {
         const tag = parameters.tag as string;
-        const tagBytes = this.hexToBytes(tag);
+        const tagBytes = hexToBytes(tag);
         // GET DATA: 80 CA P1 P2 00
         const p1 = tagBytes.length > 1 ? tagBytes[0] : 0x00;
         const p2 = tagBytes.length > 1 ? tagBytes[1] : tagBytes[0];
@@ -311,7 +311,7 @@ export class EmvHandler implements CardHandler {
       }
 
       case 'internal-authenticate': {
-        const data = this.hexToBytes(parameters.data as string);
+        const data = hexToBytes(parameters.data as string);
         // INTERNAL AUTHENTICATE: 00 88 00 00 Lc [data] 00
         return sendCommand([0x00, 0x88, 0x00, 0x00, data.length, ...data, 0x00]);
       }
@@ -508,15 +508,6 @@ export class EmvHandler implements CardHandler {
         }
       }
     }
-  }
-
-  private hexToBytes(hex: string): number[] {
-    const cleanHex = hex.replace(/\s/g, '');
-    const bytes: number[] = [];
-    for (let i = 0; i < cleanHex.length; i += 2) {
-      bytes.push(parseInt(cleanHex.substring(i, i + 2), 16));
-    }
-    return bytes;
   }
 
   private buildPinBlock(pin: string): number[] {

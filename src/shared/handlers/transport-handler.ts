@@ -4,6 +4,7 @@
  */
 
 import type { Response } from '../types';
+import { hexToBytes, bytesToHex } from '../tlv';
 import type {
   CardHandler,
   CardCommand,
@@ -267,7 +268,7 @@ export class TransportHandler implements CardHandler {
             confidence: 70,
             cardType: 'Possible MIFARE DESFire',
             metadata: {
-              uid: this.bytesToHex(uidResponse.data),
+              uid: bytesToHex(uidResponse.data),
             },
           };
         }
@@ -341,7 +342,7 @@ export class TransportHandler implements CardHandler {
       }
 
       case 'select-application': {
-        const aid = this.hexToBytes(parameters.aid as string);
+        const aid = hexToBytes(parameters.aid as string);
         if (aid.length !== 3) {
           return this.createErrorResponse(0x6a, 0x80);
         }
@@ -426,7 +427,7 @@ export class TransportHandler implements CardHandler {
         // Check for quick-select commands
         if (commandId.startsWith('quick-select-')) {
           const aid = commandId.replace('quick-select-', '');
-          const aidBytes = this.hexToBytes(aid);
+          const aidBytes = hexToBytes(aid);
           const result = await this.sendDesfireCommand(
             sendCommand,
             DESFIRE_COMMANDS.SELECT_APPLICATION,
@@ -447,7 +448,7 @@ export class TransportHandler implements CardHandler {
       // Step 1: Get card UID
       const uidResponse = await sendCommand([0xff, 0xca, 0x00, 0x00, 0x00]);
       const uid =
-        uidResponse.sw1 === 0x90 ? this.bytesToHex(uidResponse.data) : 'Unknown';
+        uidResponse.sw1 === 0x90 ? bytesToHex(uidResponse.data) : 'Unknown';
 
       // Step 2: Get card version
       const versionResult = await this.sendDesfireCommand(
@@ -471,7 +472,7 @@ export class TransportHandler implements CardHandler {
         // AIDs are 3 bytes each
         for (let i = 0; i < appResult.data.length; i += 3) {
           const aidBytes = appResult.data.slice(i, i + 3);
-          const aid = this.bytesToHex(aidBytes);
+          const aid = bytesToHex(aidBytes);
 
           this.discoveredApplications.push({
             aid,
@@ -486,7 +487,7 @@ export class TransportHandler implements CardHandler {
         const selectResult = await this.sendDesfireCommand(
           sendCommand,
           DESFIRE_COMMANDS.SELECT_APPLICATION,
-          this.hexToBytes(app.aid)
+          hexToBytes(app.aid)
         );
 
         if (selectResult.success) {
@@ -615,8 +616,8 @@ export class TransportHandler implements CardHandler {
       softwareMinorVersion: sw[4] || 0,
       softwareStorageSize: sw[5] || 0,
       softwareProtocol: sw[6] || 0,
-      uid: prod.length >= 7 ? this.bytesToHex(prod.slice(0, 7)) : '',
-      batchNo: prod.length >= 12 ? this.bytesToHex(prod.slice(7, 12)) : '',
+      uid: prod.length >= 7 ? bytesToHex(prod.slice(0, 7)) : '',
+      batchNo: prod.length >= 12 ? bytesToHex(prod.slice(7, 12)) : '',
       productionWeek: prod[12] || 0,
       productionYear: prod[13] || 0,
     };
@@ -667,7 +668,7 @@ export class TransportHandler implements CardHandler {
     data: number[];
     statusCode: number;
   }): Response {
-    const hex = this.bytesToHex([...result.data, 0x91, result.statusCode]);
+    const hex = bytesToHex([...result.data, 0x91, result.statusCode]);
     return {
       id: `desfire-${Date.now()}`,
       timestamp: Date.now(),
@@ -688,20 +689,7 @@ export class TransportHandler implements CardHandler {
       data: [],
       sw1,
       sw2,
-      hex: this.bytesToHex([sw1, sw2]),
+      hex: bytesToHex([sw1, sw2]),
     };
-  }
-
-  private hexToBytes(hex: string): number[] {
-    const clean = hex.replace(/\s/g, '');
-    const bytes: number[] = [];
-    for (let i = 0; i < clean.length; i += 2) {
-      bytes.push(parseInt(clean.substring(i, i + 2), 16));
-    }
-    return bytes;
-  }
-
-  private bytesToHex(bytes: number[]): string {
-    return bytes.map((b) => b.toString(16).padStart(2, '0')).join('').toUpperCase();
   }
 }

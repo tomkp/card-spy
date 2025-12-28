@@ -4,6 +4,8 @@
  * main and renderer processes.
  */
 
+import { hexToBytes } from './tlv';
+
 /**
  * AFL (Application File Locator) entry structure
  */
@@ -128,20 +130,6 @@ export function buildSelectPseCommand(): number[] {
  */
 export function buildSelectPpseCommand(): number[] {
   return buildSelectCommand(stringToBytes(PPSE_NAME));
-}
-
-/**
- * Convert hex string to byte array.
- * @param hex - Hex string (with or without spaces)
- * @returns Byte array
- */
-function hexToBytes(hex: string): number[] {
-  const cleanHex = hex.replace(/\s/g, '');
-  const bytes: number[] = [];
-  for (let i = 0; i < cleanHex.length; i += 2) {
-    bytes.push(parseInt(cleanHex.substring(i, i + 2), 16));
-  }
-  return bytes;
 }
 
 /**
