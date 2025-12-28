@@ -1,7 +1,7 @@
 import { BrowserWindow } from 'electron';
 import { Devices, Card, Reader } from 'smartcard';
 import type { Device, Command, Response } from '../shared/types';
-import { getStatusWordInfo } from '../shared/apdu';
+import { getStatusWordInfo, parseHexInput } from '../shared/apdu';
 import {
   globalRegistry,
   registerBuiltinHandlers,
@@ -187,14 +187,10 @@ export class SmartcardService {
   }
 
   async repl(command: string): Promise<Response> {
-    // Parse hex string to byte array
-    const cleaned = command.replace(/0x/gi, '').replace(/,/g, '').replace(/\s+/g, '').toUpperCase();
-
-    const bytes: number[] = [];
-    for (let i = 0; i < cleaned.length; i += 2) {
-      bytes.push(parseInt(cleaned.substring(i, i + 2), 16));
+    const bytes = parseHexInput(command);
+    if (!bytes) {
+      throw new Error('Invalid hex input: must be valid hex characters with even length');
     }
-
     return this.sendCommand(bytes);
   }
 
