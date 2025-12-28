@@ -21,6 +21,7 @@ import { CardInfoHeader } from './components/CardInfoHeader';
 import { Repl, ReplHandle } from './components/Repl';
 import { KeyboardShortcutsHelp } from './components/KeyboardShortcutsHelp';
 import { ApplicationsPanel, DiscoveredApp } from './components/ApplicationsPanel';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { parseTlv } from '../shared/tlv';
 import { useKeyboardShortcuts, KeyboardShortcut } from './hooks/useKeyboardShortcuts';
 
@@ -442,22 +443,26 @@ export function App() {
 
               {/* Command Panel */}
               <div className="flex-1 overflow-hidden">
-                <CommandPanel
-                  handlers={activeHandlers}
-                  activeHandlerId={activeHandlerId}
-                  onSelectHandler={handleSelectHandler}
-                  onExecuteCommand={handleExecuteCommand}
-                />
+                <ErrorBoundary>
+                  <CommandPanel
+                    handlers={activeHandlers}
+                    activeHandlerId={activeHandlerId}
+                    onSelectHandler={handleSelectHandler}
+                    onExecuteCommand={handleExecuteCommand}
+                  />
+                </ErrorBoundary>
               </div>
             </div>
 
             {/* Reader Panel - Center */}
-            <ReaderPanel
-              session={activeSession}
-              onInterrogate={handleInterrogate}
-              onClear={handleClearLog}
-              onShowShortcuts={() => setShowShortcutHelp(true)}
-            />
+            <ErrorBoundary>
+              <ReaderPanel
+                session={activeSession}
+                onInterrogate={handleInterrogate}
+                onClear={handleClearLog}
+                onShowShortcuts={() => setShowShortcutHelp(true)}
+              />
+            </ErrorBoundary>
           </>
         ) : devices.length > 0 ? (
           <div className="flex-1 flex items-center justify-center text-muted-foreground">
