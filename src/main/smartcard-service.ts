@@ -1,7 +1,13 @@
 import { BrowserWindow } from 'electron';
 import { Devices, Card, Reader } from 'smartcard';
-import type { Device, Command, Response, TlvNode } from '../shared/types';
-import { parseTlv, findTag, findTags, getValueHex } from '../shared/tlv';
+import type { Device, Command, Response } from '../shared/types';
+import {
+  globalRegistry,
+  registerBuiltinHandlers,
+  type CardHandler,
+  type DetectedHandler,
+  type CardCommand,
+} from '../shared/handlers';
 
 export class SmartcardService {
   private devices: Devices;
@@ -11,9 +17,15 @@ export class SmartcardService {
   private activeReaderName: string | null = null;
   private commandId = 0;
 
+  // Handler state per reader
+  private detectedHandlers: Map<string, DetectedHandler[]> = new Map();
+  private activeHandlers: Map<string, CardHandler> = new Map();
+
   constructor(window: BrowserWindow) {
     this.window = window;
     this.devices = new Devices();
+    // Register all built-in handlers
+    registerBuiltinHandlers();
   }
 
   start(): void {
@@ -29,25 +41,31 @@ export class SmartcardService {
       this.send('device-deactivated', { name: reader.name, isActivated: false });
     });
 
-    this.devices.on('card-inserted', ({ reader, card }: { reader: Reader; card: Card }) => {
+    this.devices.on('card-inserted', async ({ reader, card }: { reader: Reader; card: Card }) => {
       console.log('[card-inserted] Reader:', reader.name, 'ATR:', card.atr?.toString('hex'));
       this.cards.set(reader.name, card);
       // Auto-select this reader if none selected
       if (!this.activeReaderName) {
         this.activeReaderName = reader.name;
       }
+      const atr = card.atr?.toString('hex') ?? '';
       const payload = {
-        atr: card.atr?.toString('hex') ?? '',
+        atr,
         protocol: card.protocol,
         deviceName: reader.name,
       };
       console.log('[card-inserted] Sending to renderer:', payload);
       this.send('card-inserted', payload);
+
+      // Detect card handlers
+      await this.detectCardHandlers(reader.name, atr);
     });
 
     this.devices.on('card-removed', ({ reader }: { reader: Reader }) => {
       console.log('[card-removed] Reader:', reader.name);
       this.cards.delete(reader.name);
+      this.detectedHandlers.delete(reader.name);
+      this.activeHandlers.delete(reader.name);
       if (this.activeReaderName === reader.name) {
         // Switch to another reader with a card, if any
         const nextReader = Array.from(this.cards.keys())[0] || null;
@@ -72,6 +90,8 @@ export class SmartcardService {
     this.devices.stop();
     this.readers.clear();
     this.cards.clear();
+    this.detectedHandlers.clear();
+    this.activeHandlers.clear();
     this.activeReaderName = null;
     console.log('Smartcard service stopped');
   }
@@ -177,226 +197,171 @@ export class SmartcardService {
     return this.sendCommand(bytes);
   }
 
+  /**
+   * Detect card handlers for a card.
+   * Can be called on card insert or for existing cards on startup.
+   */
+  async detectCardHandlers(readerName: string, atr: string): Promise<void> {
+    const prevActiveReader = this.activeReaderName;
+    this.activeReaderName = readerName;
+
+    try {
+      const sendCommand = this.sendCommand.bind(this);
+      const handlers = await globalRegistry.detectHandlers(atr, sendCommand);
+
+      this.detectedHandlers.set(readerName, handlers);
+
+      // Set the best handler as active
+      if (handlers.length > 0) {
+        this.activeHandlers.set(readerName, handlers[0].handler);
+      }
+
+      // Notify renderer of detected handlers
+      this.send('handlers-detected', {
+        deviceName: readerName,
+        handlers: handlers.map((h) => ({
+          id: h.handler.id,
+          name: h.handler.name,
+          description: h.handler.description,
+          cardType: h.result.cardType,
+          confidence: h.result.confidence,
+          commands: h.handler.getCommands(h.result.metadata),
+        })),
+      });
+
+      console.log(
+        `Detected ${handlers.length} handlers for ${readerName}:`,
+        handlers.map((h) => h.handler.name)
+      );
+    } catch (error) {
+      console.error('Handler detection error:', error);
+    } finally {
+      this.activeReaderName = prevActiveReader || readerName;
+    }
+  }
+
+  /**
+   * Get available commands for the active card.
+   */
+  getAvailableCommands(): CardCommand[] {
+    if (!this.activeReaderName) return [];
+
+    const handler = this.activeHandlers.get(this.activeReaderName);
+    if (!handler) return [];
+
+    const detected = this.detectedHandlers.get(this.activeReaderName);
+    const metadata = detected?.find((h) => h.handler.id === handler.id)?.result.metadata;
+
+    return handler.getCommands(metadata);
+  }
+
+  /**
+   * Get detected handlers for the active card.
+   */
+  getDetectedHandlers(): Array<{ id: string; name: string; cardType?: string }> {
+    if (!this.activeReaderName) return [];
+
+    const handlers = this.detectedHandlers.get(this.activeReaderName) || [];
+    return handlers.map((h) => ({
+      id: h.handler.id,
+      name: h.handler.name,
+      cardType: h.result.cardType,
+    }));
+  }
+
+  /**
+   * Set the active handler for the current card.
+   */
+  setActiveHandler(handlerId: string): boolean {
+    if (!this.activeReaderName) return false;
+
+    const handlers = this.detectedHandlers.get(this.activeReaderName) || [];
+    const handler = handlers.find((h) => h.handler.id === handlerId);
+
+    if (handler) {
+      this.activeHandlers.set(this.activeReaderName, handler.handler);
+      this.send('active-handler-changed', {
+        deviceName: this.activeReaderName,
+        handlerId,
+        commands: handler.handler.getCommands(handler.result.metadata),
+      });
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Execute a handler command.
+   */
+  async executeCommand(
+    commandId: string,
+    parameters: Record<string, string | number | boolean> = {}
+  ): Promise<Response> {
+    if (!this.activeReaderName) {
+      throw new Error('No active reader');
+    }
+
+    const handler = this.activeHandlers.get(this.activeReaderName);
+    if (!handler) {
+      throw new Error('No active handler');
+    }
+
+    const card = this.cards.get(this.activeReaderName);
+    if (!card) {
+      throw new Error('No card inserted');
+    }
+
+    const context = {
+      sendCommand: this.sendCommand.bind(this),
+      atr: card.atr?.toString('hex') ?? '',
+      protocol: card.protocol ?? 0,
+      parameters,
+    };
+
+    return handler.executeCommand(commandId, context);
+  }
+
+  /**
+   * Interrogate the card using the active handler.
+   */
   async interrogate(): Promise<void> {
-    try {
-      // Step 1: Select PSE (1PAY.SYS.DDF01) for contact cards
-      const pseResponse = await this.selectPse();
-
-      if (pseResponse) {
-        // Step 2: Find SFI and read records to discover applications
-        const applicationIds = await this.discoverApplications(pseResponse);
-
-        // Step 3: Select each application and run GPO + read records
-        for (const aid of applicationIds) {
-          await this.selectAndReadApplication(aid);
-        }
-      }
-    } catch (error) {
-      console.error('Interrogation error:', error);
-    }
-  }
-
-  /**
-   * Select PSE (Payment System Environment) or PPSE for contactless
-   */
-  private async selectPse(): Promise<Response | null> {
-    // PSE: 1PAY.SYS.DDF01
-    const pse = [
-      0x00, 0xa4, 0x04, 0x00, 0x0e, 0x31, 0x50, 0x41, 0x59, 0x2e, 0x53, 0x59, 0x53, 0x2e, 0x44,
-      0x44, 0x46, 0x30, 0x31, 0x00,
-    ];
-
-    try {
-      const response = await this.sendCommand(pse);
-      if (response.sw1 === 0x90 || response.sw1 === 0x61) {
-        console.log('PSE selected successfully');
-        return response;
-      }
-    } catch {
-      console.log('PSE selection failed, trying PPSE...');
-    }
-
-    // PPSE: 2PAY.SYS.DDF01 (for contactless)
-    const ppse = [
-      0x00, 0xa4, 0x04, 0x00, 0x0e, 0x32, 0x50, 0x41, 0x59, 0x2e, 0x53, 0x59, 0x53, 0x2e, 0x44,
-      0x44, 0x46, 0x30, 0x31, 0x00,
-    ];
-
-    try {
-      const response = await this.sendCommand(ppse);
-      if (response.sw1 === 0x90 || response.sw1 === 0x61) {
-        console.log('PPSE selected successfully');
-        return response;
-      }
-    } catch {
-      console.error('PPSE selection also failed');
-    }
-
-    return null;
-  }
-
-  /**
-   * Discover applications by reading PSE records
-   */
-  private async discoverApplications(pseResponse: Response): Promise<string[]> {
-    const applicationIds: string[] = [];
-
-    // Parse PSE response to find SFI (tag 88)
-    const tlvNodes = parseTlv(pseResponse.data);
-    const sfiNode = findTag(tlvNodes, 0x88);
-
-    if (!sfiNode) {
-      console.log('No SFI found in PSE response, using default SFI 1');
-    }
-
-    const sfi = sfiNode ? (sfiNode.value as number[])[0] : 1;
-    console.log(`Using SFI: ${sfi}`);
-
-    // Read records from the SFI
-    for (let record = 1; record <= 10; record++) {
-      try {
-        const p2 = (sfi << 3) | 0x04;
-        const response = await this.sendCommand([0x00, 0xb2, record, p2, 0x00]);
-
-        if (response.sw1 !== 0x90 && response.sw1 !== 0x61) {
-          break; // No more records
-        }
-
-        // Parse record and find Application Templates (tag 61)
-        const recordTlv = parseTlv(response.data);
-        const appTemplates = findTags(recordTlv, 0x61);
-
-        for (const appTemplate of appTemplates) {
-          // Find AID (tag 4F) within application template
-          const aidNode = findTag([appTemplate], 0x4f);
-          if (aidNode) {
-            const aid = getValueHex(aidNode);
-            applicationIds.push(aid);
-
-            // Send emv-application-found event
-            this.send('emv-application-found', {
-              aid,
-              tlv: appTemplate,
-            });
-
-            console.log(`Found application: ${aid}`);
-          }
-        }
-      } catch {
-        break;
-      }
-    }
-
-    return applicationIds;
-  }
-
-  /**
-   * Select an application by AID, run GPO, and read records
-   */
-  private async selectAndReadApplication(aid: string): Promise<void> {
-    // Convert AID hex string to bytes
-    const aidBytes: number[] = [];
-    for (let i = 0; i < aid.length; i += 2) {
-      aidBytes.push(parseInt(aid.substring(i, i + 2), 16));
-    }
-
-    // SELECT command: 00 A4 04 00 [len] [AID] 00
-    const selectCmd = [0x00, 0xa4, 0x04, 0x00, aidBytes.length, ...aidBytes, 0x00];
-
-    try {
-      const selectResponse = await this.sendCommand(selectCmd);
-
-      if (selectResponse.sw1 !== 0x90 && selectResponse.sw1 !== 0x61) {
-        console.log(`Failed to select application ${aid}`);
-        return;
-      }
-
-      // Send application-selected event
-      this.send('application-selected', { aid });
-
-      // GET PROCESSING OPTIONS (GPO): 80 A8 00 00 02 83 00 00
-      // Using empty PDOL for simplicity
-      const gpoCmd = [0x80, 0xa8, 0x00, 0x00, 0x02, 0x83, 0x00, 0x00];
-
-      try {
-        const gpoResponse = await this.sendCommand(gpoCmd);
-
-        if (gpoResponse.sw1 === 0x90 || gpoResponse.sw1 === 0x61) {
-          // Parse AFL (Application File Locator) from GPO response
-          const gpoTlv = parseTlv(gpoResponse.data);
-          await this.readRecordsFromAfl(gpoTlv);
-        }
-      } catch {
-        console.log('GPO failed, reading default SFIs');
-        // Fallback: read from common SFIs
-        await this.readDefaultRecords();
-      }
-    } catch (error) {
-      console.error(`Error selecting application ${aid}:`, error);
-    }
-  }
-
-  /**
-   * Read records based on AFL (Application File Locator)
-   */
-  private async readRecordsFromAfl(gpoTlv: TlvNode[]): Promise<void> {
-    // AFL can be in tag 94 (in template 77) or as raw bytes in template 80
-    const aflNode = findTag(gpoTlv, 0x94);
-    let aflBytes: number[] = [];
-
-    if (aflNode) {
-      aflBytes = aflNode.value as number[];
-    } else {
-      // Check for Format 1 response (tag 80)
-      const format1 = findTag(gpoTlv, 0x80);
-      if (format1) {
-        const data = format1.value as number[];
-        // First 2 bytes are AIP, rest is AFL
-        if (data.length > 2) {
-          aflBytes = data.slice(2);
-        }
-      }
-    }
-
-    if (aflBytes.length === 0) {
-      console.log('No AFL found, reading default records');
-      await this.readDefaultRecords();
+    if (!this.activeReaderName) {
+      console.error('No active reader for interrogation');
       return;
     }
 
-    // AFL is structured as 4-byte entries: SFI, First Record, Last Record, Offline Data Auth Records
-    for (let i = 0; i < aflBytes.length; i += 4) {
-      const sfi = (aflBytes[i] >> 3) & 0x1f;
-      const firstRecord = aflBytes[i + 1];
-      const lastRecord = aflBytes[i + 2];
-
-      for (let record = firstRecord; record <= lastRecord; record++) {
-        try {
-          const p2 = (sfi << 3) | 0x04;
-          await this.sendCommand([0x00, 0xb2, record, p2, 0x00]);
-        } catch {
-          break;
-        }
-      }
+    const handler = this.activeHandlers.get(this.activeReaderName);
+    if (!handler) {
+      console.error('No handler available for interrogation');
+      return;
     }
-  }
 
-  /**
-   * Read records from default SFIs when AFL is not available
-   */
-  private async readDefaultRecords(): Promise<void> {
-    for (let sfi = 1; sfi <= 3; sfi++) {
-      for (let record = 1; record <= 5; record++) {
-        try {
-          const p2 = (sfi << 3) | 0x04;
-          const response = await this.sendCommand([0x00, 0xb2, record, p2, 0x00]);
-          if (response.sw1 !== 0x90 && response.sw1 !== 0x61) {
-            break;
-          }
-        } catch {
-          break;
+    try {
+      const result = await handler.interrogate(this.sendCommand.bind(this));
+
+      if (result.success && result.applications) {
+        for (const app of result.applications) {
+          this.send('application-found', {
+            handlerId: handler.id,
+            ...app,
+          });
         }
       }
+
+      this.send('interrogation-complete', {
+        deviceName: this.activeReaderName,
+        handlerId: handler.id,
+        success: result.success,
+        error: result.error,
+      });
+    } catch (error) {
+      console.error('Interrogation error:', error);
+      this.send('interrogation-complete', {
+        deviceName: this.activeReaderName,
+        handlerId: handler.id,
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
     }
   }
 

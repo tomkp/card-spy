@@ -53,6 +53,11 @@ function cleanup(): void {
   ipcMain.removeHandler('send-command');
   ipcMain.removeHandler('interrogate');
   ipcMain.removeHandler('repl');
+  ipcMain.removeHandler('get-available-commands');
+  ipcMain.removeHandler('get-detected-handlers');
+  ipcMain.removeHandler('set-active-handler');
+  ipcMain.removeHandler('execute-command');
+  ipcMain.removeHandler('detect-handlers');
 }
 
 app.on('window-all-closed', () => {
@@ -95,4 +100,25 @@ ipcMain.handle('interrogate', async () => {
 
 ipcMain.handle('repl', async (_, command: string) => {
   return smartcardService?.repl(command);
+});
+
+// Handler IPC handlers
+ipcMain.handle('get-available-commands', () => {
+  return smartcardService?.getAvailableCommands() ?? [];
+});
+
+ipcMain.handle('get-detected-handlers', () => {
+  return smartcardService?.getDetectedHandlers() ?? [];
+});
+
+ipcMain.handle('set-active-handler', (_, handlerId: string) => {
+  return smartcardService?.setActiveHandler(handlerId) ?? false;
+});
+
+ipcMain.handle('execute-command', async (_, commandId: string, parameters?: Record<string, unknown>) => {
+  return smartcardService?.executeCommand(commandId, parameters as Record<string, string | number | boolean>);
+});
+
+ipcMain.handle('detect-handlers', async (_, deviceName: string, atr: string) => {
+  await smartcardService?.detectCardHandlers(deviceName, atr);
 });
