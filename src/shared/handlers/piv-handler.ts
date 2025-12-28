@@ -12,6 +12,7 @@ import type {
   InterrogationResult,
 } from './types';
 import { hexToBytes } from '../tlv';
+import { buildSelectCommand } from '../emv';
 
 /**
  * PIV Application ID.
@@ -185,7 +186,7 @@ export class PivHandler implements CardHandler {
   ): Promise<DetectionResult> {
     try {
       // Try to select PIV application
-      const selectCmd = this.buildSelectCommand(PIV_AID);
+      const selectCmd = buildSelectCommand(PIV_AID);
       const response = await sendCommand(selectCmd);
 
       if (response.sw1 === 0x90 || response.sw1 === 0x61) {
@@ -212,7 +213,7 @@ export class PivHandler implements CardHandler {
 
     switch (commandId) {
       case 'select-piv':
-        return sendCommand(this.buildSelectCommand(PIV_AID));
+        return sendCommand(buildSelectCommand(PIV_AID));
 
       case 'get-chuid':
         return sendCommand(this.buildGetDataCommand(PIV_OBJECTS.CARD_HOLDER_UNIQUE_ID));
@@ -266,7 +267,7 @@ export class PivHandler implements CardHandler {
   ): Promise<InterrogationResult> {
     try {
       // Select PIV application
-      const selectResponse = await sendCommand(this.buildSelectCommand(PIV_AID));
+      const selectResponse = await sendCommand(buildSelectCommand(PIV_AID));
       if (selectResponse.sw1 !== 0x90 && selectResponse.sw1 !== 0x61) {
         return { success: false, error: 'Failed to select PIV application' };
       }
@@ -313,11 +314,6 @@ export class PivHandler implements CardHandler {
         error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
-  }
-
-  private buildSelectCommand(aid: string): number[] {
-    const aidBytes = hexToBytes(aid);
-    return [0x00, 0xa4, 0x04, 0x00, aidBytes.length, ...aidBytes];
   }
 
   private buildGetDataCommand(tag: string): number[] {
