@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { appReducer, initialState, type AppState, type AppAction } from './appState';
-import type { Device, Card, ReaderSession, Command, Response } from '../../shared/types';
+import type { Device, Card, ReaderSession, Command, Response, DetectedHandlerInfo } from '../../shared/types';
+import type { DiscoveredApp } from '../components/ApplicationsPanel';
 
 function createDevice(name: string): Device {
-  return { name };
+  return { name, isActivated: true };
 }
 
 function createCard(deviceName: string, atr = '3B00'): Card {
@@ -12,6 +13,22 @@ function createCard(deviceName: string, atr = '3B00'): Card {
 
 function createSession(device: Device, card: Card | null = null): ReaderSession {
   return { device, card, log: [] };
+}
+
+function createCommand(id: string): Command {
+  return { id, apdu: [0x00, 0xa4, 0x04, 0x00], timestamp: Date.now(), hex: '00A40400' };
+}
+
+function createResponse(id: string): Response {
+  return { id, sw1: 0x90, sw2: 0x00, data: [], timestamp: Date.now(), hex: '9000' };
+}
+
+function createHandler(id: string, name: string): DetectedHandlerInfo {
+  return { id, name, description: `${name} description`, confidence: 90, commands: [] };
+}
+
+function createApp(aid: string, name: string): DiscoveredApp {
+  return { aid, name, handlerId: 'test-handler' };
 }
 
 describe('appReducer', () => {
@@ -138,8 +155,8 @@ describe('appReducer', () => {
         activeDevice: device,
         cards: new Map([['Reader 1', card]]),
         sessions: new Map([['Reader 1', createSession(device, card)]]),
-        applications: new Map([['Reader 1', [{ aid: '1234', name: 'Test' }]]]),
-        handlers: new Map([['Reader 1', [{ id: 'h1', name: 'Handler 1' }]]]),
+        applications: new Map([['Reader 1', [createApp('1234', 'Test')]]]),
+        handlers: new Map([['Reader 1', [createHandler('h1', 'Handler 1')]]]),
         selectedApplication: '1234',
         activeHandlerId: 'h1',
       };
@@ -166,7 +183,7 @@ describe('appReducer', () => {
         sessions: new Map([['Reader 1', createSession(device)]]),
       };
 
-      const command: Command = { id: 'cmd-1', apdu: [0x00, 0xa4, 0x04, 0x00] };
+      const command = createCommand('cmd-1');
       const action: AppAction = {
         type: 'COMMAND_ISSUED',
         deviceName: 'Reader 1',
@@ -183,7 +200,7 @@ describe('appReducer', () => {
   describe('RESPONSE_RECEIVED', () => {
     it('should attach response to matching command', () => {
       const device = createDevice('Reader 1');
-      const command: Command = { id: 'cmd-1', apdu: [0x00, 0xa4, 0x04, 0x00] };
+      const command = createCommand('cmd-1');
       const state: AppState = {
         ...initialState,
         devices: [device],
@@ -199,7 +216,7 @@ describe('appReducer', () => {
         ]),
       };
 
-      const response: Response = { id: 'cmd-1', sw1: 0x90, sw2: 0x00, data: [] };
+      const response = createResponse('cmd-1');
       const action: AppAction = {
         type: 'RESPONSE_RECEIVED',
         deviceName: 'Reader 1',
@@ -271,8 +288,8 @@ describe('appReducer', () => {
     it('should set handlers and active handler for active device', () => {
       const device = createDevice('Reader 1');
       const handlers = [
-        { id: 'emv', name: 'EMV Handler' },
-        { id: 'piv', name: 'PIV Handler' },
+        createHandler('emv', 'EMV Handler'),
+        createHandler('piv', 'PIV Handler'),
       ];
       const state: AppState = {
         ...initialState,
@@ -295,7 +312,7 @@ describe('appReducer', () => {
     it('should not set active handler if not the active device', () => {
       const device1 = createDevice('Reader 1');
       const device2 = createDevice('Reader 2');
-      const handlers = [{ id: 'emv', name: 'EMV Handler' }];
+      const handlers = [createHandler('emv', 'EMV Handler')];
       const state: AppState = {
         ...initialState,
         devices: [device1, device2],
@@ -326,7 +343,7 @@ describe('appReducer', () => {
       const action: AppAction = {
         type: 'APPLICATION_FOUND',
         deviceName: 'Reader 1',
-        app: { aid: 'A0000000041010', name: 'Visa' },
+        app: createApp('A0000000041010', 'Visa'),
       };
 
       const result = appReducer(state, action);
@@ -340,13 +357,13 @@ describe('appReducer', () => {
       const state: AppState = {
         ...initialState,
         devices: [device],
-        applications: new Map([['Reader 1', [{ aid: 'A0000000041010', name: 'Visa' }]]]),
+        applications: new Map([['Reader 1', [createApp('A0000000041010', 'Visa')]]]),
       };
 
       const action: AppAction = {
         type: 'APPLICATION_FOUND',
         deviceName: 'Reader 1',
-        app: { aid: 'A0000000041010', name: 'Visa' },
+        app: createApp('A0000000041010', 'Visa'),
       };
 
       const result = appReducer(state, action);

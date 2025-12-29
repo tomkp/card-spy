@@ -1,6 +1,14 @@
 import { BrowserWindow } from 'electron';
-import { Devices, Card, Reader } from 'smartcard';
+import { Devices } from 'smartcard';
+import type { CardInterface } from 'smartcard';
 import type { Device, Command, Response } from '../shared/types';
+
+// Reader info from device events (not exported from smartcard yet)
+interface ReaderEventInfo {
+  name: string;
+  state?: number;
+  atr?: Buffer | null;
+}
 import { getStatusWordInfo, parseHexInput } from '../shared/apdu';
 import {
   globalRegistry,
@@ -13,8 +21,8 @@ import {
 export class SmartcardService {
   private devices: Devices;
   private window: BrowserWindow;
-  private readers: Map<string, Reader> = new Map();
-  private cards: Map<string, Card> = new Map(); // Cards per reader
+  private readers: Map<string, ReaderEventInfo> = new Map();
+  private cards: Map<string, CardInterface> = new Map(); // Cards per reader
   private activeReaderName: string | null = null;
   private commandId = 0;
 
@@ -30,19 +38,19 @@ export class SmartcardService {
   }
 
   start(): void {
-    this.devices.on('reader-attached', (reader: Reader) => {
+    this.devices.on('reader-attached', (reader: ReaderEventInfo) => {
       console.log('Reader attached:', reader.name);
       this.readers.set(reader.name, reader);
       this.send('device-activated', { name: reader.name, isActivated: true });
     });
 
-    this.devices.on('reader-detached', (reader: Reader) => {
+    this.devices.on('reader-detached', (reader: ReaderEventInfo) => {
       console.log('Reader detached:', reader.name);
       this.readers.delete(reader.name);
       this.send('device-deactivated', { name: reader.name, isActivated: false });
     });
 
-    this.devices.on('card-inserted', async ({ reader, card }: { reader: Reader; card: Card }) => {
+    this.devices.on('card-inserted', async ({ reader, card }: { reader: ReaderEventInfo; card: CardInterface }) => {
       console.log('[card-inserted] Reader:', reader.name, 'ATR:', card.atr?.toString('hex'));
       this.cards.set(reader.name, card);
       // Auto-select this reader if none selected
@@ -62,7 +70,7 @@ export class SmartcardService {
       await this.detectCardHandlers(reader.name, atr);
     });
 
-    this.devices.on('card-removed', ({ reader }: { reader: Reader }) => {
+    this.devices.on('card-removed', ({ reader }: { reader: ReaderEventInfo }) => {
       console.log('[card-removed] Reader:', reader.name);
       this.cards.delete(reader.name);
       this.detectedHandlers.delete(reader.name);
@@ -123,7 +131,7 @@ export class SmartcardService {
     this.activeReaderName = name;
   }
 
-  private getActiveCard(): Card | null {
+  private getActiveCard(): CardInterface | null {
     if (!this.activeReaderName) return null;
     return this.cards.get(this.activeReaderName) || null;
   }
@@ -159,13 +167,13 @@ export class SmartcardService {
     }
 
     // Handle 61 XX (more data available, use GET RESPONSE)
-    let allData = Array.from(result.slice(0, -2));
+    let allData: number[] = [...result.slice(0, -2)];
     while (sw1 === 0x61) {
       const remaining = sw2;
       console.log(`Getting ${remaining} more bytes with GET RESPONSE`);
       const getResponse = [0x00, 0xc0, 0x00, 0x00, remaining];
       result = await activeCard.transmit(Buffer.from(getResponse));
-      allData = allData.concat(Array.from(result.slice(0, -2)));
+      allData = [...allData, ...result.slice(0, -2)];
       sw1 = result[result.length - 2];
       sw2 = result[result.length - 1];
     }
