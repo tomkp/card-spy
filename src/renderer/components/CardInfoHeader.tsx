@@ -18,24 +18,6 @@ interface CardInfoHeaderProps {
 }
 
 /**
- * Get icon component based on handler type.
- */
-function getCardIcon(handlerId: string | null) {
-  switch (handlerId) {
-    case 'emv':
-      return CreditCard;
-    case 'piv':
-      return Fingerprint;
-    case 'openpgp':
-      return KeyRound;
-    case 'fido':
-      return Shield;
-    default:
-      return Smartphone;
-  }
-}
-
-/**
  * Get color class based on handler type.
  */
 function getCardColor(handlerId: string | null): string {
@@ -53,15 +35,46 @@ function getCardColor(handlerId: string | null): string {
   }
 }
 
+interface CardIconDisplayProps {
+  handlerId: string | null;
+}
+
+function CardIconDisplay({ handlerId }: CardIconDisplayProps) {
+  const colorClass = getCardColor(handlerId);
+
+  // Render icon based on handlerId without dynamic component creation
+  const renderIcon = () => {
+    const className = "h-6 w-6";
+    switch (handlerId) {
+      case 'emv':
+        return <CreditCard className={className} />;
+      case 'piv':
+        return <Fingerprint className={className} />;
+      case 'openpgp':
+        return <KeyRound className={className} />;
+      case 'fido':
+        return <Shield className={className} />;
+      default:
+        return <Smartphone className={className} />;
+    }
+  };
+
+  return (
+    <div className={`p-2 rounded-lg bg-muted ${colorClass}`}>
+      {renderIcon()}
+    </div>
+  );
+}
+
 export function CardInfoHeader({ card, handlers, activeHandlerId }: CardInfoHeaderProps) {
   const activeHandler = handlers.find((h) => h.id === activeHandlerId);
-  const Icon = getCardIcon(activeHandlerId);
-  const colorClass = getCardColor(activeHandlerId);
+
+  const atr = card?.atr;
 
   const parsedAtr = useMemo(() => {
-    if (!card?.atr) return null;
-    return parseAtr(card.atr);
-  }, [card?.atr]);
+    if (!atr) return null;
+    return parseAtr(atr);
+  }, [atr]);
 
   const atrSummary = useMemo(() => {
     if (!parsedAtr) return null;
@@ -69,9 +82,9 @@ export function CardInfoHeader({ card, handlers, activeHandlerId }: CardInfoHead
   }, [parsedAtr]);
 
   const formattedAtr = useMemo(() => {
-    if (!card?.atr) return '';
-    return formatAtr(card.atr);
-  }, [card?.atr]);
+    if (!atr) return '';
+    return formatAtr(atr);
+  }, [atr]);
 
   if (!card) {
     return (
@@ -99,9 +112,7 @@ export function CardInfoHeader({ card, handlers, activeHandlerId }: CardInfoHead
     <div className="px-4 py-3 border-b border-border bg-card">
       <div className="flex items-start gap-3">
         {/* Card Icon */}
-        <div className={`p-2 rounded-lg bg-muted ${colorClass}`}>
-          <Icon className="h-6 w-6" />
-        </div>
+        <CardIconDisplay handlerId={activeHandlerId} />
 
         {/* Card Info */}
         <div className="flex-1 min-w-0">
