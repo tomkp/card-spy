@@ -13,6 +13,7 @@ import type {
   DetectionResult,
   InterrogationResult,
 } from './types';
+import { buildGetDataApdu, buildVerifyPinApdu, PinEncoding } from './command-utils';
 
 /**
  * OpenPGP Application ID.
@@ -252,50 +253,50 @@ export class OpenPgpHandler implements CardHandler {
         return sendCommand(buildSelectCommand(OPENPGP_AID));
 
       case 'get-aid':
-        return sendCommand(this.buildGetDataCommand(OPENPGP_OBJECTS.AID));
+        return sendCommand(buildGetDataApdu(OPENPGP_OBJECTS.AID, { style: 'openpgp' }));
 
       case 'get-cardholder-data':
-        return sendCommand(this.buildGetDataCommand(OPENPGP_OBJECTS.CARDHOLDER_RELATED_DATA));
+        return sendCommand(buildGetDataApdu(OPENPGP_OBJECTS.CARDHOLDER_RELATED_DATA, { style: 'openpgp' }));
 
       case 'get-application-data':
-        return sendCommand(this.buildGetDataCommand(OPENPGP_OBJECTS.APPLICATION_RELATED_DATA));
+        return sendCommand(buildGetDataApdu(OPENPGP_OBJECTS.APPLICATION_RELATED_DATA, { style: 'openpgp' }));
 
       case 'get-url':
-        return sendCommand(this.buildGetDataCommand(OPENPGP_OBJECTS.URL));
+        return sendCommand(buildGetDataApdu(OPENPGP_OBJECTS.URL, { style: 'openpgp' }));
 
       case 'get-login-data':
-        return sendCommand(this.buildGetDataCommand(OPENPGP_OBJECTS.LOGIN_DATA));
+        return sendCommand(buildGetDataApdu(OPENPGP_OBJECTS.LOGIN_DATA, { style: 'openpgp' }));
 
       case 'get-fingerprints':
-        return sendCommand(this.buildGetDataCommand(OPENPGP_OBJECTS.FINGERPRINTS));
+        return sendCommand(buildGetDataApdu(OPENPGP_OBJECTS.FINGERPRINTS, { style: 'openpgp' }));
 
       case 'get-pw-status':
-        return sendCommand(this.buildGetDataCommand(OPENPGP_OBJECTS.PW_STATUS_BYTES));
+        return sendCommand(buildGetDataApdu(OPENPGP_OBJECTS.PW_STATUS_BYTES, { style: 'openpgp' }));
 
       case 'get-algorithm-attributes': {
         const key = parameters.key as string;
-        return sendCommand(this.buildGetDataCommand(key));
+        return sendCommand(buildGetDataApdu(key, { style: 'openpgp' }));
       }
 
       case 'get-security-template':
-        return sendCommand(this.buildGetDataCommand(OPENPGP_OBJECTS.SECURITY_SUPPORT_TEMPLATE));
+        return sendCommand(buildGetDataApdu(OPENPGP_OBJECTS.SECURITY_SUPPORT_TEMPLATE, { style: 'openpgp' }));
 
       case 'get-certificate':
-        return sendCommand(this.buildGetDataCommand(OPENPGP_OBJECTS.CARDHOLDER_CERTIFICATE));
+        return sendCommand(buildGetDataApdu(OPENPGP_OBJECTS.CARDHOLDER_CERTIFICATE, { style: 'openpgp' }));
 
       case 'verify-pw1-sign': {
         const pin = parameters.pin as string;
-        return sendCommand(this.buildVerifyCommand(0x81, pin));
+        return sendCommand(buildVerifyPinApdu(pin, { encoding: PinEncoding.ASCII, p2: 0x81 }));
       }
 
       case 'verify-pw1-decrypt': {
         const pin = parameters.pin as string;
-        return sendCommand(this.buildVerifyCommand(0x82, pin));
+        return sendCommand(buildVerifyPinApdu(pin, { encoding: PinEncoding.ASCII, p2: 0x82 }));
       }
 
       case 'verify-pw3': {
         const pin = parameters.pin as string;
-        return sendCommand(this.buildVerifyCommand(0x83, pin));
+        return sendCommand(buildVerifyPinApdu(pin, { encoding: PinEncoding.ASCII, p2: 0x83 }));
       }
 
       case 'internal-authenticate': {
@@ -341,7 +342,7 @@ export class OpenPgpHandler implements CardHandler {
 
       for (const obj of objects) {
         try {
-          await sendCommand(this.buildGetDataCommand(obj));
+          await sendCommand(buildGetDataApdu(obj, { style: 'openpgp' }));
         } catch {
           // Object not available
         }
@@ -357,20 +358,5 @@ export class OpenPgpHandler implements CardHandler {
         error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
-  }
-
-  private buildGetDataCommand(tag: string): number[] {
-    const tagBytes = hexToBytes(tag);
-    // GET DATA: 00 CA [P1 P2] Le
-    // For OpenPGP, tag is split into P1 and P2
-    const p1 = tagBytes.length > 1 ? tagBytes[0] : 0x00;
-    const p2 = tagBytes.length > 1 ? tagBytes[1] : tagBytes[0];
-    return [0x00, 0xca, p1, p2, 0x00];
-  }
-
-  private buildVerifyCommand(pwRef: number, pin: string): number[] {
-    const pinBytes = Array.from(pin).map((c) => c.charCodeAt(0));
-    // VERIFY: 00 20 00 [PW ref] Lc [PIN]
-    return [0x00, 0x20, 0x00, pwRef, pinBytes.length, ...pinBytes];
   }
 }

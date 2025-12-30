@@ -11,8 +11,8 @@ import type {
   DetectionResult,
   InterrogationResult,
 } from './types';
-import { hexToBytes } from '../tlv';
 import { buildSelectCommand } from '../emv';
+import { buildGetDataApdu, buildVerifyPinApdu, PinEncoding } from './command-utils';
 
 /**
  * PIV Application ID.
@@ -216,37 +216,44 @@ export class PivHandler implements CardHandler {
         return sendCommand(buildSelectCommand(PIV_AID));
 
       case 'get-chuid':
-        return sendCommand(this.buildGetDataCommand(PIV_OBJECTS.CARD_HOLDER_UNIQUE_ID));
+        return sendCommand(buildGetDataApdu(PIV_OBJECTS.CARD_HOLDER_UNIQUE_ID, { style: 'piv' }));
 
       case 'get-ccc':
-        return sendCommand(this.buildGetDataCommand(PIV_OBJECTS.CARD_CAPABILITY_CONTAINER));
+        return sendCommand(buildGetDataApdu(PIV_OBJECTS.CARD_CAPABILITY_CONTAINER, { style: 'piv' }));
 
       case 'get-discovery':
-        return sendCommand(this.buildGetDataCommand(PIV_OBJECTS.DISCOVERY_OBJECT));
+        return sendCommand(buildGetDataApdu(PIV_OBJECTS.DISCOVERY_OBJECT, { style: 'piv' }));
 
       case 'get-piv-auth-cert':
-        return sendCommand(this.buildGetDataCommand(PIV_OBJECTS.X509_PIV_AUTH));
+        return sendCommand(buildGetDataApdu(PIV_OBJECTS.X509_PIV_AUTH, { style: 'piv' }));
 
       case 'get-card-auth-cert':
-        return sendCommand(this.buildGetDataCommand(PIV_OBJECTS.X509_CARD_AUTH));
+        return sendCommand(buildGetDataApdu(PIV_OBJECTS.X509_CARD_AUTH, { style: 'piv' }));
 
       case 'get-digital-sig-cert':
-        return sendCommand(this.buildGetDataCommand(PIV_OBJECTS.X509_DIGITAL_SIGNATURE));
+        return sendCommand(buildGetDataApdu(PIV_OBJECTS.X509_DIGITAL_SIGNATURE, { style: 'piv' }));
 
       case 'get-key-mgmt-cert':
-        return sendCommand(this.buildGetDataCommand(PIV_OBJECTS.X509_KEY_MANAGEMENT));
+        return sendCommand(buildGetDataApdu(PIV_OBJECTS.X509_KEY_MANAGEMENT, { style: 'piv' }));
 
       case 'get-printed-info':
-        return sendCommand(this.buildGetDataCommand(PIV_OBJECTS.PRINTED_INFORMATION));
+        return sendCommand(buildGetDataApdu(PIV_OBJECTS.PRINTED_INFORMATION, { style: 'piv' }));
 
       case 'verify-pin': {
         const pin = parameters.pin as string;
-        return sendCommand(this.buildVerifyPinCommand(pin));
+        return sendCommand(
+          buildVerifyPinApdu(pin, {
+            encoding: PinEncoding.ASCII,
+            padByte: 0xff,
+            padLength: 8,
+            p2: 0x80,
+          })
+        );
       }
 
       case 'get-data': {
         const tag = parameters.tag as string;
-        return sendCommand(this.buildGetDataCommand(tag));
+        return sendCommand(buildGetDataApdu(tag, { style: 'piv' }));
       }
 
       case 'general-authenticate': {
@@ -282,7 +289,7 @@ export class PivHandler implements CardHandler {
 
       for (const obj of objects) {
         try {
-          await sendCommand(this.buildGetDataCommand(obj));
+          await sendCommand(buildGetDataApdu(obj, { style: 'piv' }));
         } catch {
           // Object not available
         }
@@ -298,7 +305,7 @@ export class PivHandler implements CardHandler {
 
       for (const cert of certs) {
         try {
-          await sendCommand(this.buildGetDataCommand(cert));
+          await sendCommand(buildGetDataApdu(cert, { style: 'piv' }));
         } catch {
           // Certificate not available or requires PIN
         }
@@ -314,22 +321,5 @@ export class PivHandler implements CardHandler {
         error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
-  }
-
-  private buildGetDataCommand(tag: string): number[] {
-    const tagBytes = hexToBytes(tag);
-    // GET DATA: 00 CB 3F FF Lc [5C len tag] Le
-    const data = [0x5c, tagBytes.length, ...tagBytes];
-    return [0x00, 0xcb, 0x3f, 0xff, data.length, ...data, 0x00];
-  }
-
-  private buildVerifyPinCommand(pin: string): number[] {
-    // PIV PIN is padded with 0xFF to 8 bytes
-    const pinBytes = Array.from(pin).map((c) => c.charCodeAt(0));
-    while (pinBytes.length < 8) {
-      pinBytes.push(0xff);
-    }
-    // VERIFY: 00 20 00 80 08 [PIN]
-    return [0x00, 0x20, 0x00, 0x80, 0x08, ...pinBytes];
   }
 }
