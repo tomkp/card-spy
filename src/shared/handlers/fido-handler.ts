@@ -18,8 +18,8 @@ import { HandlerLogger } from './handler-logger';
 /**
  * FIDO Application IDs.
  */
+// FIDO U2F and FIDO2 share the same AID but use different command sets
 const FIDO_U2F_AID = 'A0000006472F0001';
-const FIDO2_AID = 'A0000006472F0001'; // Same AID, different commands
 
 /**
  * FIDO U2F/CTAP command constants.

@@ -189,8 +189,9 @@ const JAVACARD_COMMANDS: CardCommand[] = [
 
 /**
  * CPLC field definitions.
+ * Reserved for future CPLC data parsing functionality.
  */
-const CPLC_FIELDS = [
+const _CPLC_FIELDS = [
   { name: 'IC Fabricator', offset: 0, length: 2 },
   { name: 'IC Type', offset: 2, length: 2 },
   { name: 'OS ID', offset: 4, length: 2 },
