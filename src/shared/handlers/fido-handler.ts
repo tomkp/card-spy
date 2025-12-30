@@ -13,6 +13,7 @@ import type {
   DetectionResult,
   InterrogationResult,
 } from './types';
+import { HandlerLogger } from './handler-logger';
 
 /**
  * FIDO Application IDs.
@@ -233,6 +234,8 @@ export class FidoHandler implements CardHandler {
   readonly name = 'FIDO/U2F Authenticator';
   readonly description = 'FIDO U2F and FIDO2/WebAuthn security keys';
 
+  private readonly logger = new HandlerLogger('fido');
+
   async detect(
     _atr: string,
     sendCommand: (apdu: number[]) => Promise<Response>
@@ -256,8 +259,8 @@ export class FidoHandler implements CardHandler {
               metadata: { version },
             };
           }
-        } catch {
-          // Version command failed but select succeeded
+        } catch (error) {
+          this.logger.warn('Version command failed', 'detect', error);
         }
 
         return {
@@ -267,8 +270,8 @@ export class FidoHandler implements CardHandler {
           metadata: {},
         };
       }
-    } catch {
-      // Selection failed
+    } catch (error) {
+      this.logger.warn('Selection failed', 'detect', error);
     }
 
     return { detected: false, confidence: 0 };
@@ -386,16 +389,16 @@ export class FidoHandler implements CardHandler {
       // Get U2F version
       try {
         await sendCommand([0x00, FIDO_INS.U2F_VERSION, 0x00, 0x00, 0x00]);
-      } catch {
-        // Version not supported
+      } catch (error) {
+        this.logger.warn('U2F version not supported', 'interrogate', error);
       }
 
       // Try CTAP2 GetInfo
       try {
         const cbor = [0x04];
         await sendCommand([0x80, FIDO_INS.CTAP2_CBOR, 0x00, 0x00, cbor.length, ...cbor, 0x00]);
-      } catch {
-        // CTAP2 not supported
+      } catch (error) {
+        this.logger.warn('CTAP2 not supported', 'interrogate', error);
       }
 
       return {
