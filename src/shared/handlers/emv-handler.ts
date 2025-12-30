@@ -17,9 +17,13 @@ import {
   buildSelectCommand,
   buildReadRecordCommand,
   buildGpoCommand,
+  buildGpoCommandWithPdol,
   buildSelectPseCommand,
   buildSelectPpseCommand,
   parseAfl,
+  buildDefaultPdolData,
+  buildDefaultCdolData,
+  type DolEntry,
 } from '../emv';
 
 /**
@@ -166,6 +170,28 @@ const EMV_COMMANDS: CardCommand[] = [
         ],
         description: 'Type of cryptogram to generate',
       },
+      {
+        id: 'amount',
+        name: 'Amount (cents)',
+        type: 'number',
+        required: false,
+        defaultValue: 100,
+        description: 'Transaction amount in minor units (e.g., 100 = $1.00)',
+      },
+      {
+        id: 'currency',
+        name: 'Currency',
+        type: 'select',
+        required: false,
+        options: [
+          { value: '0840', label: 'USD (US Dollar)' },
+          { value: '0826', label: 'GBP (British Pound)' },
+          { value: '0978', label: 'EUR (Euro)' },
+          { value: '0124', label: 'CAD (Canadian Dollar)' },
+          { value: '0036', label: 'AUD (Australian Dollar)' },
+        ],
+        description: 'Transaction currency code',
+      },
     ],
   },
   {
@@ -181,6 +207,61 @@ const EMV_COMMANDS: CardCommand[] = [
         required: true,
         defaultValue: '0102030405060708',
         description: 'Data to authenticate (typically random)',
+      },
+    ],
+  },
+  {
+    id: 'change-pin',
+    name: 'Change PIN',
+    description: 'Change cardholder PIN (plaintext)',
+    category: 'Security',
+    requiresConfirmation: true,
+    parameters: [
+      {
+        id: 'oldPin',
+        name: 'Current PIN',
+        type: 'string',
+        required: true,
+        validation: '^[0-9]{4,12}$',
+        description: 'Current PIN (4-12 digits)',
+      },
+      {
+        id: 'newPin',
+        name: 'New PIN',
+        type: 'string',
+        required: true,
+        validation: '^[0-9]{4,12}$',
+        description: 'New PIN (4-12 digits)',
+      },
+    ],
+  },
+  {
+    id: 'get-processing-options-with-amount',
+    name: 'Get Processing Options (with amount)',
+    description: 'Initialize transaction with amount and currency',
+    category: 'Transaction',
+    parameters: [
+      {
+        id: 'amount',
+        name: 'Amount (cents)',
+        type: 'number',
+        required: true,
+        defaultValue: 100,
+        description: 'Transaction amount in minor units (e.g., 100 = $1.00)',
+      },
+      {
+        id: 'currency',
+        name: 'Currency',
+        type: 'select',
+        required: true,
+        options: [
+          { value: '0840', label: 'USD (US Dollar)' },
+          { value: '0826', label: 'GBP (British Pound)' },
+          { value: '0978', label: 'EUR (Euro)' },
+          { value: '0124', label: 'CAD (Canadian Dollar)' },
+          { value: '0036', label: 'AUD (Australian Dollar)' },
+        ],
+        description: 'Transaction currency code',
       },
     ],
   },
@@ -304,9 +385,14 @@ export class EmvHandler implements CardHandler {
 
       case 'generate-ac': {
         const type = parseInt(parameters.type as string, 16);
-        // GENERATE AC: 80 AE [type] 00 Lc [CDOL data]
-        // Minimal CDOL data for testing
-        const cdolData = [0x00, 0x00, 0x00, 0x00, 0x01, 0x00]; // Amount
+        const amount = (parameters.amount as number) ?? 100;
+        const currency = parseInt((parameters.currency as string) ?? '0840', 16);
+        // GENERATE AC: 80 AE [type] 00 Lc [CDOL data] 00
+        // Build proper CDOL1 data with amount, currency, date, etc.
+        const cdolData = buildDefaultCdolData({
+          amount,
+          currencyCode: currency,
+        });
         return sendCommand([0x80, 0xae, type, 0x00, cdolData.length, ...cdolData, 0x00]);
       }
 
@@ -314,6 +400,36 @@ export class EmvHandler implements CardHandler {
         const data = hexToBytes(parameters.data as string);
         // INTERNAL AUTHENTICATE: 00 88 00 00 Lc [data] 00
         return sendCommand([0x00, 0x88, 0x00, 0x00, data.length, ...data, 0x00]);
+      }
+
+      case 'change-pin': {
+        const oldPin = parameters.oldPin as string;
+        const newPin = parameters.newPin as string;
+        const oldPinBlock = this.buildPinBlock(oldPin);
+        const newPinBlock = this.buildPinBlock(newPin);
+        // CHANGE REFERENCE DATA: 00 24 00 80 10 [old PIN block] [new PIN block]
+        return sendCommand([0x00, 0x24, 0x00, 0x80, 0x10, ...oldPinBlock, ...newPinBlock]);
+      }
+
+      case 'get-processing-options-with-amount': {
+        const amount = parameters.amount as number;
+        const currency = parseInt(parameters.currency as string, 16);
+        // Build PDOL data with the provided amount and currency
+        // Use a standard set of PDOL entries that most cards accept
+        const pdolEntries: DolEntry[] = [
+          { tag: 0x9f02, length: 6 }, // Amount
+          { tag: 0x9f03, length: 6 }, // Other Amount
+          { tag: 0x9f1a, length: 2 }, // Terminal Country Code
+          { tag: 0x5f2a, length: 2 }, // Currency Code
+          { tag: 0x9a, length: 3 }, // Date
+          { tag: 0x9c, length: 1 }, // Type
+          { tag: 0x9f37, length: 4 }, // Unpredictable Number
+        ];
+        const pdolData = buildDefaultPdolData(pdolEntries, {
+          amount,
+          currencyCode: currency,
+        });
+        return sendCommand(buildGpoCommandWithPdol(pdolData));
       }
 
       default:
