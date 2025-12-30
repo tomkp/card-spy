@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useMemo } from 'react';
 import type { ReaderSession, LogEntry, TlvNode, CommandLogEntry } from '../../shared/types';
-import { Play, Trash2, Keyboard, Search, X, CheckCircle, XCircle, Circle } from 'lucide-react';
+import { Play, Trash2, Keyboard, Search, X } from 'lucide-react';
 import { Button } from './ui/button';
 import { CopyButton } from './CopyButton';
 import { SplitPane, Pane } from 'react-split-pane';
@@ -8,8 +8,6 @@ import { formatHex, getStatusWordInfo, isSuccessStatus } from '../../shared/apdu
 
 const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
 const cmdKey = isMac ? '⌘' : 'Ctrl+';
-
-type StatusFilter = 'all' | 'success' | 'error';
 
 // Highlight matching text in a string
 function HighlightText({ text, search }: { text: string; search: string }) {
@@ -43,7 +41,7 @@ interface ReaderPanelProps {
 }
 
 function TlvNodeDisplay({ node, indent, searchTerm }: { node: TlvNode; indent: number; searchTerm: string }) {
-  const indentStr = '   '.repeat(indent);
+  const indentStr = '  '.repeat(indent);
   const tagName = node.description || '';
   const valueStr =
     Array.isArray(node.value) && !node.isConstructed ? formatHex(node.value as number[]) : '';
@@ -72,11 +70,11 @@ function TlvNodeDisplay({ node, indent, searchTerm }: { node: TlvNode; indent: n
         )}
         {asciiValue && (
           <span className="text-foreground ml-2">
-            <HighlightText text={asciiValue} search={searchTerm} />
+            &quot;<HighlightText text={asciiValue} search={searchTerm} />&quot;
           </span>
         )}
         {valueStr && !asciiValue && (
-          <span className="text-muted-foreground ml-2">
+          <span className="text-muted-foreground/70 ml-2 text-xs">
             <HighlightText text={valueStr} search={searchTerm} />
           </span>
         )}
@@ -119,15 +117,16 @@ function CommandEntryDisplay({ entry, isSelected, onSelect, searchTerm }: Comman
 
   return (
     <div
-      className={`px-4 py-3 border-b border-border last:border-b-0 cursor-pointer hover:bg-accent/50 ${isSelected ? 'bg-accent' : ''}`}
+      className={`px-3 py-2 border-b border-border last:border-b-0 cursor-pointer ${
+        isSelected ? 'bg-accent' : 'hover:bg-accent/50'
+      }`}
       onClick={onSelect}
     >
-      <div className="text-foreground">
+      <div className="font-mono text-xs text-foreground truncate">
         <HighlightText text={entry.command.hex.toLowerCase()} search={searchTerm} />
       </div>
-
       {entry.response && (
-        <div className={success ? 'text-success' : 'text-error'}>
+        <div className={`font-mono text-xs mt-0.5 ${success ? 'text-success' : 'text-error'}`}>
           <HighlightText text={`${swHex} ${swMeaning}`} search={searchTerm} />
         </div>
       )}
@@ -157,7 +156,7 @@ function LogEntryDisplay({ entry, isSelected, onSelect, searchTerm }: LogEntryDi
 function DetailPanel({ entry, searchTerm }: { entry: CommandLogEntry | null; searchTerm: string }) {
   if (!entry) {
     return (
-      <div className="flex items-center justify-center h-full text-muted-foreground">
+      <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
         Select a command to view details
       </div>
     );
@@ -185,21 +184,23 @@ function DetailPanel({ entry, searchTerm }: { entry: CommandLogEntry | null; sea
   return (
     <div className="h-full overflow-auto p-4 font-mono text-sm">
       {/* Copy All Button */}
-      <div className="flex justify-end mb-2">
+      <div className="flex justify-end mb-3">
         <CopyButton text={getFullText()} label="all" className="text-xs px-2 py-1 rounded bg-muted hover:bg-accent" />
         <span className="text-xs text-muted-foreground ml-1">Copy all</span>
       </div>
 
+      {/* Command */}
       <div className="mb-4">
         <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
           <span>Command</span>
           <CopyButton text={entry.command.hex.toLowerCase()} label="command" />
         </div>
-        <div className="text-foreground">
+        <div className="text-foreground break-all">
           <HighlightText text={entry.command.hex.toLowerCase()} search={searchTerm} />
         </div>
       </div>
 
+      {/* Status */}
       {entry.response && (
         <div className="mb-4">
           <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
@@ -212,11 +213,12 @@ function DetailPanel({ entry, searchTerm }: { entry: CommandLogEntry | null; sea
         </div>
       )}
 
+      {/* Response Data */}
       {entry.response && entry.response.data.length > 0 && (
         <div className="mb-4">
           <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-            <span>Response Data</span>
-            <CopyButton text={responseDataHex} label="response data" />
+            <span>Response</span>
+            <CopyButton text={responseDataHex} label="response" />
           </div>
           <div className="text-success break-all">
             <HighlightText text={responseDataHex} search={searchTerm} />
@@ -224,10 +226,13 @@ function DetailPanel({ entry, searchTerm }: { entry: CommandLogEntry | null; sea
         </div>
       )}
 
+      {/* TLV Structure */}
       {entry.tlv && entry.tlv.length > 0 && (
         <div>
-          <div className="text-muted-foreground text-xs mb-1">TLV Structure</div>
-          <div><TlvTree nodes={entry.tlv} searchTerm={searchTerm} /></div>
+          <div className="text-muted-foreground text-xs mb-2">TLV Structure</div>
+          <div className="pl-1 border-l-2 border-border">
+            <TlvTree nodes={entry.tlv} searchTerm={searchTerm} />
+          </div>
         </div>
       )}
     </div>
@@ -240,7 +245,6 @@ export function ReaderPanel({ session, onInterrogate, onClear, onShowShortcuts }
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -248,21 +252,12 @@ export function ReaderPanel({ session, onInterrogate, onClear, onShowShortcuts }
     }
   }, [session.log]);
 
-  // Filter and search log entries
+  // Filter log entries (only commands, apply search)
   const filteredLog = useMemo(() => {
     return session.log.filter((entry) => {
-      // Only filter command entries
       if (entry.type !== 'command') return false;
 
       const cmdEntry = entry as CommandLogEntry;
-
-      // Status filter
-      if (statusFilter !== 'all') {
-        const sw1 = cmdEntry.response?.sw1 ?? 0;
-        const success = isSuccessStatus(sw1);
-        if (statusFilter === 'success' && !success) return false;
-        if (statusFilter === 'error' && success) return false;
-      }
 
       // Search filter
       if (searchTerm.trim()) {
@@ -274,7 +269,6 @@ export function ReaderPanel({ session, onInterrogate, onClear, onShowShortcuts }
         const swMeaning = cmdEntry.response ? getStatusWordInfo(sw1, sw2).meaning.toLowerCase() : '';
         const responseHex = cmdEntry.response ? formatHex(cmdEntry.response.data) : '';
 
-        // Search in command, status, response data
         if (
           !commandHex.includes(search) &&
           !swHex.includes(search) &&
@@ -287,19 +281,13 @@ export function ReaderPanel({ session, onInterrogate, onClear, onShowShortcuts }
 
       return true;
     });
-  }, [session.log, searchTerm, statusFilter]);
+  }, [session.log, searchTerm]);
 
   const selectedEntry = selectedEntryId
     ? (session.log.find((e) => e.id === selectedEntryId) as CommandLogEntry | undefined)
     : null;
 
   const commandCount = session.log.filter((e) => e.type === 'command').length;
-  const successCount = session.log.filter((e) => {
-    if (e.type !== 'command') return false;
-    const cmd = e as CommandLogEntry;
-    return cmd.response && isSuccessStatus(cmd.response.sw1);
-  }).length;
-  const errorCount = commandCount - successCount;
 
   return (
     <div className="flex flex-1 overflow-hidden">
@@ -340,21 +328,8 @@ export function ReaderPanel({ session, onInterrogate, onClear, onShowShortcuts }
 
       {/* Log and Detail */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Log Header with Search and Filters */}
-        <div className="px-3 py-2 border-b border-border bg-muted/30 space-y-2">
-          {/* Title row */}
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Command Log
-            </span>
-            <span className="text-xs text-muted-foreground">
-              {filteredLog.length === commandCount
-                ? `${commandCount} commands`
-                : `${filteredLog.length} of ${commandCount}`}
-            </span>
-          </div>
-
-          {/* Search and Filter row */}
+        {/* Log Header with Search */}
+        <div className="px-3 py-2 border-b border-border bg-muted/30">
           <div className="flex items-center gap-2">
             {/* Search Input */}
             <div className="flex-1 relative">
@@ -362,7 +337,7 @@ export function ReaderPanel({ session, onInterrogate, onClear, onShowShortcuts }
               <input
                 ref={searchInputRef}
                 type="text"
-                placeholder="Search commands..."
+                placeholder="Search..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-7 pr-7 py-1 text-xs bg-background border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary"
@@ -377,58 +352,25 @@ export function ReaderPanel({ session, onInterrogate, onClear, onShowShortcuts }
               )}
             </div>
 
-            {/* Status Filter Buttons */}
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setStatusFilter('all')}
-                className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${
-                  statusFilter === 'all'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-muted-foreground hover:text-foreground'
-                }`}
-                title="Show all commands"
-              >
-                <Circle className="h-3 w-3" />
-                All
-              </button>
-              <button
-                onClick={() => setStatusFilter('success')}
-                className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${
-                  statusFilter === 'success'
-                    ? 'bg-green-600 text-white'
-                    : 'bg-muted text-muted-foreground hover:text-foreground'
-                }`}
-                title={`Show successful commands (${successCount})`}
-              >
-                <CheckCircle className="h-3 w-3" />
-                {successCount}
-              </button>
-              <button
-                onClick={() => setStatusFilter('error')}
-                className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${
-                  statusFilter === 'error'
-                    ? 'bg-red-600 text-white'
-                    : 'bg-muted text-muted-foreground hover:text-foreground'
-                }`}
-                title={`Show error commands (${errorCount})`}
-              >
-                <XCircle className="h-3 w-3" />
-                {errorCount}
-              </button>
-            </div>
+            {/* Command count */}
+            <span className="text-xs text-muted-foreground whitespace-nowrap">
+              {filteredLog.length === commandCount
+                ? `${commandCount}`
+                : `${filteredLog.length}/${commandCount}`}
+            </span>
           </div>
         </div>
 
         <SplitPane direction="horizontal" className="flex-1">
           <Pane minSize={200} defaultSize="50%">
-            <div ref={scrollRef} className="h-full overflow-auto px-0 py-2 font-mono text-sm">
+            <div ref={scrollRef} className="h-full overflow-auto">
               {session.log.length === 0 ? (
-                <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-                  No commands yet. Use the command panel or REPL to send APDUs.
+                <div className="flex items-center justify-center h-full text-muted-foreground text-sm p-4">
+                  No commands yet
                 </div>
               ) : filteredLog.length === 0 ? (
-                <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-                  No matching commands found.
+                <div className="flex items-center justify-center h-full text-muted-foreground text-sm p-4">
+                  No matches
                 </div>
               ) : (
                 filteredLog.map((entry) => (
