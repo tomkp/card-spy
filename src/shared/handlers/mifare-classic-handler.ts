@@ -35,8 +35,9 @@ const MIFARE_TYPE = {
 
 /**
  * MIFARE Classic memory structure.
+ * Reserved for future memory layout functionality.
  */
-const MEMORY_LAYOUT = {
+const _MEMORY_LAYOUT = {
   // MIFARE Classic 1K: 16 sectors, 4 blocks each
   CLASSIC_1K: {
     sectors: 16,
@@ -655,7 +656,7 @@ export class MifareClassicHandler implements CardHandler {
       { name: 'Zeros', key: '000000000000' },
     ];
 
-    for (const { name, key } of defaultKeys) {
+    for (const { name: _name, key } of defaultKeys) {
       await this.loadKey(sendCommand, 'A', key, 0);
       const authResult = await this.authenticate(sendCommand, 0, 'A', 0);
 

@@ -445,9 +445,9 @@ export class TransportHandler implements CardHandler {
     this.discoveredApplications = [];
 
     try {
-      // Step 1: Get card UID
+      // Step 1: Get card UID (command logged for inspection)
       const uidResponse = await sendCommand([0xff, 0xca, 0x00, 0x00, 0x00]);
-      const uid =
+      const _uid =
         uidResponse.sw1 === 0x90 ? bytesToHex(uidResponse.data) : 'Unknown';
 
       // Step 2: Get card version
