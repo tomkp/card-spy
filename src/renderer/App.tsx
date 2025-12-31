@@ -18,6 +18,7 @@ import { CardInfoHeader } from './components/CardInfoHeader';
 import { Repl, ReplHandle } from './components/Repl';
 import { KeyboardShortcutsHelp } from './components/KeyboardShortcutsHelp';
 import { ApplicationsPanel } from './components/ApplicationsPanel';
+import { EmvWorkflowPanel } from './components/EmvWorkflowPanel';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { parseTlv } from '../shared/tlv';
 import { useKeyboardShortcuts, KeyboardShortcut } from './hooks/useKeyboardShortcuts';
@@ -307,6 +308,8 @@ export function App() {
   const activeHandlers = activeDevice ? handlers.get(activeDevice.name) || [] : [];
   const activeCard = activeDevice ? cards.get(activeDevice.name) || null : null;
   const activeApplications = activeDevice ? applications.get(activeDevice.name) || [] : [];
+  const activeHandler = activeHandlers.find((h) => h.id === activeHandlerId);
+  const isEmvHandler = activeHandlerId === 'emv';
 
   function handleSelectApplication(aid: string) {
     dispatch({ type: 'APPLICATION_SELECTED', aid });
@@ -329,30 +332,46 @@ export function App() {
       <div className="flex-1 flex overflow-hidden">
         {activeSession ? (
           <>
-            {/* Left Side Panel - Applications + Commands */}
+            {/* Left Side Panel - Contextual based on handler type */}
             <div className="w-64 border-r border-border flex flex-col bg-card">
-              {/* Applications Panel */}
-              {activeApplications.length > 0 && (
-                <div className="border-b border-border">
-                  <ApplicationsPanel
-                    applications={activeApplications}
-                    selectedAid={selectedApplication}
-                    onSelectApp={handleSelectApplication}
-                  />
-                </div>
-              )}
-
-              {/* Command Panel */}
-              <div className="flex-1 overflow-hidden">
+              {isEmvHandler && activeHandler ? (
+                /* EMV Workflow Panel - guided experience for payment cards */
                 <ErrorBoundary>
-                  <CommandPanel
-                    handlers={activeHandlers}
-                    activeHandlerId={activeHandlerId}
-                    onSelectHandler={handleSelectHandler}
+                  <EmvWorkflowPanel
+                    handler={activeHandler}
+                    applications={activeApplications}
+                    selectedApplication={selectedApplication}
+                    onSelectApplication={handleSelectApplication}
                     onExecuteCommand={handleExecuteCommand}
                   />
                 </ErrorBoundary>
-              </div>
+              ) : (
+                /* Generic Panel - for non-EMV cards */
+                <>
+                  {/* Applications Panel */}
+                  {activeApplications.length > 0 && (
+                    <div className="border-b border-border">
+                      <ApplicationsPanel
+                        applications={activeApplications}
+                        selectedAid={selectedApplication}
+                        onSelectApp={handleSelectApplication}
+                      />
+                    </div>
+                  )}
+
+                  {/* Command Panel */}
+                  <div className="flex-1 overflow-hidden">
+                    <ErrorBoundary>
+                      <CommandPanel
+                        handlers={activeHandlers}
+                        activeHandlerId={activeHandlerId}
+                        onSelectHandler={handleSelectHandler}
+                        onExecuteCommand={handleExecuteCommand}
+                      />
+                    </ErrorBoundary>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Reader Panel - Center */}
