@@ -309,7 +309,7 @@ export function App() {
   const activeCard = activeDevice ? cards.get(activeDevice.name) || null : null;
   const activeApplications = activeDevice ? applications.get(activeDevice.name) || [] : [];
   const activeHandler = activeHandlers.find((h) => h.id === activeHandlerId);
-  const isEmvHandler = activeHandlerId === 'emv';
+  const isEmvWorkflow = activeHandler?.workflow === 'emv';
 
   function handleSelectApplication(aid: string) {
     dispatch({ type: 'APPLICATION_SELECTED', aid });
@@ -334,7 +334,7 @@ export function App() {
           <>
             {/* Left Side Panel - Contextual based on handler type */}
             <div className="w-64 border-r border-border flex flex-col bg-card">
-              {isEmvHandler && activeHandler ? (
+              {isEmvWorkflow && activeHandler ? (
                 /* EMV Workflow Panel - guided experience for payment cards */
                 <ErrorBoundary>
                   <EmvWorkflowPanel

@@ -1,19 +1,17 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import {
-  CreditCard,
   ChevronRight,
   Check,
   Play,
   Search,
   Key,
   FileText,
-  ChevronLeft,
+  AlertTriangle,
 } from 'lucide-react';
 import type { CardCommand, CommandParameter } from '../../shared/handlers/types';
 import type { DetectedHandlerInfo } from '../../shared/types';
-import type { DiscoveredApp } from './ApplicationsPanel';
-import { CopyButton } from './CopyButton';
-import { Button } from './ui/button';
+import { ApplicationsPanel, type DiscoveredApp } from './ApplicationsPanel';
+import { ParameterForm, parseParameterValue, initializeParameters } from './ParameterForm';
 
 /**
  * EMV transaction workflow steps.
@@ -81,6 +79,7 @@ export function EmvWorkflowPanel({
 
   const [selectedAction, setSelectedAction] = useState<CardCommand | null>(null);
   const [parameters, setParameters] = useState<Record<string, string | number | boolean>>({});
+  const [showConfirm, setShowConfirm] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -105,6 +104,13 @@ export function EmvWorkflowPanel({
 
   const handleExecuteAction = useCallback(() => {
     if (!selectedAction) return;
+
+    // Handle confirmation requirement
+    if (selectedAction.requiresConfirmation && !showConfirm) {
+      setShowConfirm(true);
+      return;
+    }
+
     onExecuteCommand(selectedAction.id, parameters);
 
     // Track workflow progress
@@ -116,24 +122,25 @@ export function EmvWorkflowPanel({
 
     setSelectedAction(null);
     setParameters({});
-  }, [selectedAction, parameters, onExecuteCommand]);
+    setShowConfirm(false);
+  }, [selectedAction, parameters, showConfirm, onExecuteCommand]);
 
   const handleBackToActions = useCallback(() => {
     setSelectedAction(null);
     setParameters({});
+    setShowConfirm(false);
   }, []);
 
   const handleSelectAction = useCallback((command: CardCommand) => {
-    if (command.parameters && command.parameters.length > 0) {
-      // Initialize defaults
-      const defaults: Record<string, string | number | boolean> = {};
-      command.parameters.forEach((p) => {
-        if (p.defaultValue !== undefined) {
-          defaults[p.id] = p.defaultValue;
-        }
-      });
-      setParameters(defaults);
+    const hasParameters = command.parameters && command.parameters.length > 0;
+
+    if (hasParameters) {
+      setParameters(initializeParameters(command));
       setSelectedAction(command);
+      setShowConfirm(false);
+    } else if (command.requiresConfirmation) {
+      setSelectedAction(command);
+      setShowConfirm(true);
     } else {
       // Execute immediately
       onExecuteCommand(command.id, {});
@@ -141,12 +148,7 @@ export function EmvWorkflowPanel({
   }, [onExecuteCommand]);
 
   const handleParameterChange = (param: CommandParameter, value: string) => {
-    let parsedValue: string | number | boolean = value;
-    if (param.type === 'number') {
-      parsedValue = parseInt(value, 10) || 0;
-    } else if (param.type === 'boolean') {
-      parsedValue = value === 'true';
-    }
+    const parsedValue = parseParameterValue(param, value);
     setParameters((prev) => ({ ...prev, [param.id]: parsedValue }));
   };
 
@@ -252,7 +254,7 @@ export function EmvWorkflowPanel({
         )}
 
         {step === 'apps' && (
-          <ApplicationsView
+          <ApplicationsPanel
             applications={applications}
             selectedAid={selectedApplication}
             onSelectApp={handleSelectApp}
@@ -269,12 +271,14 @@ export function EmvWorkflowPanel({
         )}
 
         {selectedAction && (
-          <ActionParametersView
+          <ParameterForm
             command={selectedAction}
             parameters={parameters}
             onParameterChange={handleParameterChange}
             onExecute={handleExecuteAction}
             onBack={handleBackToActions}
+            showConfirm={showConfirm}
+            onCancelConfirm={() => setShowConfirm(false)}
           />
         )}
       </div>
@@ -420,70 +424,6 @@ function DiscoveryView({
 }
 
 /**
- * Applications step - View and select discovered apps.
- */
-function ApplicationsView({
-  applications,
-  selectedAid,
-  onSelectApp,
-}: {
-  applications: DiscoveredApp[];
-  selectedAid: string | null;
-  onSelectApp: (aid: string) => void;
-}) {
-  if (applications.length === 0) {
-    return (
-      <div className="p-3 text-sm text-muted-foreground">
-        <p>No applications discovered yet.</p>
-        <p className="text-xs mt-1">Select PSE or PPSE to discover applications.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <div className="px-3 py-2 border-b border-border">
-        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-          Found {applications.length} application{applications.length !== 1 ? 's' : ''}
-        </span>
-      </div>
-      {applications.map((app) => {
-        const isSelected = selectedAid === app.aid;
-        const displayName = app.name || app.label || 'Unknown Application';
-
-        return (
-          <button
-            key={app.aid}
-            onClick={() => onSelectApp(app.aid)}
-            className={`w-full flex items-start gap-2 px-3 py-2 text-left hover:bg-accent/50 transition-colors border-b border-border last:border-b-0 ${
-              isSelected ? 'bg-accent' : ''
-            }`}
-          >
-            <CreditCard className="h-4 w-4 mt-0.5 text-amber-600 flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1">
-                <span className="text-sm font-medium text-foreground truncate">
-                  {displayName}
-                </span>
-                {isSelected && (
-                  <ChevronRight className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                )}
-              </div>
-              <div className="flex items-center gap-1 mt-0.5">
-                <code className="text-xs text-muted-foreground font-mono truncate">
-                  {app.aid.toUpperCase()}
-                </code>
-                <CopyButton text={app.aid.toUpperCase()} label="AID" />
-              </div>
-            </div>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-/**
  * Actions step - Categorized commands for the selected app.
  */
 function ActionsView({
@@ -524,7 +464,12 @@ function ActionsView({
                 }`}
               >
                 <div className="flex-1">
-                  <div className="text-sm font-medium">{command.name}</div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">{command.name}</span>
+                    {command.isDestructive && (
+                      <AlertTriangle className="h-3 w-3 text-destructive" />
+                    )}
+                  </div>
                   <div className="text-xs text-muted-foreground">{command.description}</div>
                 </div>
                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
@@ -533,85 +478,6 @@ function ActionsView({
           })}
         </div>
       ))}
-    </div>
-  );
-}
-
-/**
- * Action parameters view - Configure and execute a command.
- */
-function ActionParametersView({
-  command,
-  parameters,
-  onParameterChange,
-  onExecute,
-  onBack,
-}: {
-  command: CardCommand;
-  parameters: Record<string, string | number | boolean>;
-  onParameterChange: (param: CommandParameter, value: string) => void;
-  onExecute: () => void;
-  onBack: () => void;
-}) {
-  return (
-    <div className="p-3">
-      <button
-        onClick={onBack}
-        className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-3"
-      >
-        <ChevronLeft className="h-4 w-4" />
-        Back
-      </button>
-
-      <div className="mb-4">
-        <h3 className="font-medium">{command.name}</h3>
-        <p className="text-sm text-muted-foreground mt-1">{command.description}</p>
-      </div>
-
-      {command.parameters?.map((param) => (
-        <div key={param.id} className="mb-3">
-          <label className="text-sm text-muted-foreground block mb-1">
-            {param.name}
-            {param.required && <span className="text-destructive ml-1">*</span>}
-          </label>
-
-          {param.type === 'select' ? (
-            <select
-              className="w-full px-2 py-1.5 text-sm bg-background border border-input rounded font-mono"
-              value={(parameters[param.id] as string) ?? param.defaultValue ?? ''}
-              onChange={(e) => onParameterChange(param, e.target.value)}
-            >
-              <option value="">Select...</option>
-              {param.options?.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          ) : param.type === 'boolean' ? (
-            <select
-              className="w-full px-2 py-1.5 text-sm bg-background border border-input rounded"
-              value={String(parameters[param.id] ?? param.defaultValue ?? false)}
-              onChange={(e) => onParameterChange(param, e.target.value)}
-            >
-              <option value="false">No</option>
-              <option value="true">Yes</option>
-            </select>
-          ) : (
-            <input
-              type={param.type === 'number' ? 'number' : 'text'}
-              className="w-full px-2 py-1.5 text-sm bg-background border border-input rounded font-mono"
-              placeholder={param.description}
-              value={(parameters[param.id] as string) ?? param.defaultValue ?? ''}
-              onChange={(e) => onParameterChange(param, e.target.value)}
-            />
-          )}
-        </div>
-      ))}
-
-      <Button className="w-full mt-4" onClick={onExecute}>
-        Execute
-      </Button>
     </div>
   );
 }

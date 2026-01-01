@@ -77,6 +77,8 @@ export interface DetectedHandlerInfo {
   cardType?: string;
   confidence: number;
   commands: CardCommand[];
+  /** UI workflow type - determines which panel to show */
+  workflow?: 'emv' | 'generic';
 }
 
 export interface HandlersDetectedEvent {

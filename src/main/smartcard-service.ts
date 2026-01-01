@@ -231,6 +231,7 @@ export class SmartcardService {
           cardType: h.result.cardType,
           confidence: h.result.confidence,
           commands: h.handler.getCommands(h.result.metadata),
+          workflow: h.handler.workflow,
         })),
       });
 
