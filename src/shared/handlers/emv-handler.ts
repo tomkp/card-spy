@@ -271,6 +271,7 @@ export class EmvHandler implements CardHandler {
   readonly id = 'emv';
   readonly name = 'EMV Payment Card';
   readonly description = 'Europay, Mastercard, Visa payment cards (contact and contactless)';
+  readonly workflow = 'emv' as const;
 
   private discoveredApplications: ApplicationInfo[] = [];
 

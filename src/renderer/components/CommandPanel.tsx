@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { CardCommand, CommandParameter } from '../../shared/handlers/types';
 import type { DetectedHandlerInfo } from '../../shared/types';
-import { Button } from './ui/button';
-import { ChevronLeft, AlertTriangle } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
+import { ParameterForm, parseParameterValue, initializeParameters } from './ParameterForm';
 
 interface CommandPanelProps {
   handlers: DetectedHandlerInfo[];
@@ -80,14 +80,7 @@ function CommandPanelInner({
     const hasParameters = command.parameters && command.parameters.length > 0;
 
     if (hasParameters) {
-      // Initialize with default values
-      const defaults: Record<string, string | number | boolean> = {};
-      command.parameters?.forEach((p) => {
-        if (p.defaultValue !== undefined) {
-          defaults[p.id] = p.defaultValue;
-        }
-      });
-      setParameters(defaults);
+      setParameters(initializeParameters(command));
       setSelectedCommand(command);
       setView('parameters');
       setShowConfirm(false);
@@ -152,12 +145,7 @@ function CommandPanelInner({
   }, [selectedIndex, view]);
 
   const handleParameterChange = (param: CommandParameter, value: string) => {
-    let parsedValue: string | number | boolean = value;
-    if (param.type === 'number') {
-      parsedValue = parseInt(value, 10) || 0;
-    } else if (param.type === 'boolean') {
-      parsedValue = value === 'true';
-    }
+    const parsedValue = parseParameterValue(param, value);
     setParameters((prev) => ({ ...prev, [param.id]: parsedValue }));
   };
 
@@ -208,107 +196,23 @@ function CommandPanelInner({
           </div>
           <CommandFooter view="commands" />
         </>
-      ) : (
+      ) : selectedCommand ? (
         <>
           {/* Parameter form */}
-          <div className="flex-1 overflow-auto p-3">
-            {/* Back button and command name */}
-            <button
-              onClick={handleBack}
-              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-3"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              Back
-            </button>
-
-            <div className="mb-4">
-              <div className="flex items-center gap-2">
-                <h3 className="font-medium">{selectedCommand?.name}</h3>
-                {selectedCommand?.isDestructive && (
-                  <AlertTriangle className="h-4 w-4 text-destructive" />
-                )}
-              </div>
-              <p className="text-sm text-muted-foreground mt-1">
-                {selectedCommand?.description}
-              </p>
-            </div>
-
-            {/* Parameters */}
-            {selectedCommand?.parameters?.map((param) => (
-              <div key={param.id} className="mb-3">
-                <label className="text-sm text-muted-foreground block mb-1">
-                  {param.name}
-                  {param.required && <span className="text-destructive ml-1">*</span>}
-                </label>
-
-                {param.type === 'select' ? (
-                  <select
-                    className="w-full px-2 py-1.5 text-sm bg-background border border-input rounded font-mono"
-                    value={(parameters[param.id] as string) ?? param.defaultValue ?? ''}
-                    onChange={(e) => handleParameterChange(param, e.target.value)}
-                  >
-                    <option value="">Select...</option>
-                    {param.options?.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                ) : param.type === 'boolean' ? (
-                  <select
-                    className="w-full px-2 py-1.5 text-sm bg-background border border-input rounded"
-                    value={String(parameters[param.id] ?? param.defaultValue ?? false)}
-                    onChange={(e) => handleParameterChange(param, e.target.value)}
-                  >
-                    <option value="false">No</option>
-                    <option value="true">Yes</option>
-                  </select>
-                ) : (
-                  <input
-                    type={param.type === 'number' ? 'number' : 'text'}
-                    className="w-full px-2 py-1.5 text-sm bg-background border border-input rounded font-mono"
-                    placeholder={param.description}
-                    value={(parameters[param.id] as string) ?? param.defaultValue ?? ''}
-                    onChange={(e) => handleParameterChange(param, e.target.value)}
-                  />
-                )}
-              </div>
-            ))}
-
-            {/* Confirmation / Execute */}
-            {showConfirm ? (
-              <div className="mt-4 p-3 border border-destructive/50 rounded bg-destructive/10">
-                <p className="text-sm text-destructive mb-2">
-                  {selectedCommand?.isDestructive
-                    ? 'This action may cause data loss. Are you sure?'
-                    : 'Confirm execution?'}
-                </p>
-                <div className="flex gap-2">
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={handleExecute}
-                  >
-                    Confirm
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowConfirm(false)}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <Button className="w-full mt-4" onClick={handleExecute}>
-                Execute
-              </Button>
-            )}
+          <div className="flex-1 overflow-auto">
+            <ParameterForm
+              command={selectedCommand}
+              parameters={parameters}
+              onParameterChange={handleParameterChange}
+              onExecute={handleExecute}
+              onBack={handleBack}
+              showConfirm={showConfirm}
+              onCancelConfirm={() => setShowConfirm(false)}
+            />
           </div>
           <CommandFooter view="parameters" />
         </>
-      )}
+      ) : null}
     </div>
   );
 }

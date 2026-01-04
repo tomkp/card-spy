@@ -116,6 +116,9 @@ export interface CardHandler {
   /** Brief description */
   readonly description: string;
 
+  /** UI workflow type - determines which panel style to use */
+  readonly workflow?: 'emv' | 'generic';
+
   /**
    * Detect if this handler can handle the given card.
    * Called with the card's ATR and optionally after a SELECT command.
