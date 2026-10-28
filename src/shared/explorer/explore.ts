@@ -38,6 +38,8 @@ interface Context {
   f: NodeFactory;
   send: (command: Uint8Array) => Promise<ResponseApdu>;
   raw: (command: Uint8Array) => Promise<ResponseApdu>;
+  /** The card is talking over contactless (its ATR is a PC/SC contactless one). */
+  contactless: boolean;
 }
 
 const ok = (r: ResponseApdu) => r.sw === 0x9000;
@@ -57,9 +59,9 @@ export async function exploreCard(options: ExploreOptions): Promise<ExplorerNode
     options.signal?.throwIfAborted();
     return sendWithResponses(options.transmit, command);
   };
-  const ctx: Context = { f, send, raw };
-
   const atr = parseAtr(options.atr);
+  const ctx: Context = { f, send, raw, contactless: atr.contactless !== undefined };
+
   const root = f.node('card', atr.contactless ? atr.contactless.cardName : 'Smart card', {
     value: atr.contactless ? atr.contactless.standard : atr.summary,
     children: [atrNode(f, atr)],
@@ -154,12 +156,16 @@ async function emvSection(ctx: Context): Promise<ExplorerNode | undefined> {
   if (aids.length === 0) return undefined;
 
   for (const aid of uniqueAids(aids)) {
-    section.children!.push(await emvApplication(ctx, aid));
+    section.children!.push(await emvApplication(ctx, aid, ok(directory)));
   }
   return section;
 }
 
-async function emvApplication(ctx: Context, aid: Uint8Array): Promise<ExplorerNode> {
+async function emvApplication(
+  ctx: Context,
+  aid: Uint8Array,
+  listed: boolean,
+): Promise<ExplorerNode> {
   const { f, send } = ctx;
   const aidHex = toHex(aid);
   const select = await send(selectByName(aid));
@@ -175,6 +181,8 @@ async function emvApplication(ctx: Context, aid: Uint8Array): Promise<ExplorerNo
   );
   if (!ok(select)) {
     app.children!.push(f.node('error', 'SELECT failed', { value: swText(select) }));
+    const hint = selectFailureHint(select.sw, ctx.contactless, listed);
+    if (hint) app.children!.push(f.node('info', 'Likely cause', { value: hint }));
     return app;
   }
   app.children!.push(
@@ -268,6 +276,24 @@ async function transactionLog(
     );
   }
   return log;
+}
+
+/**
+ * EMV answers a SELECT with 6A81 when the card or application is blocked (or SELECT isn't
+ * supported), and with 6283 when the application is blocked. A card that lists an application in its
+ * contactless directory and then refuses to select it is usually one whose contactless payments
+ * haven't been switched on yet: many issuers wait for the card's first chip-and-PIN payment.
+ */
+function selectFailureHint(sw: number, contactless: boolean, listed: boolean): string | undefined {
+  if (sw !== 0x6a81 && sw !== 0x6283) return undefined;
+  if (contactless && listed) {
+    return (
+      "The card lists this application but won't open it over contactless. EMV uses this status for " +
+      'a blocked card or application. New cards often keep contactless switched off until their ' +
+      'first chip-and-PIN payment; in a contact reader the application should open.'
+    );
+  }
+  return 'EMV uses this status on SELECT for a blocked card or application.';
 }
 
 function recordNode(

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { fromHex } from '../hex';
+import { asciiToBytes, fromHex, toHex } from '../hex';
+import { encodeTlvTree } from '../tlv';
 import { DEMO_CARDS } from '../virtual/demo-cards';
 import { createVirtualCard } from '../virtual/simulator';
 import { exploreCard } from './explore';
@@ -67,6 +68,64 @@ describe('exploreCard', () => {
       'Hello from Card Spy',
     ]);
     expect(find(tree, 'Memory')?.bytes?.length).toBe(512);
+  });
+
+  it('explains a listed application that will not open over contactless', async () => {
+    // What new cards did on an ACR122U: the PPSE answers, every other SELECT gets 6A81.
+    const ppse = encodeTlvTree([
+      {
+        tag: '6F',
+        children: [
+          { tag: '84', value: asciiToBytes('2PAY.SYS.DDF01') },
+          {
+            tag: 'A5',
+            children: [
+              {
+                tag: 'BF0C',
+                children: [
+                  { tag: '61', children: [{ tag: '4F', value: fromHex('A0000000031010') }] },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ]);
+    const card = createVirtualCard({
+      format: 'card-spy/virtual-card',
+      version: 1,
+      name: 'Not yet activated',
+      atr: '3B858001112233445515',
+      model: {
+        kind: 'apdu',
+        rules: [
+          { command: 'FFCA000000', response: '010203049000' },
+          { command: '00A404000E325041592E5359532E444446303100', response: toHex(ppse) + '9000' },
+        ],
+        fallback: '6A81',
+      },
+    });
+    const tree = await exploreCard({ transmit: async (c) => card.transmit(c), atr: card.atr });
+    const app = find(tree, 'Visa Credit/Debit')!;
+    expect(find(app, 'SELECT failed')?.value).toMatch(/^6A81/);
+    expect(find(app, 'Likely cause')?.value).toMatch(/contactless.*chip-and-PIN/);
+  });
+
+  it('gives the plain EMV meaning of 6A81 over contact', async () => {
+    const card = createVirtualCard({
+      ...DEMO_CARDS[0]!,
+      model: {
+        kind: 'apdu',
+        rules: [
+          ...(DEMO_CARDS[0]!.model.kind === 'apdu' ? DEMO_CARDS[0]!.model.rules.slice(0, 3) : []),
+          { command: '00A4040007A000000003101000', response: '6A81' },
+        ],
+      },
+    });
+    const tree = await exploreCard({ transmit: async (c) => card.transmit(c), atr: card.atr });
+    const hint = find(tree, 'Likely cause')?.value;
+    expect(hint).toMatch(/blocked card or application/);
+    expect(hint).not.toMatch(/contactless/);
   });
 
   it('turns a failing section into an error node and carries on', async () => {
