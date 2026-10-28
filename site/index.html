@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Card Spy: a smartcard and NFC IDE</title>
+    <meta
+      name="description"
+      content="Card Spy is a desktop IDE for smartcards and NFC: explore cards, read every APDU decoded, script and step through card sessions, and work offline with virtual cards."
+    />
+    <meta name="theme-color" content="#121a24" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#fbfaf7" media="(prefers-color-scheme: light)" />
+    <meta property="og:title" content="Card Spy" />
+    <meta property="og:description" content="A desktop IDE for smartcards and NFC." />
+    <meta property="og:image" content="https://tomkp.github.io/card-spy/screenshots/explorer-dark.webp" />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="icon.png" />
+    <link rel="stylesheet" href="style.css" />
+    <script src="main.js" defer></script>
+  </head>
+  <body>
+    <header class="top">
+      <a class="brand" href="#">
+        <img src="icon.svg" alt="" width="28" height="28" />
+        Card Spy
+      </a>
+      <nav>
+        <a href="#features">Features</a>
+        <a href="#download">Download</a>
+        <a href="https://github.com/tomkp/card-spy">GitHub</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <img class="hero-icon" src="icon.svg" alt="" width="112" height="112" />
+        <h1>A smartcard and NFC IDE</h1>
+        <p class="lede">
+          Explore what's on a card, read every APDU decoded, script and step through sessions, and
+          keep working without a reader using virtual cards.
+        </p>
+        <div class="actions">
+          <a class="button primary" id="download-primary" href="https://github.com/tomkp/card-spy/releases/latest">
+            Download
+          </a>
+          <a class="button" href="https://github.com/tomkp/card-spy">View source</a>
+        </div>
+        <p class="meta" id="download-meta">macOS, Windows and Linux · free and open source (MIT)</p>
+        <figure class="shot hero-shot">
+          <picture>
+            <source srcset="screenshots/explorer-dark.webp" media="(prefers-color-scheme: dark)" />
+            <img
+              src="screenshots/explorer-light.webp"
+              width="2000"
+              height="1250"
+              alt="Card Spy exploring a payment card: the card's applications and records in a tree, a record's TLV decoded in the inspector, and the trace of every APDU below."
+            />
+          </picture>
+        </figure>
+      </section>
+
+      <section id="features" class="feature">
+        <div class="copy">
+          <p class="eyebrow">Card explorer</p>
+          <h2>See everything a card will tell you</h2>
+          <p>
+            One click reads what Card Spy understands. That means the ATR byte by byte, payment
+            applications with their records, counters and transaction log, and NFC tag memory with its
+            NDEF records. It also scans for well-known applications such as PIV, OpenPGP and FIDO.
+          </p>
+          <p>
+            Every value is named and decoded: dates, currencies, countries, flags and CVM rules, and
+            ISO 7816-4 file control parameters for non-payment cards.
+          </p>
+        </div>
+        <figure class="shot">
+          <picture>
+            <source srcset="screenshots/nfc-dark.webp" media="(prefers-color-scheme: dark)" />
+            <img
+              src="screenshots/nfc-light.webp"
+              width="2000"
+              height="1250"
+              loading="lazy"
+              alt="An NFC tag explored: UID, capability container, and an NDEF message with a URI and a text record."
+            />
+          </picture>
+        </figure>
+      </section>
+
+      <section class="feature flip">
+        <div class="copy">
+          <p class="eyebrow">APDU workbench</p>
+          <h2>Every exchange, decoded</h2>
+          <p>
+            Type an APDU in hex, or a shortcut such as <code>select 1PAY.SYS.DDF01</code>, and see the
+            answer at once. The trace keeps every command from the console, the explorer and your
+            scripts. The inspector lays out the header, explains the status word and decodes the
+            response as TLV, highlighting each object's bytes in the hex dump.
+          </p>
+          <p>
+            T=0 cards just work: <code>61xx</code> and <code>6Cxx</code> are followed up automatically,
+            and every step appears in the trace.
+          </p>
+        </div>
+        <figure class="shot">
+          <picture>
+            <source srcset="screenshots/console-dark.webp" media="(prefers-color-scheme: dark)" />
+            <img
+              src="screenshots/console-light.webp"
+              width="2000"
+              height="1250"
+              loading="lazy"
+              alt="The inspector decoding a GET RESPONSE: command header, status word, hex dump and the File Control Information as a TLV tree."
+            />
+          </picture>
+        </figure>
+      </section>
+
+      <section class="feature">
+        <div class="copy">
+          <p class="eyebrow">Scripts</p>
+          <h2>Script it, then step through it</h2>
+          <p>
+            Write TypeScript against a small card API, with completions as you type. Run it against
+            any reader, or press F10 to pause before each APDU, with the line highlighted and the
+            command named.
+          </p>
+          <pre><code>const fci = (await card.select('A0000000031010')).expectOk();
+log(fci.tlv());</code></pre>
+        </div>
+        <figure class="shot">
+          <picture>
+            <source srcset="screenshots/script-dark.webp" media="(prefers-color-scheme: dark)" />
+            <img
+              src="screenshots/script-light.webp"
+              width="2000"
+              height="1250"
+              loading="lazy"
+              alt="A script paused before a READ RECORD command, with its line highlighted and output so far below."
+            />
+          </picture>
+        </figure>
+      </section>
+
+      <section class="grid">
+        <div>
+          <h3>Virtual cards</h3>
+          <p>
+            Record any session with a real card and replay it later without the card. Virtual cards
+            are plain JSON you can edit and keep in git. Demo cards are built in.
+          </p>
+        </div>
+        <div>
+          <h3>Contact and contactless</h3>
+          <p>
+            Any PC/SC reader works, including contact readers and NFC readers such as the ACR122U.
+            Contactless memory tags (NTAG, Ultralight) are read through the reader's own commands.
+          </p>
+        </div>
+        <div>
+          <h3>Made for card work</h3>
+          <p>
+            EMV and ISO 7816 dictionaries, NDEF decoding, a known-AID library, and Java Card status
+            words. If a card refuses a command, Card Spy tells you why where it can.
+          </p>
+        </div>
+      </section>
+
+      <section id="download" class="download">
+        <h2>Download</h2>
+        <p class="meta" id="release-name">The latest release is on GitHub.</p>
+        <div class="platforms">
+          <div class="platform">
+            <h3>macOS</h3>
+            <p>Apple Silicon and Intel. Signed and notarized by Apple.</p>
+            <div class="links">
+              <a class="button primary" data-asset="mac-arm64.dmg" href="https://github.com/tomkp/card-spy/releases/latest">Apple Silicon</a>
+              <a class="button" data-asset="mac-x64.dmg" href="https://github.com/tomkp/card-spy/releases/latest">Intel</a>
+            </div>
+          </div>
+          <div class="platform">
+            <h3>Windows</h3>
+            <p>Windows 10 and 11, 64-bit. Readers use the built-in smart card service.</p>
+            <div class="links">
+              <a class="button primary" data-asset="win-x64.exe" href="https://github.com/tomkp/card-spy/releases/latest">Installer</a>
+            </div>
+          </div>
+          <div class="platform">
+            <h3>Linux</h3>
+            <p>64-bit. Needs <code>pcscd</code> running: <code>sudo apt install pcscd</code>.</p>
+            <div class="links">
+              <a class="button primary" data-asset=".AppImage" href="https://github.com/tomkp/card-spy/releases/latest">AppImage</a>
+              <a class="button" data-asset=".deb" href="https://github.com/tomkp/card-spy/releases/latest">.deb</a>
+            </div>
+          </div>
+        </div>
+        <p class="note">
+          Building from source: <code>git clone https://github.com/tomkp/card-spy</code>, then
+          <code>npm install</code> and <code>npm run dev</code>. See the
+          <a href="https://github.com/tomkp/card-spy#readme">README</a>.
+        </p>
+      </section>
+    </main>
+
+    <footer>
+      <p>
+        Card Spy is open source under the MIT licence. Built on
+        <a href="https://github.com/tomkp/smartcard">smartcard</a>, PC/SC bindings for Node.js.
+      </p>
+      <p><a href="https://github.com/tomkp">tomkp</a></p>
+    </footer>
+  </body>
+</html>

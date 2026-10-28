@@ -43,7 +43,8 @@ export class DeviceManager extends EventEmitter<DeviceEvents> {
       queue: Promise.resolve(),
     });
     this.emitReaders();
-    await this.startPcsc();
+    // CARDSPY_PCSC=off leaves out hardware readers, for screenshots and automated runs.
+    if (process.env.CARDSPY_PCSC !== 'off') await this.startPcsc();
   }
 
   stop(): void {

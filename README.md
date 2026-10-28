@@ -1,6 +1,13 @@
+<p align="center"><img src="build/icon.svg" alt="" width="128" height="128"></p>
+
 # Card Spy
 
-A smartcard and NFC IDE for the desktop.
+A smartcard and NFC IDE for the desktop. **[Download](https://tomkp.github.io/card-spy/#download)** for macOS, Windows or Linux, or see the [website](https://tomkp.github.io/card-spy/).
+
+<picture>
+  <source srcset="site/screenshots/explorer-dark.webp" media="(prefers-color-scheme: dark)">
+  <img src="site/screenshots/explorer-light.webp" alt="Card Spy exploring a payment card: applications and records in a tree, a record decoded in the inspector, and the trace of every APDU.">
+</picture>
 
 - **APDU workbench**: send APDUs from a console, and see every exchange in a trace with the command named, the status word explained and the response decoded as TLV.
 - **Card explorer**: one click reads what Card Spy understands from a card: the ATR byte by byte, EMV payment applications (PSE/PPSE, FCI, GET PROCESSING OPTIONS, every AFL record, GET DATA, the transaction log), NFC Forum Type 2 tag memory and NDEF, and well-known applications such as PIV, OpenPGP and FIDO.
@@ -8,7 +15,7 @@ A smartcard and NFC IDE for the desktop.
 - **Virtual cards**: simulated cards in a virtual reader, so you can work without hardware. Record any session with a real card and replay it later.
 - **NFC**: contactless readers (ACR122U, ACR1252U and others) work through PC/SC. Contactless smart cards take ordinary APDUs, and memory tags (NTAG, MIFARE Ultralight) take the reader's `FF` pseudo-APDUs.
 
-## Run it
+## Run it from source
 
 ```bash
 npm install
@@ -26,6 +33,10 @@ Scripts and virtual cards live in a workspace folder, by default `~/Documents/Ca
 scripts/*.ts      your scripts (the examples are copied here on first run)
 cards/*.json      virtual cards you've recorded or written
 ```
+
+## Releases and the website
+
+Releases are built by GitHub Actions when a version tag is pushed; [RELEASING.md](RELEASING.md) has the steps and the one-time signing setup. The website is `site/`, published by the Pages workflow. Its screenshots come from `npm run build && npm run screenshots`, which uses only the demo virtual cards. The app icon is `build/icon.svg`; run `npm run icons` after changing it.
 
 ## Layout
 

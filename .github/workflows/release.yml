@@ -1,0 +1,87 @@
+name: Release
+
+# Pushing a version tag (v3.0.0) builds every platform and uploads the installers to a draft
+# GitHub release, ready to be checked and published. Running it by hand builds signed installers as
+# workflow artifacts without publishing anything; pull requests that touch packaging build unsigned
+# ones. See RELEASING.md.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+  pull_request:
+    paths: ['electron-builder.yml', 'build/**', 'resources/**', 'package.json', 'package-lock.json', '.github/workflows/release.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  draft:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check the tag matches package.json
+        run: |
+          version="v$(node -p "require('./package.json').version")"
+          if [ "$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME doesn't match package.json version $version" >&2
+            exit 1
+          fi
+      # Create the draft once, so the three build jobs upload to it instead of racing to create it.
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 ||
+            gh release create "$GITHUB_REF_NAME" --draft --title "$GITHUB_REF_NAME" --generate-notes
+
+  build:
+    needs: draft
+    # Also runs for manual runs and pull requests, where the draft job is skipped.
+    if: always() && (needs.draft.result == 'success' || needs.draft.result == 'skipped')
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            platform: mac
+          - os: windows-latest
+            platform: win
+          - os: ubuntu-latest
+            platform: linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install PC/SC headers
+        if: matrix.platform == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y libpcsclite-dev
+      - run: npm ci
+      - run: npm test
+      - run: npx electron-vite build
+      - name: Package
+        run: npx electron-builder --${{ matrix.platform }} --publish ${{ github.event_name == 'push' && 'always' || 'never' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # macOS signing and notarization: unsigned until these secrets exist, and always unsigned for
+          # pull requests (notarizing every packaging change would be slow and pointless).
+          CSC_LINK: ${{ matrix.platform == 'mac' && github.event_name != 'pull_request' && secrets.CSC_LINK || '' }}
+          CSC_KEY_PASSWORD: ${{ matrix.platform == 'mac' && github.event_name != 'pull_request' && secrets.CSC_KEY_PASSWORD || '' }}
+          APPLE_ID: ${{ matrix.platform == 'mac' && github.event_name != 'pull_request' && secrets.APPLE_ID || '' }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.platform == 'mac' && github.event_name != 'pull_request' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ matrix.platform == 'mac' && github.event_name != 'pull_request' && secrets.APPLE_TEAM_ID || '' }}
+      - name: Keep the installers (manual runs and pull requests)
+        if: github.event_name != 'push'
+        uses: actions/upload-artifact@v7
+        with:
+          name: card-spy-${{ matrix.platform }}
+          path: |
+            dist/*.dmg
+            dist/*.zip
+            dist/*.exe
+            dist/*.AppImage
+            dist/*.deb
+          if-no-files-found: error

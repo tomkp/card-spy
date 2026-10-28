@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!--
+    Card Spy app icon: three cards fanned out, the front one with a gold contact plate.
+    Laid out on the macOS icon grid (an 824px rounded square on a 1024 canvas).
+    Regenerate the .icns/.ico/.png files with `npm run icons`.
+  -->
+  <defs>
+    <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#232327"/>
+      <stop offset="1" stop-color="#0d0d0f"/>
+    </linearGradient>
+    <linearGradient id="teal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3ee0c6"/>
+      <stop offset="1" stop-color="#0e9f8a"/>
+    </linearGradient>
+    <linearGradient id="coral" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ff8a66"/>
+      <stop offset="1" stop-color="#e5482f"/>
+    </linearGradient>
+    <linearGradient id="violet" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8f7dff"/>
+      <stop offset="1" stop-color="#5236e6"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0.6" y2="1">
+      <stop offset="0" stop-color="#f8dd94"/>
+      <stop offset="1" stop-color="#cc9a3c"/>
+    </linearGradient>
+    <!-- top light, laid over every card -->
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.22"/>
+      <stop offset="0.45" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="drop" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#000" flood-opacity="0.5"/>
+    </filter>
+    <!-- a card centred on the origin -->
+    <g id="card-shape">
+      <rect x="-270" y="-170" width="540" height="340" rx="44"/>
+    </g>
+  </defs>
+
+  <!-- a faint rim keeps the dark square distinct on a dark Dock -->
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#ground)" stroke="#ffffff" stroke-opacity="0.09" stroke-width="4"/>
+
+  <!-- fanned around a point below the cards, back to front; scaled to sit inside the grid -->
+  <g transform="translate(512 512) scale(0.84) translate(-512 -512) translate(566 -26)">
+    <g transform="rotate(-22 0 900) translate(0 520)" filter="url(#drop)">
+      <use href="#card-shape" fill="url(#teal)"/>
+      <use href="#card-shape" fill="url(#sheen)"/>
+    </g>
+    <g transform="rotate(-7 0 900) translate(0 520)" filter="url(#drop)">
+      <use href="#card-shape" fill="url(#coral)"/>
+      <use href="#card-shape" fill="url(#sheen)"/>
+    </g>
+    <g transform="rotate(8 0 900) translate(0 520)" filter="url(#drop)">
+      <use href="#card-shape" fill="url(#violet)"/>
+      <use href="#card-shape" fill="url(#sheen)"/>
+      <!-- contact plate -->
+      <g transform="translate(-200 -78)">
+        <rect width="160" height="124" rx="22" fill="url(#gold)"/>
+        <g fill="none" stroke="#8d6a26" stroke-width="7" stroke-linecap="round">
+          <rect x="56" y="33" width="48" height="58" rx="8"/>
+          <path d="M0 43 H56 M0 81 H56 M104 43 H160 M104 81 H160 M80 0 V33 M80 91 V124"/>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

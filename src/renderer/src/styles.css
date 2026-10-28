@@ -159,6 +159,9 @@ input {
 }
 
 .titlebar .brand {
+  display: flex;
+  align-items: center;
+  gap: 7px;
   font-weight: 600;
   letter-spacing: 0.01em;
   margin-right: 8px;
@@ -243,6 +246,25 @@ input {
   font-size: 12px;
   overflow: hidden;
   white-space: nowrap;
+}
+
+.statusbar-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 6px;
+  height: 18px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.statusbar-link:hover {
+  background: var(--bg-hover);
+  color: var(--text);
 }
 
 .statusbar .grow {
