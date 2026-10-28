@@ -293,6 +293,7 @@ input {
 }
 
 .list-item {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -326,9 +327,21 @@ input {
   text-overflow: ellipsis;
 }
 
+/* Hover actions float over the end of the row, so showing them never changes its size. */
 .list-item .actions {
   display: none;
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
   gap: 2px;
+  padding-left: 6px;
+  border-radius: 4px;
+  background: var(--bg-hover);
+}
+
+.list-item.active .actions {
+  background: var(--bg-active);
 }
 
 .list-item:hover .actions {
