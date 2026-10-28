@@ -44,20 +44,27 @@ export class NodeFactory {
     return out;
   }
 
-  private tlvNode(source: Uint8Array, n: TlvNode): ExplorerNode {
-    const info = lookupTag(n.tagHex);
+  private tlvNode(source: Uint8Array, n: TlvNode, parent?: string): ExplorerNode {
+    const info = lookupTag(n.tagHex, parent);
     const whole = source.subarray(n.offset, n.offset + n.headerLength + n.value.length);
-    const children = n.children?.map((c) => this.tlvNode(source, c));
+    const children = n.children?.map((c) => this.tlvNode(source, c, n.tagHex));
     return this.node('tlv', info?.name ?? `Tag ${n.tagHex}`, {
       tag: n.tagHex,
       bytes: whole,
-      ...(children ? { children } : { value: previewValue(n.tagHex, n.value, info?.format) }),
+      ...(children
+        ? { children }
+        : { value: previewValue(n.tagHex, n.value, info?.format, parent) }),
     });
   }
 }
 
-export function previewValue(tag: string, value: Uint8Array, format?: string): string {
-  const decoded = decodeTagValue(tag, value);
+export function previewValue(
+  tag: string,
+  value: Uint8Array,
+  format?: string,
+  parent?: string,
+): string {
+  const decoded = decodeTagValue(tag, value, parent);
   if (decoded !== undefined) return decoded;
   if ((format === 'an' || format === 'ans') && isPrintable(value)) return toAscii(value);
   return shortHex(value);

@@ -23,14 +23,14 @@ export function format(value: unknown): string {
   return String(value);
 }
 
-export function tlvTree(nodes: TlvNode[], depth = 0): string {
+export function tlvTree(nodes: TlvNode[], depth = 0, parent?: string): string {
   return nodes
     .map((node) => {
       const indent = '  '.repeat(depth);
-      const name = lookupTag(node.tagHex)?.name ?? '';
-      const head = `${indent}${node.tagHex} ${name}`.trimEnd();
-      if (node.children) return `${head}\n${tlvTree(node.children, depth + 1)}`;
-      return `${head}: ${previewValue(node.tagHex, node.value, lookupTag(node.tagHex)?.format)}`;
+      const info = lookupTag(node.tagHex, parent);
+      const head = `${indent}${node.tagHex} ${info?.name ?? ''}`.trimEnd();
+      if (node.children) return `${head}\n${tlvTree(node.children, depth + 1, node.tagHex)}`;
+      return `${head}: ${previewValue(node.tagHex, node.value, info?.format, parent)}`;
     })
     .join('\n');
 }

@@ -270,10 +270,19 @@ function HexDump({ bytes, highlight }: { bytes: Uint8Array; highlight?: [number,
   );
 }
 
-function TlvRow({ node, onHover }: { node: TlvNode; onHover: (range: [number, number]) => void }) {
-  const info = lookupTag(node.tagHex);
+function TlvRow({
+  node,
+  parent,
+  onHover,
+}: {
+  node: TlvNode;
+  /** Tag of the enclosing template: inside 62/64/6F, tags have their ISO 7816-4 meanings. */
+  parent?: string;
+  onHover: (range: [number, number]) => void;
+}) {
+  const info = lookupTag(node.tagHex, parent);
   const end = node.offset + node.headerLength + node.value.length;
-  const decoded = node.children ? undefined : decodeTagValue(node.tagHex, node.value);
+  const decoded = node.children ? undefined : decodeTagValue(node.tagHex, node.value, parent);
   const text =
     decoded ??
     ((info?.format === 'an' || info?.format === 'ans') && isPrintable(node.value)
@@ -306,7 +315,7 @@ function TlvRow({ node, onHover }: { node: TlvNode; onHover: (range: [number, nu
       {node.children && (
         <div className="tlv-children">
           {node.children.map((child) => (
-            <TlvRow key={child.offset} node={child} onHover={onHover} />
+            <TlvRow key={child.offset} node={child} parent={node.tagHex} onHover={onHover} />
           ))}
         </div>
       )}

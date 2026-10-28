@@ -3,6 +3,7 @@
 import { isPrintable, toAscii, toHex, toUint } from '../hex';
 import { lookupAid } from '../aids';
 import { readTag, tagToHex } from '../tlv';
+import { FCP_TAGS, FILE_CONTROL_TEMPLATES } from './iso7816';
 
 export type TagFormat = 'b' | 'n' | 'cn' | 'an' | 'ans' | 'tlv';
 
@@ -192,13 +193,30 @@ const TAGS = new Map<string, TagInfo>(
   ]),
 );
 
-export function lookupTag(tag: number | string): TagInfo | undefined {
-  return TAGS.get(tagToHex(tag));
+/**
+ * `parent` is the tag of the enclosing template, when known: directly inside a file control
+ * template (62, 64, 6F) tags have their ISO 7816-4 meanings rather than their EMV ones.
+ */
+export function lookupTag(tag: number | string, parent?: string): TagInfo | undefined {
+  const hex = tagToHex(tag);
+  const fcp = fileControlTag(hex, parent);
+  if (fcp) return { tag: hex, name: fcp.name, format: 'b' };
+  return TAGS.get(hex);
+}
+
+function fileControlTag(hex: string, parent: string | undefined) {
+  return parent && FILE_CONTROL_TEMPLATES.has(parent) ? FCP_TAGS[hex] : undefined;
 }
 
 /** Human-readable value, or undefined when hex is as good as it gets. */
-export function decodeTagValue(tag: number | string, value: Uint8Array): string | undefined {
+export function decodeTagValue(
+  tag: number | string,
+  value: Uint8Array,
+  parent?: string,
+): string | undefined {
   const hex = tagToHex(tag);
+  const fcp = fileControlTag(hex, parent);
+  if (fcp) return fcp.decode?.(value);
   const special = DECODERS[hex];
   if (special) {
     try {
