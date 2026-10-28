@@ -34,6 +34,6 @@
     primary.href = file.browser_download_url;
     primary.textContent = { mac: 'Download for macOS', win: 'Download for Windows', linux: 'Download for Linux' }[platform];
     document.getElementById('download-meta').textContent =
-      `${release.tag_name} · other platforms and Intel Macs below · free and open source (MIT)`;
+      `${release.tag_name} · downloads for Intel Macs and other platforms are below`;
   }
 })();
