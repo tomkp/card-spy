@@ -624,11 +624,11 @@ input {
   color: var(--text-dim);
 }
 
-.src.console {
+.src.src-console {
   color: var(--accent);
 }
 
-.src.script {
+.src.src-script {
   color: var(--tag);
 }
 
@@ -652,22 +652,47 @@ input {
 .console {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   flex: none;
-  height: 36px;
+  height: 44px;
   padding: 0 10px;
   border-top: 1px solid var(--border);
   background: var(--bg-panel);
 }
 
-.console .prompt {
-  color: var(--accent);
-  font-family: var(--font-mono);
+.console-field {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 3px 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
 }
 
-.console input[type='text'] {
+.console-field:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.console-field.disabled {
+  opacity: 0.6;
+}
+
+.console-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+
+.console-field input[type='text'] {
   flex: 1;
-  height: 26px;
+  min-width: 0;
+  height: 100%;
   border: 0;
   outline: none;
   background: transparent;
@@ -675,13 +700,13 @@ input {
   font-size: 12.5px;
 }
 
-.console .error {
-  color: var(--error);
-  font-size: 12px;
-  max-width: 40%;
+.console-result {
+  flex: none;
+  max-width: 34%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 12px;
 }
 
 .check {

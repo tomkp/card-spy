@@ -3,7 +3,7 @@ import { describeCommand } from '@shared/apdu';
 import { fromHex } from '@shared/hex';
 import { describeSw } from '@shared/sw';
 import type { CardEventKind, TraceEntry } from '@shared/types';
-import { clearTrace, recordCurrentCard, runConsoleCommand } from '../actions';
+import { clearTrace, recordCurrentCard, runConsoleCommand, type ConsoleResult } from '../actions';
 import { errorText } from '../scripting/runner';
 import { selectedReader, set, useStore } from '../store';
 import { prompt } from './Dialog';
@@ -124,6 +124,8 @@ function TraceList({ filter }: { filter: string }) {
   const scroller = useRef<HTMLDivElement>(null);
   const [view, setView] = useState({ top: 0, height: 300 });
   const pinned = useRef(true);
+  /** Where we last scrolled to ourselves: a scroll event there is ours, not the user scrolling away. */
+  const ownScroll = useRef<number | undefined>(undefined);
 
   // Describing an entry decodes its APDU, so do it once per entry rather than on every scroll.
   const described = useMemo(() => new WeakMap<TraceEntry, Row>(), []);
@@ -151,8 +153,21 @@ function TraceList({ filter }: { filter: string }) {
   // Follow new entries while the list is scrolled to the bottom.
   useLayoutEffect(() => {
     const el = scroller.current!;
-    if (pinned.current) el.scrollTop = el.scrollHeight;
+    if (!pinned.current) return;
+    el.scrollTop = el.scrollHeight;
+    ownScroll.current = el.scrollTop;
   }, [rows.length]);
+
+  // Keep the selected entry in view: arrow keys, and console commands, which select their response.
+  // Runs only when the selection changes, so new rows never pull the list back to it.
+  useLayoutEffect(() => {
+    const index = rows.findIndex((r) => r.entry.id === selectedId);
+    if (index === -1) return;
+    const el = scroller.current!;
+    if (index * ROW < el.scrollTop) el.scrollTop = index * ROW;
+    else if ((index + 1) * ROW > el.scrollTop + el.clientHeight)
+      el.scrollTop = (index + 1) * ROW - el.clientHeight;
+  }, [selectedId]);
 
   const first = Math.max(0, Math.floor(view.top / ROW) - 10);
   const last = Math.min(rows.length, Math.ceil((view.top + view.height) / ROW) + 10);
@@ -163,13 +178,7 @@ function TraceList({ filter }: { filter: string }) {
     const i = rows.findIndex((r) => r.entry.id === selectedId);
     const next =
       rows[e.key === 'ArrowDown' ? Math.min(rows.length - 1, i + 1) : Math.max(0, i - 1)];
-    if (!next) return;
-    set({ selection: { kind: 'entry', id: next.entry.id } });
-    const index = rows.indexOf(next);
-    const el = scroller.current!;
-    if (index * ROW < el.scrollTop) el.scrollTop = index * ROW;
-    else if ((index + 1) * ROW > el.scrollTop + el.clientHeight)
-      el.scrollTop = (index + 1) * ROW - el.clientHeight;
+    if (next) set({ selection: { kind: 'entry', id: next.entry.id } });
   };
 
   return (
@@ -181,7 +190,11 @@ function TraceList({ filter }: { filter: string }) {
       onKeyDown={onKeyDown}
       onScroll={(e) => {
         const el = e.currentTarget;
-        pinned.current = el.scrollTop + el.clientHeight >= el.scrollHeight - ROW;
+        // Rows can arrive between our scroll and its event; only the user scrolling unpins the list.
+        if (ownScroll.current === undefined || Math.abs(el.scrollTop - ownScroll.current) >= 1) {
+          pinned.current = el.scrollTop + el.clientHeight >= el.scrollHeight - ROW;
+        }
+        ownScroll.current = undefined;
         setView({ top: el.scrollTop, height: el.clientHeight });
       }}
     >
@@ -236,7 +249,7 @@ function TraceRow({ row, top, selected }: { row: Row; top: number; selected: boo
     <div className={`trace-row${selected ? ' selected' : ''}`} style={{ top }} onClick={select}>
       <span className="num mono">{entry.id}</span>
       <span className="mono faint">{time(entry.startedAt)}</span>
-      <span className={`src ${entry.source}`}>{entry.source}</span>
+      <span className={`src src-${entry.source}`}>{entry.source}</span>
       <span title={row.name}>{row.name}</span>
       <span className="cmd mono">{entry.command}</span>
       <span className={`sw ${severity}`} title={entry.error}>
@@ -247,9 +260,20 @@ function TraceRow({ row, top, selected }: { row: Row; top: number; selected: boo
   );
 }
 
+const CONSOLE_HELP =
+  'An APDU in hex, or a command:\n' +
+  '  select <aid | name>   e.g. select 1PAY.SYS.DDF01\n' +
+  '  read <sfi> <record>   READ RECORD\n' +
+  '  getdata <tag>         e.g. getdata 9F36\n' +
+  '  uid                   contactless UID\n' +
+  '  reset | reset cold\n' +
+  'Up and down arrows recall earlier commands.';
+
 function Console() {
   const [value, setValue] = useState('');
   const [error, setError] = useState<string>();
+  const [result, setResult] = useState<ConsoleResult>();
+  const [busy, setBusy] = useState(false);
   const [autoResponse, setAutoResponse] = useState(true);
   const history = useRef<string[]>([]);
   const position = useRef(0);
@@ -257,23 +281,24 @@ function Console() {
 
   const submit = async () => {
     const input = value.trim();
-    if (!input) return;
+    if (!input || busy) return;
     history.current = [...history.current.filter((h) => h !== input), input].slice(-200);
     position.current = history.current.length;
     setError(undefined);
+    setResult(undefined);
+    setBusy(true);
     try {
-      await runConsoleCommand(input, autoResponse);
+      setResult(await runConsoleCommand(input, autoResponse));
       setValue('');
     } catch (e) {
       setError(errorText(e));
+    } finally {
+      setBusy(false);
     }
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      void submit();
-    } else if (e.key === 'ArrowUp' && history.current.length) {
+    if (e.key === 'ArrowUp' && history.current.length) {
       e.preventDefault();
       position.current = Math.max(0, position.current - 1);
       setValue(history.current[position.current] ?? '');
@@ -286,30 +311,50 @@ function Console() {
 
   return (
     <div className="console">
-      <span className="prompt">›</span>
-      <input
-        id="console-input"
-        type="text"
-        value={value}
-        disabled={!hasCard}
-        placeholder={
-          hasCard
-            ? 'APDU in hex (00 A4 04 00 …) or: select <aid|name> · read <sfi> <rec> · getdata <tag> · uid · reset'
-            : 'Insert a card to send APDUs'
-        }
-        onChange={(e) => {
-          setValue(e.target.value);
-          setError(undefined);
+      <form
+        className={`console-field${hasCard ? '' : ' disabled'}`}
+        onSubmit={(e) => {
+          e.preventDefault();
+          void submit();
         }}
-        onKeyDown={onKeyDown}
-        spellCheck={false}
-        autoComplete="off"
-      />
-      {error && (
-        <span className="error" title={error}>
+        title={CONSOLE_HELP}
+      >
+        <label className="console-label" htmlFor="console-input">
+          APDU
+        </label>
+        <input
+          id="console-input"
+          type="text"
+          value={value}
+          disabled={!hasCard}
+          placeholder={
+            hasCard ? '00 A4 04 00 …  or  select 1PAY.SYS.DDF01' : 'Insert a card to send APDUs'
+          }
+          onChange={(e) => {
+            setValue(e.target.value);
+            setError(undefined);
+          }}
+          onKeyDown={onKeyDown}
+          spellCheck={false}
+          autoComplete="off"
+        />
+        <button
+          type="submit"
+          className="btn small primary"
+          disabled={!hasCard || busy || !value.trim()}
+        >
+          Send
+        </button>
+      </form>
+      {error ? (
+        <span className="console-result error-text" title={error}>
           {error}
         </span>
-      )}
+      ) : result ? (
+        <span className={`console-result sw ${result.severity}`} title={result.text}>
+          {result.text}
+        </span>
+      ) : null}
       <label
         className="check"
         title="Follow 61xx with GET RESPONSE and resend 6Cxx with the right Le"

@@ -1,8 +1,10 @@
 import { parseAtr } from '@shared/atr';
+import { splitResponse } from '@shared/apdu';
 import * as commands from '@shared/commands';
 import { sendWithResponses } from '@shared/exchange';
 import { exploreCard } from '@shared/explorer/explore';
 import { fromHex, toHex } from '@shared/hex';
+import { describeSw, type SwSeverity } from '@shared/sw';
 import type { ExchangeEntry, ExchangeSource, TraceEntry } from '@shared/types';
 import { VIRTUAL_READER_ID } from '@shared/types';
 import { recordVirtualCard } from '@shared/virtual/recorder';
@@ -29,13 +31,23 @@ export async function init(): Promise<void> {
   });
 
   // Entries can arrive in bursts (an exploration sends dozens); batch them into one render per frame.
+  // A console command's last exchange is selected, so its response shows in the inspector.
   let queued: TraceEntry[] = [];
   api.onTrace((entry) => {
     if (queued.length === 0) {
       requestAnimationFrame(() => {
         const batch = queued;
         queued = [];
-        set((s) => ({ trace: [...s.trace, ...batch].slice(-20_000) }));
+        const fromConsole = batch.findLast((e) => e.type === 'exchange' && e.source === 'console');
+        set((s) => ({
+          trace: [...s.trace, ...batch].slice(-20_000),
+          ...(fromConsole
+            ? {
+                selection: { kind: 'entry' as const, id: fromConsole.id },
+                bottomTab: 'trace' as const,
+              }
+            : {}),
+        }));
       });
     }
     queued.push(entry);
@@ -64,14 +76,20 @@ function transmitter(source: ExchangeSource) {
 
 // ---- Console ----
 
+export interface ConsoleResult {
+  text: string;
+  severity: SwSeverity;
+}
+
 /**
  * Raw hex is sent as is. A few shortcuts save typing:
  *   select <aid | name>   read <sfi> <record>   getdata <tag>   uid   reset   reset cold
+ * Resolves with a one-line summary of the outcome.
  */
 export async function runConsoleCommand(
   input: string,
   autoResponse: boolean,
-): Promise<string | undefined> {
+): Promise<ConsoleResult> {
   const transmit = transmitter('console');
   const [word = '', ...args] = input.trim().split(/\s+/);
   const reader = selectedReader()!;
@@ -89,16 +107,21 @@ export async function runConsoleCommand(
     case 'uid':
       command = commands.GET_UID;
       break;
-    case 'reset':
-      await api.resetCard(reader.id, args[0] === 'cold');
-      return undefined;
+    case 'reset': {
+      const cold = args[0] === 'cold';
+      const atr = await api.resetCard(reader.id, cold);
+      return { text: `${cold ? 'Cold' : 'Warm'} reset · ATR ${atr}`, severity: 'ok' };
+    }
     default:
       command = fromHex(input);
   }
   if (command.length < 4) throw new Error('An APDU needs at least CLA INS P1 P2');
-  if (autoResponse) await sendWithResponses(transmit, command);
-  else await transmit(command);
-  return undefined;
+  const response = autoResponse
+    ? await sendWithResponses(transmit, command)
+    : splitResponse(await transmit(command));
+  const { text, severity } = describeSw(response.sw);
+  const bytes = response.data.length ? ` · ${response.data.length} bytes` : '';
+  return { text: `${toHex([response.sw1, response.sw2])} ${text}${bytes}`, severity };
 }
 
 export function clearTrace(): void {
