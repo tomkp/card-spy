@@ -128,6 +128,70 @@ describe('exploreCard', () => {
     expect(hint).not.toMatch(/contactless/);
   });
 
+  it('trims padded labels and says why a transaction log could not be read', async () => {
+    const tlv = (nodes: Parameters<typeof encodeTlvTree>[0]) => toHex(encodeTlvTree(nodes));
+    const aid = fromHex('A0000000291010');
+    const card = createVirtualCard({
+      format: 'card-spy/virtual-card',
+      version: 1,
+      name: 'Padded label, guarded log',
+      atr: '3B6800000073C84012009000',
+      model: {
+        kind: 'apdu',
+        rules: [
+          {
+            command: '00A404000E315041592E5359532E444446303100',
+            response:
+              tlv([
+                {
+                  tag: '6F',
+                  children: [{ tag: 'A5', children: [{ tag: '88', value: Uint8Array.of(1) }] }],
+                },
+              ]) + '9000',
+          },
+          {
+            command: '00B2010C00',
+            response:
+              tlv([
+                { tag: '70', children: [{ tag: '61', children: [{ tag: '4F', value: aid }] }] },
+              ]) + '9000',
+          },
+          {
+            command: '00A4040007A000000029101000',
+            response:
+              tlv([
+                {
+                  tag: '6F',
+                  children: [
+                    { tag: '84', value: aid },
+                    {
+                      tag: 'A5',
+                      children: [
+                        { tag: '50', value: asciiToBytes('Link             ') },
+                        { tag: 'BF0C', children: [{ tag: '9F4D', value: fromHex('0B03') }] },
+                      ],
+                    },
+                  ],
+                },
+              ]) + '9000',
+          },
+          { command: '80A80000*', response: tlv([{ tag: '80', value: fromHex('0000') }]) + '9000' },
+          {
+            command: '80CA9F4F00',
+            response: tlv([{ tag: '9F4F', value: fromHex('9A03') }]) + '9000',
+          },
+          { command: '00B2015C00', response: '6985' },
+        ],
+        fallback: '6A88',
+      },
+    });
+    const tree = await exploreCard({ transmit: async (c) => card.transmit(c), atr: card.atr });
+    expect(find(tree, 'Link')?.value).toBe('A0000000291010');
+    expect(find(tree, 'Transaction log')?.value).toBe(
+      'SFI 11 · not readable: 6985 Conditions of use not satisfied',
+    );
+  });
+
   it('turns a failing section into an error node and carries on', async () => {
     let calls = 0;
     const tree = await exploreCard({

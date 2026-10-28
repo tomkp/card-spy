@@ -173,7 +173,8 @@ async function emvApplication(
   const label = findTlv(fciTlv, 0x50)?.value;
   const app = f.node(
     'application',
-    label && isPrintable(label) ? toAscii(label) : (lookupAid(aidHex)?.name ?? aidHex),
+    // Labels are space-padded on many cards ("Link             ").
+    label && isPrintable(label) ? toAscii(label).trim() : (lookupAid(aidHex)?.name ?? aidHex),
     {
       value: aidHex,
       children: [],
@@ -256,7 +257,14 @@ async function transactionLog(
   const log = f.node('section', 'Transaction log', { value: `SFI ${sfi}`, children: [] });
   for (let record = 1; record <= count; record++) {
     const r = await send(readRecord(sfi, record));
-    if (!ok(r)) break;
+    if (!ok(r)) {
+      // 6A83 (no such record) just means fewer entries; anything else is the card refusing.
+      if (record === 1) {
+        log.value =
+          r.sw === 0x6a83 ? `SFI ${sfi} · empty` : `SFI ${sfi} · not readable: ${swText(r)}`;
+      }
+      break;
+    }
     let offset = 0;
     const fields = dol.map((entry) => {
       const value = r.data.subarray(offset, offset + entry.length);

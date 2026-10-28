@@ -32,8 +32,8 @@ export function ExplorerView() {
           records, NFC tag memory and NDEF, and well-known applications such as PIV and OpenPGP.
         </p>
         <p className="faint">
-          On payment cards this sends GET PROCESSING OPTIONS, which advances the card's transaction
-          counter.
+          On payment cards this sends GET PROCESSING OPTIONS to each payment application, which
+          advances the card's transaction counter once per application.
         </p>
         <button
           className="btn primary"
