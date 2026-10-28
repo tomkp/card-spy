@@ -192,6 +192,32 @@ describe('exploreCard', () => {
     );
   });
 
+  it('reads only the UID of a MIFARE Classic card and says why', async () => {
+    const card = createVirtualCard({
+      format: 'card-spy/virtual-card',
+      version: 1,
+      name: 'Classic 1K',
+      atr: '3B8F8001804F0CA0000003060300010000000069',
+      model: {
+        kind: 'apdu',
+        rules: [{ command: 'FFCA000000', response: 'A1B2C3D49000' }],
+        fallback: '6300',
+      },
+    });
+    const sent: string[] = [];
+    const tree = await exploreCard({
+      transmit: async (c) => {
+        sent.push(toHex(c));
+        return card.transmit(c);
+      },
+      atr: card.atr,
+    });
+    expect(tree.label).toBe('MIFARE Classic 1K');
+    expect(find(tree, 'UID')?.value).toBe('A1 B2 C3 D4');
+    expect(find(tree, 'Memory not read')?.value).toMatch(/sector's key/);
+    expect(sent).toEqual(['FFCA000000']);
+  });
+
   it('turns a failing section into an error node and carries on', async () => {
     let calls = 0;
     const tree = await exploreCard({

@@ -72,8 +72,14 @@ export async function exploreCard(options: ExploreOptions): Promise<ExplorerNode
   const storageCard = atr.contactless !== undefined && atr.contactless.standard !== 'ISO 14443-4';
   const sections: Array<(ctx: Context) => Promise<ExplorerNode | undefined>> = [];
   if (atr.contactless) sections.push(uidSection);
-  if (storageCard) sections.push(type2Section);
-  else sections.push(emvSection, aidScanSection);
+  if (storageCard) {
+    const notType2 = NOT_TYPE_2[atr.contactless!.cardNameCode];
+    sections.push(
+      notType2
+        ? async ({ f }) => f.node('info', 'Memory not read', { value: notType2 })
+        : type2Section,
+    );
+  } else sections.push(emvSection, aidScanSection);
 
   for (const section of sections) {
     try {
@@ -338,6 +344,30 @@ async function aidScanSection({ f, send }: Context): Promise<ExplorerNode | unde
 }
 
 // ---- NFC Forum Type 2 (NTAG / Ultralight) ----
+
+const CLASSIC =
+  "MIFARE Classic keeps its memory in sectors that can only be read after authenticating with each sector's key. " +
+  "Card Spy reads the UID but doesn't authenticate.";
+
+/**
+ * Contactless memory cards whose memory isn't NFC Forum Type 2 pages, by PC/SC card name code, with
+ * the reason Card Spy doesn't show it. Anything else (Ultralight, NTAG, unknown) is read as Type 2.
+ */
+const NOT_TYPE_2: Record<number, string> = {
+  0x0001: CLASSIC,
+  0x0002: CLASSIC,
+  0x0026: CLASSIC,
+  0x0036: CLASSIC,
+  0x0037: CLASSIC,
+  0x0014: 'Card Spy does not read ICODE (ISO 15693) memory yet.',
+  0x0035: 'Card Spy does not read ICODE (ISO 15693) memory yet.',
+  0x003b: 'Card Spy does not read FeliCa memory yet.',
+  0xf011: 'Card Spy does not read FeliCa memory yet.',
+  0xf012: 'Card Spy does not read FeliCa memory yet.',
+  0x002f: 'Card Spy does not read Jewel / Topaz (Type 1) memory yet.',
+  0x0030: 'Card Spy does not read Jewel / Topaz (Type 1) memory yet.',
+  0xf004: 'Card Spy does not read Jewel / Topaz (Type 1) memory yet.',
+};
 
 async function type2Section({ f, raw }: Context): Promise<ExplorerNode | undefined> {
   const header = await raw(readPages(0, 16));
