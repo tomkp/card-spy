@@ -1,149 +1,98 @@
-export interface Device {
-  name: string;
-  isActivated: boolean;
-}
+import type { VirtualCardDefinition } from './virtual/definition';
 
-export interface Card {
+/** Who sent an APDU. Shown in the trace so you can tell your own commands from automated ones. */
+export type ExchangeSource = 'console' | 'explorer' | 'script' | 'system';
+
+export type ReaderKind = 'pcsc' | 'virtual';
+
+export interface CardInfo {
   atr: string;
-  protocol: number;
-  deviceName?: string;
+  /** PC/SC protocol constant (T=0 / T=1); absent for virtual cards. */
+  protocol?: number;
+  /** Name of the virtual card definition, for virtual readers. */
+  virtualName?: string;
+  insertedAt: number;
 }
 
-export interface ReaderSession {
-  device: Device;
-  card: Card | null;
-  log: LogEntry[];
-}
-
-export interface Command {
-  id: string;
-  timestamp: number;
-  apdu: number[];
-  hex: string;
-}
-
-export interface Response {
-  id: string;
-  timestamp: number;
-  data: number[];
-  sw1: number;
-  sw2: number;
-  hex: string;
-  meaning?: string;
-}
-
-export interface TlvNode {
-  tag: number;
-  tagHex: string;
-  length: number;
-  value: number[] | TlvNode[];
-  isConstructed: boolean;
-  description?: string;
-}
-
-export interface CommandLogEntry {
-  type: 'command';
-  id: string;
-  command: Command;
-  response?: Response;
-  tlv?: TlvNode[];
-}
-
-export interface CardInsertedLogEntry {
-  type: 'card-inserted';
-  id: string;
-  device: string;
-  atr: string;
-}
-
-export type LogEntry = CommandLogEntry | CardInsertedLogEntry;
-
-export interface EmvApplicationFoundEvent {
-  aid: string;
-  tlv: TlvNode;
-}
-
-export interface ApplicationSelectedEvent {
-  aid: string;
-}
-
-// Handler-related types
-import type { CardCommand } from './handlers/types';
-
-export interface DetectedHandlerInfo {
+export interface ReaderInfo {
   id: string;
   name: string;
-  description: string;
-  cardType?: string;
-  confidence: number;
-  commands: CardCommand[];
-  /** UI workflow type - determines which panel to show */
-  workflow?: 'emv' | 'generic';
+  kind: ReaderKind;
+  card?: CardInfo;
 }
 
-export interface HandlersDetectedEvent {
-  deviceName: string;
-  handlers: DetectedHandlerInfo[];
-}
-
-export interface ActiveHandlerChangedEvent {
-  deviceName: string;
-  handlerId: string;
-  commands: CardCommand[];
-}
-
-export interface ApplicationFoundEvent {
-  handlerId: string;
-  aid: string;
-  name?: string;
-  label?: string;
-}
-
-export interface InterrogationCompleteEvent {
-  deviceName: string;
-  handlerId: string;
-  success: boolean;
+export interface ExchangeEntry {
+  type: 'exchange';
+  id: number;
+  readerId: string;
+  readerName: string;
+  source: ExchangeSource;
+  /** Hex, no separators. */
+  command: string;
+  response?: string;
   error?: string;
+  startedAt: number;
+  durationMs: number;
 }
 
-export interface ElectronAPI {
-  onDeviceActivated: (callback: (device: Device) => void) => void;
-  onDeviceDeactivated: (callback: (device: Device) => void) => void;
-  onCardInserted: (callback: (card: Card) => void) => void;
-  onCardRemoved: (callback: (data: { deviceName: string }) => void) => void;
-  onCommandIssued: (callback: (command: Command) => void) => void;
-  onResponseReceived: (callback: (response: Response) => void) => void;
-  onEmvApplicationFound: (callback: (data: EmvApplicationFoundEvent) => void) => void;
-  onApplicationSelected: (callback: (data: ApplicationSelectedEvent) => void) => void;
+export type CardEventKind =
+  'reader-attached' | 'reader-detached' | 'card-inserted' | 'card-removed' | 'card-reset';
 
-  // Handler events
-  onHandlersDetected: (callback: (data: HandlersDetectedEvent) => void) => void;
-  onActiveHandlerChanged: (callback: (data: ActiveHandlerChangedEvent) => void) => void;
-  onApplicationFound: (callback: (data: ApplicationFoundEvent) => void) => void;
-  onInterrogationComplete: (callback: (data: InterrogationCompleteEvent) => void) => void;
-
-  // Device actions
-  getDevices: () => Promise<Device[]>;
-  getCards: () => Promise<Array<{ deviceName: string; atr: string; protocol: number }>>;
-  selectDevice: (deviceName: string) => Promise<void>;
-  sendCommand: (apdu: number[]) => Promise<Response>;
-  interrogate: () => Promise<void>;
-  repl: (command: string) => Promise<Response>;
-
-  // Handler actions
-  getAvailableCommands: () => Promise<CardCommand[]>;
-  getDetectedHandlers: () => Promise<Array<{ id: string; name: string; cardType?: string }>>;
-  setActiveHandler: (handlerId: string) => Promise<boolean>;
-  executeCommand: (commandId: string, parameters?: Record<string, unknown>) => Promise<Response>;
-  detectHandlers: (deviceName: string, atr: string) => Promise<void>;
-
-  removeAllListeners: (channel: string) => void;
+export interface CardEventEntry {
+  type: 'event';
+  id: number;
+  readerId: string;
+  readerName: string;
+  event: CardEventKind;
+  atr?: string;
+  at: number;
 }
 
-declare global {
-  interface Window {
-    electronAPI: ElectronAPI;
-  }
+export type TraceEntry = ExchangeEntry | CardEventEntry;
+
+export interface ScriptFile {
+  name: string;
+  /** Whole file contents; included in listings because scripts are small. */
+  content: string;
 }
 
-export {};
+export interface VirtualCardFile {
+  /** File name in the workspace cards folder, or `builtin:<id>` for bundled cards. */
+  id: string;
+  builtin: boolean;
+  definition: VirtualCardDefinition;
+}
+
+export interface WorkspaceListing {
+  root: string;
+  scripts: ScriptFile[];
+  cards: VirtualCardFile[];
+}
+
+/** Everything the renderer can ask of the main process. Exposed as `window.cardspy` by the preload. */
+export interface CardSpyApi {
+  listReaders(): Promise<ReaderInfo[]>;
+  onReadersChanged(listener: (readers: ReaderInfo[]) => void): () => void;
+
+  /** Sends one APDU (hex) and resolves with the raw response (hex), status word included. */
+  transmit(readerId: string, command: string, source: ExchangeSource): Promise<string>;
+  /** Warm reset (or cold when `cold`); resolves with the new ATR. */
+  resetCard(readerId: string, cold?: boolean): Promise<string>;
+
+  getTrace(): Promise<TraceEntry[]>;
+  clearTrace(): Promise<void>;
+  onTrace(listener: (entry: TraceEntry) => void): () => void;
+
+  insertVirtualCard(definition: VirtualCardDefinition): Promise<void>;
+  ejectVirtualCard(): Promise<void>;
+
+  listWorkspace(): Promise<WorkspaceListing>;
+  saveScript(name: string, content: string): Promise<void>;
+  deleteScript(name: string): Promise<void>;
+  renameScript(from: string, to: string): Promise<void>;
+  saveVirtualCard(definition: VirtualCardDefinition): Promise<string>;
+  deleteVirtualCard(id: string): Promise<void>;
+  revealWorkspace(): Promise<void>;
+}
+
+export const VIRTUAL_READER_ID = 'virtual:0';

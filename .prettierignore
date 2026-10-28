@@ -1,6 +1,0 @@
-node_modules
-out
-.vite
-dist
-*.cjs
-package-lock.json

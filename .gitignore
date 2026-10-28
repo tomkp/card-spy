@@ -1,24 +1,6 @@
-# IDE
-.idea
-*.iml
-.vscode
-
-# Dependencies
-node_modules/
-
-# Build output
-.vite/
-out/
-dist/
-build/
-
-# Logs
-*.log
-npm-debug.log*
-
-# Misc
-*.map
-.DS_Store
-website/*.zip
-
+node_modules
+out
+dist
 coverage
+.DS_Store
+*.log

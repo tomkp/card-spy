@@ -1,215 +1,201 @@
 import { describe, it, expect } from 'vitest';
+import { fromHex, toHex } from './hex';
 import {
-  getStatusWordInfo,
-  isSuccessStatus,
-  formatStatusWord,
-  parseHexInput,
-  formatHex,
-  formatHexSpaced,
+  describeCommand,
+  encodeCommand,
+  parseCommand,
+  splitResponse,
+  tryParseCommand,
 } from './apdu';
 
-describe('getStatusWordInfo', () => {
-  describe('success statuses', () => {
-    it('should recognize 9000 as success', () => {
-      const result = getStatusWordInfo(0x90, 0x00);
-      expect(result.isSuccess).toBe(true);
-      expect(result.meaning).toBe('Success');
-    });
+const d = (hex: string) => describeCommand(fromHex(hex));
 
-    it('should recognize 61XX as success with more data', () => {
-      const result = getStatusWordInfo(0x61, 0x10);
-      expect(result.isSuccess).toBe(true);
-      expect(result.meaning).toBe('More data available (16 bytes)');
-    });
+describe('parseCommand', () => {
+  it('handles all four short cases', () => {
+    expect(parseCommand(fromHex('00840000'))).toMatchObject({ case: 1, extended: false });
+    expect(parseCommand(fromHex('0084000008'))).toMatchObject({ case: 2, le: 8 });
+    expect(parseCommand(fromHex('00C0000000')).le).toBe(256);
+    const c3 = parseCommand(fromHex('00A4040007A0000000031010'));
+    expect(c3).toMatchObject({ cla: 0, ins: 0xa4, p1: 4, p2: 0, case: 3 });
+    expect(toHex(c3.data!)).toBe('A0000000031010');
+    expect(parseCommand(fromHex('00A4040007A000000003101000'))).toMatchObject({ case: 4, le: 256 });
+  });
 
-    it('should recognize 62XX as warning (state unchanged)', () => {
-      const result = getStatusWordInfo(0x62, 0x00);
-      expect(result.isSuccess).toBe(true);
-      expect(result.meaning).toBe('Warning: state unchanged');
+  it('handles extended cases', () => {
+    expect(parseCommand(fromHex('00B0000000FFFF'))).toMatchObject({
+      case: 2,
+      extended: true,
+      le: 65535,
     });
-
-    it('should recognize 63CX as counter warning', () => {
-      const result = getStatusWordInfo(0x63, 0xc3);
-      expect(result.isSuccess).toBe(true);
-      expect(result.meaning).toBe('Warning: counter value 3');
+    expect(parseCommand(fromHex('00B00000000000')).le).toBe(65536);
+    expect(parseCommand(fromHex('00DA0000000002AABB'))).toMatchObject({ case: 3, extended: true });
+    expect(parseCommand(fromHex('00DA0000000002AABB0100'))).toMatchObject({
+      case: 4,
+      extended: true,
+      le: 256,
     });
   });
 
-  describe('error statuses', () => {
-    it('should recognize 6700 as wrong length', () => {
-      const result = getStatusWordInfo(0x67, 0x00);
-      expect(result.isSuccess).toBe(false);
-      expect(result.meaning).toBe('Wrong length');
-    });
-
-    it('should recognize 6982 as security not satisfied', () => {
-      const result = getStatusWordInfo(0x69, 0x82);
-      expect(result.isSuccess).toBe(false);
-      expect(result.meaning).toBe('Security status not satisfied');
-    });
-
-    it('should recognize 6985 as conditions not satisfied', () => {
-      const result = getStatusWordInfo(0x69, 0x85);
-      expect(result.isSuccess).toBe(false);
-      expect(result.meaning).toBe('Conditions of use not satisfied');
-    });
-
-    it('should recognize 6A82 as file not found', () => {
-      const result = getStatusWordInfo(0x6a, 0x82);
-      expect(result.isSuccess).toBe(false);
-      expect(result.meaning).toBe('File not found');
-    });
-
-    it('should recognize 6A83 as record not found', () => {
-      const result = getStatusWordInfo(0x6a, 0x83);
-      expect(result.isSuccess).toBe(false);
-      expect(result.meaning).toBe('Record not found');
-    });
-
-    it('should recognize 6A86 as incorrect P1-P2', () => {
-      const result = getStatusWordInfo(0x6a, 0x86);
-      expect(result.isSuccess).toBe(false);
-      expect(result.meaning).toBe('Incorrect P1-P2 parameters');
-    });
-
-    it('should recognize 6A88 as referenced data not found', () => {
-      const result = getStatusWordInfo(0x6a, 0x88);
-      expect(result.isSuccess).toBe(false);
-      expect(result.meaning).toBe('Referenced data not found');
-    });
-
-    it('should recognize 6CXX as wrong Le with correction', () => {
-      const result = getStatusWordInfo(0x6c, 0x20);
-      expect(result.isSuccess).toBe(false);
-      expect(result.meaning).toBe('Wrong Le length (use 32)');
-    });
-
-    it('should recognize 6D00 as instruction not supported', () => {
-      const result = getStatusWordInfo(0x6d, 0x00);
-      expect(result.isSuccess).toBe(false);
-      expect(result.meaning).toBe('Instruction not supported');
-    });
-
-    it('should recognize 6E00 as class not supported', () => {
-      const result = getStatusWordInfo(0x6e, 0x00);
-      expect(result.isSuccess).toBe(false);
-      expect(result.meaning).toBe('Class not supported');
-    });
-
-    it('should recognize 6F00 as unknown error', () => {
-      const result = getStatusWordInfo(0x6f, 0x00);
-      expect(result.isSuccess).toBe(false);
-      expect(result.meaning).toBe('Unknown error');
-    });
-  });
-
-  describe('unknown statuses', () => {
-    it('should return hex for unknown status', () => {
-      const result = getStatusWordInfo(0x99, 0x99);
-      expect(result.isSuccess).toBe(false);
-      expect(result.meaning).toBe('Unknown status: 9999');
-    });
+  it('rejects inconsistent lengths', () => {
+    expect(() => parseCommand(fromHex('00A404'))).toThrow(/too short/);
+    expect(() => parseCommand(fromHex('00A4040007A000'))).toThrow(/Lc is 7/);
+    expect(() => parseCommand(fromHex('00A404000000'))).toThrow();
+    expect(tryParseCommand(fromHex('00A4040007A000'))).toBeUndefined();
   });
 });
 
-describe('isSuccessStatus', () => {
-  it('should return true for 0x90', () => {
-    expect(isSuccessStatus(0x90)).toBe(true);
+describe('encodeCommand', () => {
+  it('encodes short APDUs', () => {
+    expect(toHex(encodeCommand({ cla: 0, ins: 0x84, p1: 0, p2: 0 }))).toBe('00840000');
+    expect(toHex(encodeCommand({ cla: 0, ins: 0xc0, p1: 0, p2: 0, le: 256 }))).toBe('00C0000000');
+    expect(toHex(encodeCommand({ cla: 0, ins: 0xc0, p1: 0, p2: 0, le: 0 }))).toBe('00C0000000');
+    expect(
+      toHex(
+        encodeCommand({
+          cla: 0,
+          ins: 0xa4,
+          p1: 4,
+          p2: 0,
+          data: fromHex('A0000000031010'),
+          le: 256,
+        }),
+      ),
+    ).toBe('00A4040007A000000003101000');
   });
 
-  it('should return true for 0x61', () => {
-    expect(isSuccessStatus(0x61)).toBe(true);
+  it('switches to extended length when needed', () => {
+    expect(toHex(encodeCommand({ cla: 0, ins: 0xb0, p1: 0, p2: 0, le: 1000 }))).toBe(
+      '00B000000003E8',
+    );
+    const big = encodeCommand({
+      cla: 0,
+      ins: 0xda,
+      p1: 0,
+      p2: 0,
+      data: new Uint8Array(300),
+      le: 65536,
+    });
+    expect(toHex(big.subarray(0, 7))).toBe('00DA000000012C');
+    expect(toHex(big.subarray(-2))).toBe('0000');
+    expect(parseCommand(big)).toMatchObject({ case: 4, extended: true, le: 65536 });
+    expect(toHex(encodeCommand({ cla: 0, ins: 0x84, p1: 0, p2: 0, le: 8, extended: true }))).toBe(
+      '00840000000008',
+    );
   });
 
-  it('should return false for error statuses', () => {
-    expect(isSuccessStatus(0x6a)).toBe(false);
-    expect(isSuccessStatus(0x6c)).toBe(false);
-    expect(isSuccessStatus(0x69)).toBe(false);
-  });
-});
-
-describe('formatStatusWord', () => {
-  it('should format status word as uppercase hex', () => {
-    expect(formatStatusWord(0x90, 0x00)).toBe('9000');
-    expect(formatStatusWord(0x6a, 0x82)).toBe('6A82');
-    expect(formatStatusWord(0x61, 0x10)).toBe('6110');
-  });
-
-  it('should pad single digit values', () => {
-    expect(formatStatusWord(0x0a, 0x0b)).toBe('0A0B');
-  });
-});
-
-describe('parseHexInput', () => {
-  it('should parse continuous hex string', () => {
-    expect(parseHexInput('00A40400')).toEqual([0x00, 0xa4, 0x04, 0x00]);
-    expect(parseHexInput('AABBCCDD')).toEqual([0xaa, 0xbb, 0xcc, 0xdd]);
-  });
-
-  it('should handle lowercase', () => {
-    expect(parseHexInput('aabbccdd')).toEqual([0xaa, 0xbb, 0xcc, 0xdd]);
-  });
-
-  it('should handle spaces', () => {
-    expect(parseHexInput('00 A4 04 00')).toEqual([0x00, 0xa4, 0x04, 0x00]);
-    expect(parseHexInput('AA BB CC DD')).toEqual([0xaa, 0xbb, 0xcc, 0xdd]);
-  });
-
-  it('should handle 0x prefixes', () => {
-    expect(parseHexInput('0x00 0xA4 0x04 0x00')).toEqual([0x00, 0xa4, 0x04, 0x00]);
-    expect(parseHexInput('0x00A40400')).toEqual([0x00, 0xa4, 0x04, 0x00]);
-  });
-
-  it('should handle commas', () => {
-    expect(parseHexInput('00,A4,04,00')).toEqual([0x00, 0xa4, 0x04, 0x00]);
-    expect(parseHexInput('0x00, 0xA4, 0x04, 0x00')).toEqual([0x00, 0xa4, 0x04, 0x00]);
-  });
-
-  it('should return null for invalid hex characters', () => {
-    expect(parseHexInput('GHIJ')).toBeNull();
-    expect(parseHexInput('00A4XX00')).toBeNull();
-  });
-
-  it('should return null for odd-length strings', () => {
-    expect(parseHexInput('00A')).toBeNull();
-    expect(parseHexInput('ABC')).toBeNull();
-  });
-
-  it('should return null for empty string', () => {
-    expect(parseHexInput('')).toBeNull();
-  });
-
-  it('should return null for whitespace only', () => {
-    expect(parseHexInput('   ')).toBeNull();
+  it('round-trips', () => {
+    for (const hex of [
+      '00A404000E325041592E5359532E444446303100',
+      '80A8000002830000',
+      '00B2010C00',
+    ]) {
+      expect(toHex(encodeCommand(parseCommand(fromHex(hex))))).toBe(hex);
+    }
   });
 });
 
-describe('formatHex', () => {
-  it('should format bytes as uppercase hex', () => {
-    expect(formatHex([0x00, 0xa4, 0x04, 0x00])).toBe('00A40400');
-    expect(formatHex([0xaa, 0xbb, 0xcc])).toBe('AABBCC');
-  });
-
-  it('should pad single digit values', () => {
-    expect(formatHex([0x01, 0x02, 0x0f])).toBe('01020F');
-  });
-
-  it('should handle empty array', () => {
-    expect(formatHex([])).toBe('');
+describe('splitResponse', () => {
+  it('splits data and status', () => {
+    const r = splitResponse(fromHex('5A0147 9000'));
+    expect(toHex(r.data)).toBe('5A0147');
+    expect(r).toMatchObject({ sw1: 0x90, sw2: 0x00, sw: 0x9000 });
+    expect(splitResponse(fromHex('6A82')).data).toHaveLength(0);
+    expect(() => splitResponse(fromHex('90'))).toThrow();
   });
 });
 
-describe('formatHexSpaced', () => {
-  it('should format bytes with spaces', () => {
-    expect(formatHexSpaced([0x00, 0xa4, 0x04, 0x00])).toBe('00 A4 04 00');
-    expect(formatHexSpaced([0xaa, 0xbb, 0xcc])).toBe('AA BB CC');
+describe('describeCommand', () => {
+  it('names SELECT variants', () => {
+    expect(d('00A404000E325041592E5359532E444446303100')).toEqual({
+      name: 'SELECT',
+      detail: 'by DF name 2PAY.SYS.DDF01',
+    });
+    expect(d('00A4040007A000000003101000')).toEqual({
+      name: 'SELECT',
+      detail: 'by DF name A0000000031010 · Visa Credit/Debit',
+    });
+    expect(d('00A40000023F00')).toEqual({ name: 'SELECT', detail: 'by FID 3F00' });
+    expect(d('00A4040207A0000000031010')).toMatchObject({
+      detail: expect.stringMatching(/next occurrence/),
+    });
   });
 
-  it('should handle single byte', () => {
-    expect(formatHexSpaced([0x42])).toBe('42');
+  it('names EMV commands', () => {
+    expect(d('00B2010C00')).toEqual({ name: 'READ RECORD', detail: 'SFI 1, record 1' });
+    expect(d('00B2021400')).toEqual({ name: 'READ RECORD', detail: 'SFI 2, record 2' });
+    expect(d('80CA9F3600')).toEqual({
+      name: 'GET DATA',
+      detail: '9F36 · Application Transaction Counter (ATC)',
+    });
+    expect(d('80A8000002830000')).toEqual({
+      name: 'GET PROCESSING OPTIONS',
+      detail: 'PDOL data 0 bytes',
+    });
+    expect(d('80AE80001D' + '00'.repeat(29) + '00')).toEqual({
+      name: 'GENERATE AC',
+      detail: 'ARQC',
+    });
+    expect(d('80AE5000020000')).toEqual({ name: 'GENERATE AC', detail: 'TC, CDA requested' });
+    expect(d('0020008008241234FFFFFFFFFF')).toEqual({ name: 'VERIFY', detail: 'reference 80' });
+    expect(d('00200080')).toEqual({ name: 'VERIFY', detail: 'reference 80, query retries' });
+    expect(d('0084000008')).toEqual({ name: 'GET CHALLENGE', detail: 'Le 8' });
+    expect(d('00C0000020')).toEqual({ name: 'GET RESPONSE', detail: 'Le 32' });
   });
 
-  it('should handle empty array', () => {
-    expect(formatHexSpaced([])).toBe('');
+  it('names ISO and GlobalPlatform commands', () => {
+    expect(d('00B0000010')).toEqual({ name: 'READ BINARY', detail: 'offset 0, 16 bytes' });
+    expect(d('00B0810000')).toEqual({ name: 'READ BINARY', detail: 'SFI 1, offset 0, 256 bytes' });
+    expect(d('00D6000402AABB')).toEqual({ name: 'UPDATE BINARY', detail: 'offset 4, 2 bytes' });
+    expect(d('002241B6')).toEqual({
+      name: 'MANAGE SECURITY ENVIRONMENT',
+      detail: 'SET (computation) DST',
+    });
+    expect(d('002A9E9A00')).toEqual({
+      name: 'PERFORM SECURITY OPERATION',
+      detail: 'COMPUTE DIGITAL SIGNATURE',
+    });
+    expect(d('00870D9C04')).toEqual({
+      name: 'GENERAL AUTHENTICATE',
+      detail: 'algorithm 0D, key 9C',
+    });
+    expect(d('8050000008' + '00'.repeat(8) + '00')).toEqual({
+      name: 'INITIALIZE UPDATE',
+      detail: 'key version 0',
+    });
+    expect(d('80F28000024F0000')).toEqual({ name: 'GET STATUS', detail: 'issuer security domain' });
+    expect(d('00CB3FFF055C035FC10200')).toEqual({ name: 'GET DATA', detail: 'object 5FC102' });
+    expect(d('00CA006E00')).toMatchObject({
+      name: 'GET DATA',
+      detail: expect.stringMatching(/^6E/),
+    });
+  });
+
+  it('names PC/SC pseudo-APDUs', () => {
+    expect(d('FFCA000000')).toEqual({ name: 'GET UID' });
+    expect(d('FFCA010000')).toEqual({ name: 'GET ATS' });
+    expect(d('FFB0000410')).toEqual({ name: 'READ BINARY', detail: 'page/block 4, 16 bytes' });
+    expect(d('FFD6000404DEADBEEF')).toEqual({
+      name: 'UPDATE BINARY',
+      detail: 'page/block 4, 4 bytes',
+    });
+    expect(d('FF82000006FFFFFFFFFFFF')).toEqual({ name: 'LOAD KEY', detail: 'key slot 0' });
+    expect(d('FF860000050100046000')).toEqual({
+      name: 'GENERAL AUTHENTICATE',
+      detail: 'block 4, key A, slot 0',
+    });
+    expect(d('FF00000003D44201')).toEqual({ name: 'DIRECT TRANSMIT', detail: '3 bytes' });
+  });
+
+  it('names DESFire and GSM commands', () => {
+    expect(d('9060000000')).toEqual({ name: 'GET VERSION', detail: 'DESFire' });
+    expect(d('A0F2000016')).toEqual({ name: 'STATUS' });
+    expect(d('A0A40000027F20')).toEqual({ name: 'SELECT', detail: 'by FID 7F20' });
+  });
+
+  it('copes with unknown and malformed commands', () => {
+    expect(d('00990000')).toEqual({ name: 'INS 99' });
+    expect(d('FF990000')).toEqual({ name: 'INS 99' });
+    expect(d('00A4')).toEqual({ name: 'Malformed APDU', detail: '2 bytes' });
+    expect(d('00A4040007A000').name).toBe('SELECT');
   });
 });
