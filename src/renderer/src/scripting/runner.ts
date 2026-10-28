@@ -91,8 +91,11 @@ export class ScriptRun {
   }
 }
 
-/** Errors from ipcRenderer.invoke arrive as "Error invoking remote method '…': Error: <message>". */
+/**
+ * Errors from ipcRenderer.invoke arrive as "Error invoking remote method '…': <Name>: <message>",
+ * where Name is Error or one of smartcard's typed PC/SC errors (PCSCError, CardRemovedError…).
+ */
 export function errorText(e: unknown): string {
   const message = e instanceof Error ? e.message : String(e);
-  return message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
+  return message.replace(/^Error invoking remote method '[^']+': (\w*Error: )?/, '');
 }

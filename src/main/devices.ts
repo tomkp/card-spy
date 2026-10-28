@@ -175,20 +175,14 @@ export class DeviceManager extends EventEmitter<DeviceEvents> {
             }),
           );
         slot.reset = async (cold) => {
-          const init = cold ? SCARD_UNPOWER_CARD : SCARD_RESET_CARD;
-          // Reconnect with the protocol already in use. Offering T=0|T=1 to a T=0-only card makes
-          // some readers (an SCM SCR35xx, for one) report it unresponsive, which is why Devices
-          // falls back to T=0 when it connects; do the same here.
-          try {
-            await card.reconnect(
-              SCARD_SHARE_SHARED,
-              card.protocol || SCARD_PROTOCOL_T0 | SCARD_PROTOCOL_T1,
-              init,
-            );
-          } catch (e) {
-            if (!/unresponsive/i.test((e as Error).message)) throw e;
-            await card.reconnect(SCARD_SHARE_SHARED, SCARD_PROTOCOL_T0, init);
-          }
+          // Keep the protocol in use: offering T=0|T=1 to a T=0-only card makes some readers (an
+          // SCM SCR35xx, for one) report it unresponsive. smartcard 3.8 retries with the active
+          // protocol by itself, but asking for it directly saves a second reset.
+          await card.reconnect(
+            SCARD_SHARE_SHARED,
+            card.protocol || SCARD_PROTOCOL_T0 | SCARD_PROTOCOL_T1,
+            cold ? SCARD_UNPOWER_CARD : SCARD_RESET_CARD,
+          );
           return new Uint8Array(card.getStatus().atr);
         };
         this.setCard(slot, {

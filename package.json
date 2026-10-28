@@ -19,7 +19,7 @@
     "checks": "npm run typecheck && npm run format:check && npm test"
   },
   "dependencies": {
-    "smartcard": "^3.7.2"
+    "smartcard": "^3.8.0"
   },
   "devDependencies": {
     "@types/node": "^24.19.2",
