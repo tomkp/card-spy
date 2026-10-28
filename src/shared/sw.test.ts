@@ -30,3 +30,12 @@ describe('describeSw', () => {
     expect(describeSw(0x1234)).toEqual({ text: 'Unknown status', severity: 'error' });
   });
 });
+
+describe('Java Card', () => {
+  it('names applet selection failure', () => {
+    expect(describeSw(0x6999)).toEqual({
+      text: 'Applet selection failed (Java Card)',
+      severity: 'error',
+    });
+  });
+});

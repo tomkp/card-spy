@@ -218,6 +218,18 @@ describe('exploreCard', () => {
     expect(sent).toEqual(['FFCA000000']);
   });
 
+  it('says when nothing on the card was recognised', async () => {
+    const card = createVirtualCard({
+      format: 'card-spy/virtual-card',
+      version: 1,
+      name: 'Empty Java Card',
+      atr: '3B6800000073C84012009000',
+      model: { kind: 'apdu', rules: [], fallback: '6A82' },
+    });
+    const tree = await exploreCard({ transmit: async (c) => card.transmit(c), atr: card.atr });
+    expect(tree.children!.map((n) => n.label)).toEqual(['ATR', 'Nothing recognised']);
+  });
+
   it('turns a failing section into an error node and carries on', async () => {
     let calls = 0;
     const tree = await exploreCard({

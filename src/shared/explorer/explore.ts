@@ -91,6 +91,22 @@ export async function exploreCard(options: ExploreOptions): Promise<ExplorerNode
     }
     update();
   }
+
+  // Say so when nothing answered, rather than leaving just the ATR (which looks unfinished).
+  const recognised = root.children!.some(
+    (n) => n.label === 'Payment (EMV)' || n.label === 'Applications',
+  );
+  const failed = root.children!.some((n) => n.kind === 'error');
+  if (!storageCard && !recognised && !failed) {
+    root.children!.push(
+      f.node('info', 'Nothing recognised', {
+        value:
+          'No payment directory, and none of the well-known applications answered SELECT. ' +
+          'The card may hold applications Card Spy does not know: SELECT their AIDs from the console.',
+      }),
+    );
+    update();
+  }
   return root;
 }
 

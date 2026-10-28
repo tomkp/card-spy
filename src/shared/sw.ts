@@ -47,6 +47,8 @@ const EXACT: Record<number, [string, SwSeverity]> = {
   0x6986: ['Command not allowed (no current EF)', 'error'],
   0x6987: ['Expected secure messaging data objects missing', 'error'],
   0x6988: ['Incorrect secure messaging data objects', 'error'],
+  // Java Card's SW_APPLET_SELECT_FAILED: no applet is selected to handle the command.
+  0x6999: ['Applet selection failed (Java Card)', 'error'],
 
   0x6a00: ['Wrong parameters P1-P2', 'error'],
   0x6a80: ['Incorrect parameters in the command data field', 'error'],
