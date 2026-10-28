@@ -1,5 +1,6 @@
 import { explore, resumeScript, runScript, stopExploring, stopScript } from '../actions';
 import { EXPLORER_TAB, useStore } from '../store';
+import appIcon from '../../../../build/icon.svg';
 import { Icon } from './icons';
 
 const mac = navigator.userAgent.includes('Mac');
@@ -14,7 +15,10 @@ export function TitleBar() {
 
   return (
     <header className={`titlebar${mac ? ' mac' : ''}`}>
-      <span className="brand">Card Spy</span>
+      <span className="brand">
+        <img src={appIcon} alt="" width={20} height={20} />
+        Card Spy
+      </span>
       <span className="spacer" />
       {exploring ? (
         <button className="btn" onClick={stopExploring}>

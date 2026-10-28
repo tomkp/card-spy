@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { Channels } from '@shared/channels';
+import icon from '../../resources/icon.png?asset';
 import type { ExchangeSource } from '@shared/types';
 import { DeviceManager } from './devices';
 import { Workspace } from './workspace';
@@ -21,6 +22,8 @@ function createWindow(): BrowserWindow {
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     backgroundColor: '#16181d',
     show: false,
+    // macOS and Windows take the icon from the app bundle; Linux needs it on the window.
+    ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: true,
@@ -79,6 +82,8 @@ function broadcast(channel: string, value: unknown): void {
 }
 
 app.whenReady().then(async () => {
+  // A packaged mac app gets its Dock icon from the bundle; in development show ours, not Electron's.
+  if (process.platform === 'darwin' && !app.isPackaged) app.dock?.setIcon(icon);
   await workspace.init();
   registerIpc();
   devices.on('readers', (readers) => broadcast(Channels.readersChanged, readers));

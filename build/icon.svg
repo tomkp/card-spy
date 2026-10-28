@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!--
+    Card Spy app icon: a smartcard with a jeweller's loupe over its contact plate, the contacts drawn
+    larger inside the lens. Laid out on the macOS icon grid (an 824px rounded square on a 1024 canvas).
+    Regenerate the .icns/.ico/.png files with `npm run icons`.
+  -->
+  <defs>
+    <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1f2c3b"/>
+      <stop offset="1" stop-color="#121a24"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f4f1ea"/>
+      <stop offset="1" stop-color="#e3ded3"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e0c27a"/>
+      <stop offset="1" stop-color="#b8924a"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity="0.28"/>
+    </filter>
+
+    <!-- The card face, drawn once: shown as is, and again magnified inside the lens. -->
+    <g id="face">
+      <rect x="212" y="282" width="600" height="378" rx="34" fill="url(#card)"/>
+      <!-- contact plate -->
+      <g transform="translate(282 395)">
+        <rect width="150" height="116" rx="18" fill="url(#gold)"/>
+        <g fill="none" stroke="#7d6232" stroke-width="5" stroke-linecap="round">
+          <rect x="52" y="30" width="46" height="56" rx="6"/>
+          <path d="M0 40 H52 M0 76 H52 M98 40 H150 M98 76 H150 M75 0 V30 M75 86 V116"/>
+        </g>
+      </g>
+      <!-- contactless waves -->
+      <g fill="none" stroke="#bdb5a5" stroke-width="11" stroke-linecap="round">
+        <path d="M712 334 A26 26 0 0 1 712 382"/>
+        <path d="M732 318 A48 48 0 0 1 732 398"/>
+        <path d="M752 302 A70 70 0 0 1 752 414"/>
+      </g>
+      <!-- printed number and name -->
+      <g fill="#cfc8b9">
+        <rect x="520" y="556" width="236" height="20" rx="10"/>
+        <rect x="604" y="596" width="152" height="20" rx="10"/>
+      </g>
+    </g>
+    <clipPath id="lens">
+      <circle cx="416" cy="475" r="150"/>
+    </clipPath>
+  </defs>
+
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#ground)"/>
+
+  <g transform="translate(60 0) rotate(-8 512 470)" filter="url(#shadow)">
+    <use href="#face"/>
+  </g>
+
+  <!-- Loupe over the contact plate -->
+  <g filter="url(#lift)">
+    <!-- a hairline a shade lighter than the ground keeps the rim and handle crisp against it -->
+    <path d="M530 589 L650 709" stroke="#34414f" stroke-width="66" stroke-linecap="round"/>
+    <circle cx="416" cy="475" r="177" fill="#34414f"/>
+    <path d="M530 589 L650 709" stroke="#0d1218" stroke-width="60" stroke-linecap="round"/>
+    <circle cx="416" cy="475" r="174" fill="#0d1218"/>
+  </g>
+  <g clip-path="url(#lens)">
+    <rect x="250" y="310" width="340" height="340" fill="#e9e5dc"/>
+    <g transform="translate(416 475) scale(1.45) translate(-416 -475) translate(60 0) rotate(-8 512 470)">
+      <use href="#face"/>
+    </g>
+    <!-- glass: a faint cool tint and one soft highlight -->
+    <circle cx="416" cy="475" r="150" fill="#9fc3e6" opacity="0.08"/>
+    <path d="M296 440 A124 124 0 0 1 384 352" fill="none" stroke="#ffffff" stroke-width="10" stroke-linecap="round" opacity="0.4"/>
+  </g>
+  <circle cx="416" cy="475" r="150" fill="none" stroke="#2a3542" stroke-width="4"/>
+</svg>

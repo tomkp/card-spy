@@ -26,6 +26,8 @@ export function ScriptEditor({ name }: { name: string }) {
       tabSize: 2,
       fixedOverflowWidgets: true,
       padding: { top: 8 },
+      // Scripts are short; a sticky header over the first lines is more distraction than help.
+      stickyScroll: { enabled: false },
     });
     editorRef.current = editor;
 

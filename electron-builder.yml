@@ -1,0 +1,52 @@
+# Packaging for Card Spy. `npm run dist` builds for the current OS; releases are built by
+# .github/workflows/release.yml (see RELEASING.md). macOS builds are signed when CSC_LINK /
+# CSC_KEY_PASSWORD are set and notarized when APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD / APPLE_TEAM_ID are.
+appId: com.tomkp.cardspy
+productName: Card Spy
+copyright: Copyright © 2026 Tom Kemp-Potter
+directories:
+  buildResources: build
+  output: dist
+files:
+  - out/**
+  - resources/**
+  - package.json
+asarUnpack:
+  - resources/**
+artifactName: card-spy-${version}-${os}-${arch}.${ext}
+
+mac:
+  category: public.app-category.developer-tools
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+    - target: zip
+      arch: [arm64, x64]
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+
+linux:
+  category: Development
+  maintainer: Tom Kemp-Potter <tom@tomkp.com>
+  synopsis: Smartcard and NFC IDE
+  target:
+    - target: AppImage
+      arch: [x64]
+    - target: deb
+      arch: [x64]
+deb:
+  # The PC/SC client library is needed at runtime; the pcscd daemon talks to the readers.
+  depends: [libpcsclite1]
+  recommends: [pcscd]
+
+publish:
+  provider: github
+  owner: tomkp
+  repo: card-spy
+  releaseType: draft

@@ -1,5 +1,6 @@
 import { revealWorkspace } from '../actions';
 import { selectedReader, useStore } from '../store';
+import { Icon } from './icons';
 
 export function StatusBar() {
   const root = useStore((s) => s.workspace?.root);
@@ -26,14 +27,9 @@ export function StatusBar() {
       </span>
       <span>{exchanges} trace entries</span>
       {root && (
-        <span
-          className="no-drag"
-          style={{ cursor: 'pointer' }}
-          onClick={revealWorkspace}
-          title="Open the workspace folder"
-        >
-          {root}
-        </span>
+        <button className="statusbar-link" onClick={revealWorkspace} title={`Open ${root}`}>
+          <Icon name="folder" size={12} /> Workspace
+        </button>
       )}
     </footer>
   );
