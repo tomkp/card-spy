@@ -1,79 +1,68 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
   <!--
-    Card Spy app icon: a smartcard with a jeweller's loupe over its contact plate, the contacts drawn
-    larger inside the lens. Laid out on the macOS icon grid (an 824px rounded square on a 1024 canvas).
+    Card Spy app icon: three cards fanned out, the front one with a gold contact plate.
+    Laid out on the macOS icon grid (an 824px rounded square on a 1024 canvas).
     Regenerate the .icns/.ico/.png files with `npm run icons`.
   -->
   <defs>
     <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#1f2c3b"/>
-      <stop offset="1" stop-color="#121a24"/>
+      <stop offset="0" stop-color="#232327"/>
+      <stop offset="1" stop-color="#0d0d0f"/>
     </linearGradient>
-    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#f4f1ea"/>
-      <stop offset="1" stop-color="#e3ded3"/>
+    <linearGradient id="teal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3ee0c6"/>
+      <stop offset="1" stop-color="#0e9f8a"/>
     </linearGradient>
-    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#e0c27a"/>
-      <stop offset="1" stop-color="#b8924a"/>
+    <linearGradient id="coral" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ff8a66"/>
+      <stop offset="1" stop-color="#e5482f"/>
     </linearGradient>
-    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
-      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000" flood-opacity="0.35"/>
+    <linearGradient id="violet" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8f7dff"/>
+      <stop offset="1" stop-color="#5236e6"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0.6" y2="1">
+      <stop offset="0" stop-color="#f8dd94"/>
+      <stop offset="1" stop-color="#cc9a3c"/>
+    </linearGradient>
+    <!-- top light, laid over every card -->
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.22"/>
+      <stop offset="0.45" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="drop" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#000" flood-opacity="0.5"/>
     </filter>
-    <filter id="lift" x="-10%" y="-10%" width="120%" height="130%">
-      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity="0.28"/>
-    </filter>
-
-    <!-- The card face, drawn once: shown as is, and again magnified inside the lens. -->
-    <g id="face">
-      <rect x="212" y="282" width="600" height="378" rx="34" fill="url(#card)"/>
-      <!-- contact plate -->
-      <g transform="translate(282 395)">
-        <rect width="150" height="116" rx="18" fill="url(#gold)"/>
-        <g fill="none" stroke="#7d6232" stroke-width="5" stroke-linecap="round">
-          <rect x="52" y="30" width="46" height="56" rx="6"/>
-          <path d="M0 40 H52 M0 76 H52 M98 40 H150 M98 76 H150 M75 0 V30 M75 86 V116"/>
-        </g>
-      </g>
-      <!-- contactless waves -->
-      <g fill="none" stroke="#bdb5a5" stroke-width="11" stroke-linecap="round">
-        <path d="M712 334 A26 26 0 0 1 712 382"/>
-        <path d="M732 318 A48 48 0 0 1 732 398"/>
-        <path d="M752 302 A70 70 0 0 1 752 414"/>
-      </g>
-      <!-- printed number and name -->
-      <g fill="#cfc8b9">
-        <rect x="520" y="556" width="236" height="20" rx="10"/>
-        <rect x="604" y="596" width="152" height="20" rx="10"/>
-      </g>
+    <!-- a card centred on the origin -->
+    <g id="card-shape">
+      <rect x="-270" y="-170" width="540" height="340" rx="44"/>
     </g>
-    <clipPath id="lens">
-      <circle cx="416" cy="475" r="150"/>
-    </clipPath>
   </defs>
 
-  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#ground)"/>
+  <!-- a faint rim keeps the dark square distinct on a dark Dock -->
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#ground)" stroke="#ffffff" stroke-opacity="0.09" stroke-width="4"/>
 
-  <g transform="translate(60 0) rotate(-8 512 470)" filter="url(#shadow)">
-    <use href="#face"/>
-  </g>
-
-  <!-- Loupe over the contact plate -->
-  <g filter="url(#lift)">
-    <!-- a hairline a shade lighter than the ground keeps the rim and handle crisp against it -->
-    <path d="M530 589 L650 709" stroke="#34414f" stroke-width="66" stroke-linecap="round"/>
-    <circle cx="416" cy="475" r="177" fill="#34414f"/>
-    <path d="M530 589 L650 709" stroke="#0d1218" stroke-width="60" stroke-linecap="round"/>
-    <circle cx="416" cy="475" r="174" fill="#0d1218"/>
-  </g>
-  <g clip-path="url(#lens)">
-    <rect x="250" y="310" width="340" height="340" fill="#e9e5dc"/>
-    <g transform="translate(416 475) scale(1.45) translate(-416 -475) translate(60 0) rotate(-8 512 470)">
-      <use href="#face"/>
+  <!-- fanned around a point below the cards, back to front; scaled to sit inside the grid -->
+  <g transform="translate(512 512) scale(0.84) translate(-512 -512) translate(566 -26)">
+    <g transform="rotate(-22 0 900) translate(0 520)" filter="url(#drop)">
+      <use href="#card-shape" fill="url(#teal)"/>
+      <use href="#card-shape" fill="url(#sheen)"/>
     </g>
-    <!-- glass: a faint cool tint and one soft highlight -->
-    <circle cx="416" cy="475" r="150" fill="#9fc3e6" opacity="0.08"/>
-    <path d="M296 440 A124 124 0 0 1 384 352" fill="none" stroke="#ffffff" stroke-width="10" stroke-linecap="round" opacity="0.4"/>
+    <g transform="rotate(-7 0 900) translate(0 520)" filter="url(#drop)">
+      <use href="#card-shape" fill="url(#coral)"/>
+      <use href="#card-shape" fill="url(#sheen)"/>
+    </g>
+    <g transform="rotate(8 0 900) translate(0 520)" filter="url(#drop)">
+      <use href="#card-shape" fill="url(#violet)"/>
+      <use href="#card-shape" fill="url(#sheen)"/>
+      <!-- contact plate -->
+      <g transform="translate(-200 -78)">
+        <rect width="160" height="124" rx="22" fill="url(#gold)"/>
+        <g fill="none" stroke="#8d6a26" stroke-width="7" stroke-linecap="round">
+          <rect x="56" y="33" width="48" height="58" rx="8"/>
+          <path d="M0 43 H56 M0 81 H56 M104 43 H160 M104 81 H160 M80 0 V33 M80 91 V124"/>
+        </g>
+      </g>
+    </g>
   </g>
-  <circle cx="416" cy="475" r="150" fill="none" stroke="#2a3542" stroke-width="4"/>
 </svg>
