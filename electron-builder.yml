@@ -11,6 +11,12 @@ files:
   - out/**
   - resources/**
   - package.json
+  # smartcard compiles on install. At runtime it needs dist/lib and the .node, not its C++ sources or
+  # build leftovers. electron-builder already drops node-gyp's Makefile leftovers, but not MSVC's
+  # (obj/, .iobj, .ipdb, .lib, .exp, .vcxproj) on Windows.
+  - '!**/node_modules/smartcard/{src,build/Release/obj}/**'
+  - '!**/node_modules/smartcard/build/*.{vcxproj,filters}'
+  - '!**/node_modules/smartcard/build/Release/*.{iobj,ipdb,pdb,lib,exp}'
 asarUnpack:
   - resources/**
 artifactName: card-spy-${version}-${os}-${arch}.${ext}
