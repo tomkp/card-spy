@@ -33,6 +33,9 @@ A desktop application for analyzing, testing, and interacting with smart cards. 
 - **Smart card reader** - PC/SC compatible USB reader
 - **macOS** or **Windows** (Linux may work but is untested)
 - **PC/SC service** running (usually automatic on macOS/Windows)
+- **C++ build tools** for compiling the native `smartcard` module during `npm install`:
+  - macOS: Xcode Command Line Tools (`xcode-select --install`)
+  - Windows: Python 3 and Visual Studio Build Tools with the "Desktop development with C++" workload (or tick "Tools for Native Modules" in the Node.js installer)
 
 ## Installation
 
