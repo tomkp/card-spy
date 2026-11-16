@@ -188,11 +188,12 @@ function matches(node: TlvNode, t: Tree): boolean {
   return !node.constructed && bytesEqual(node.value, t.value);
 }
 
-function throws(fn: () => unknown): boolean {
+/** True when `fn` throws a RangeError. */
+function throwsRangeError(fn: () => unknown): boolean {
   try {
     fn();
-  } catch {
-    return true;
+  } catch (e) {
+    return e instanceof RangeError;
   }
   return false;
 }
@@ -257,21 +258,21 @@ describe('TLV specification', () => {
     it('a tag that is not well formed', () => {
       fc.assert(
         fc.property(badTag, fc.uint8Array({ maxLength: 4 }), (tag, value) =>
-          throws(() => encodeTlv(toHex(tag), value)),
+          throwsRangeError(() => encodeTlv(toHex(tag), value)),
         ),
       );
     });
 
     it('a tag number that is not a whole number of at most 4 bytes', () => {
       for (const tag of [0, -1, 1.5, NaN, Infinity, 0x1f8181818101]) {
-        expect(() => encodeTlv(tag, new Uint8Array()), String(tag)).toThrow();
+        expect(() => encodeTlv(tag, new Uint8Array()), String(tag)).toThrow(RangeError);
       }
     });
 
     it('children under a primitive tag', () => {
       fc.assert(
         fc.property(tagArb(false), trees, (tag, children) =>
-          throws(() =>
+          throwsRangeError(() =>
             encodeTlvTree([{ tag: toHex(tag), children: children.map((c) => toBuild(c, false)) }]),
           ),
         ),

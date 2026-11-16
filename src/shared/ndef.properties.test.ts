@@ -68,11 +68,12 @@ const anyBytes = fc.oneof(
     }),
 );
 
-function throws(fn: () => unknown): boolean {
+/** True when `fn` throws a RangeError. */
+function throwsRangeError(fn: () => unknown): boolean {
   try {
     fn();
-  } catch {
-    return true;
+  } catch (e) {
+    return e instanceof RangeError;
   }
   return false;
 }
@@ -163,7 +164,9 @@ describe('NDEF specification', () => {
     it('a TNF outside 0-7', () => {
       const badTnf = fc.oneof(fc.integer({ min: 8 }), fc.integer({ max: -1 }));
       fc.assert(
-        fc.property(recordArb, badTnf, (r, tnf) => throws(() => encodeRecord({ ...r, tnf }))),
+        fc.property(recordArb, badTnf, (r, tnf) =>
+          throwsRangeError(() => encodeRecord({ ...r, tnf })),
+        ),
       );
     });
 
@@ -171,7 +174,7 @@ describe('NDEF specification', () => {
       const long = fc.integer({ min: 256, max: 1000 }).map((n) => new Uint8Array(n));
       fc.assert(
         fc.property(recordArb, long, fc.boolean(), (r, bytes, inType) =>
-          throws(() =>
+          throwsRangeError(() =>
             inType
               ? encodeNdefRecord(r.tnf, bytes, r.payload, r.id)
               : encodeNdefRecord(r.tnf, asciiToBytes(r.type), r.payload, bytes),
@@ -183,7 +186,7 @@ describe('NDEF specification', () => {
     it('a language code over 63 bytes', () => {
       fc.assert(
         fc.property(fc.string({ unit: 'grapheme-ascii', minLength: 64, maxLength: 200 }), (lang) =>
-          throws(() => encodeNdefText('hello', lang)),
+          throwsRangeError(() => encodeNdefText('hello', lang)),
         ),
       );
     });

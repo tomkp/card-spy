@@ -87,11 +87,12 @@ const anyBytes = fc.oneof(
     }),
 );
 
-function throws(fn: () => unknown): boolean {
+/** True when `fn` throws a RangeError. */
+function throwsRangeError(fn: () => unknown): boolean {
   try {
     fn();
-  } catch {
-    return true;
+  } catch (e) {
+    return e instanceof RangeError;
   }
   return false;
 }
@@ -137,14 +138,16 @@ describe('Command APDU specification', () => {
       const field = fc.constantFrom('cla', 'ins', 'p1', 'p2');
       fc.assert(
         fc.property(commandArb, field, notAByte, (cmd, f, bad) =>
-          throws(() => encodeCommand({ ...cmd, [f]: bad })),
+          throwsRangeError(() => encodeCommand({ ...cmd, [f]: bad })),
         ),
       );
     });
 
     it('Le that is not a whole number from 0 to 65536', () => {
       fc.assert(
-        fc.property(commandArb, badLe, (cmd, le) => throws(() => encodeCommand({ ...cmd, le }))),
+        fc.property(commandArb, badLe, (cmd, le) =>
+          throwsRangeError(() => encodeCommand({ ...cmd, le })),
+        ),
       );
     });
 
