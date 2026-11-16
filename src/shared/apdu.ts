@@ -73,15 +73,23 @@ export function tryParseCommand(bytes: Uint8Array): ParsedCommand | undefined {
 
 /**
  * Encodes a command. Switches to extended length when data exceeds 255 bytes or Le exceeds 256.
- * `le: 0` is accepted as the maximum (256 short, 65536 extended).
+ * `le: 0` is accepted as the maximum (256 short, 65536 extended). Throws a RangeError if a header
+ * value isn't a byte, Le isn't a whole number from 0 to 65536, or the data is over 65535 bytes.
  */
 export function encodeCommand(cmd: CommandApdu & { extended?: boolean }): Uint8Array {
   const data = cmd.data ?? new Uint8Array();
   const nc = data.length;
   const le = cmd.le;
   if (nc > 65535) throw new RangeError(`Command data too long (${nc} bytes)`);
-  if (le !== undefined && (le < 0 || le > 65536)) throw new RangeError(`Le out of range (${le})`);
-  const header = Uint8Array.of(cmd.cla, cmd.ins, cmd.p1, cmd.p2);
+  if (le !== undefined && !(Number.isInteger(le) && le >= 0 && le <= 65536)) {
+    throw new RangeError(`Le out of range (${le})`);
+  }
+  const header = Uint8Array.of(
+    checkByte('CLA', cmd.cla),
+    checkByte('INS', cmd.ins),
+    checkByte('P1', cmd.p1),
+    checkByte('P2', cmd.p2),
+  );
   const extended = cmd.extended || nc > 255 || (le !== undefined && le > 256);
 
   if (!extended) {
@@ -97,6 +105,13 @@ export function encodeCommand(cmd: CommandApdu & { extended?: boolean }): Uint8A
     leBytes = nc > 0 ? Uint8Array.of(v >> 8, v & 0xff) : Uint8Array.of(0, v >> 8, v & 0xff);
   }
   return concatBytes(header, lc, leBytes);
+}
+
+function checkByte(name: string, value: number): number {
+  if (!(Number.isInteger(value) && value >= 0 && value <= 0xff)) {
+    throw new RangeError(`${name} out of range (${value})`);
+  }
+  return value;
 }
 
 export function splitResponse(bytes: Uint8Array): ResponseApdu {

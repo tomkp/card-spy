@@ -41,6 +41,7 @@ export interface TlvBuildNode {
 
 const CLASSES: TagClass[] = ['universal', 'application', 'context', 'private'];
 const MAX_DEPTH = 32;
+const MAX_TAG_BYTES = 4;
 
 export function tagToNumber(tag: number | string): number {
   return typeof tag === 'number' ? tag : parseInt(tag.replace(/\s/g, ''), 16);
@@ -54,8 +55,18 @@ export function tagToHex(tag: number | string): string {
   return hex;
 }
 
+/** Throws unless the tag is one well-formed tag of 1 to 4 bytes. */
 export function tagToBytes(tag: number | string): Uint8Array {
-  return fromHex(tagToHex(tag));
+  if (typeof tag === 'number' && !(Number.isInteger(tag) && tag >= 0)) {
+    throw new RangeError(`Invalid tag (${tag})`);
+  }
+  const bytes = fromHex(tagToHex(tag));
+  const header = readTag(bytes, 0);
+  // 00 and FF are padding, not tags
+  if (header?.size !== bytes.length || bytes[0] === 0x00 || bytes[0] === 0xff) {
+    throw new RangeError(`Invalid tag (${tagToHex(tag) || 'empty'})`);
+  }
+  return bytes;
 }
 
 export interface TagHeader {
@@ -67,17 +78,21 @@ export interface TagHeader {
   size: number;
 }
 
-/** Reads a BER tag at `offset`; returns undefined if the data ends mid-tag. */
+/**
+ * Reads a BER tag at `offset`. Returns undefined if the data ends mid-tag, or if the tag is longer
+ * than 4 bytes.
+ */
 export function readTag(bytes: Uint8Array, offset: number): TagHeader | undefined {
   const first = bytes[offset];
   if (first === undefined) return undefined;
   let size = 1;
   if ((first & 0x1f) === 0x1f) {
     for (;;) {
+      if (size === MAX_TAG_BYTES) return undefined;
       const b = bytes[offset + size];
       if (b === undefined) return undefined;
       size++;
-      if ((b & 0x80) === 0 || size >= 4) break;
+      if ((b & 0x80) === 0) break;
     }
   }
   let tag = 0;
@@ -136,7 +151,10 @@ function parseLevel(
     }
     const header = readTag(bytes, i);
     if (!header) {
-      return { nodes, error: { offset: base + i, message: 'Truncated tag' } };
+      // With 4 or more bytes left, the only way readTag fails is a tag that's too long
+      const message =
+        bytes.length - i >= MAX_TAG_BYTES ? 'Tag longer than 4 bytes' : 'Truncated tag';
+      return { nodes, error: { offset: base + i, message } };
     }
     const len = readLength(bytes, i + header.size);
     if ('error' in len) {
@@ -224,11 +242,18 @@ export function encodeTlv(tag: number | string, value: Uint8Array): Uint8Array {
   return concatBytes(tagToBytes(tag), encodeLength(value.length), value);
 }
 
-/** Encodes a tree of nodes; a node with children encodes them as its value. */
+/**
+ * Encodes a tree of nodes; a node with children encodes them as its value. Throws a RangeError if
+ * a node with children has a primitive tag, since a parser wouldn't read them back as children.
+ */
 export function encodeTlvTree(nodes: TlvBuildNode[]): Uint8Array {
   return concatBytes(
-    ...nodes.map((n) =>
-      encodeTlv(n.tag, n.children ? encodeTlvTree(n.children) : (n.value ?? new Uint8Array())),
-    ),
+    ...nodes.map((n) => {
+      if (!n.children) return encodeTlv(n.tag, n.value ?? new Uint8Array());
+      if ((tagToBytes(n.tag)[0]! & 0x20) === 0) {
+        throw new RangeError(`${tagToHex(n.tag)} is a primitive tag, so it can't have children`);
+      }
+      return encodeTlv(n.tag, encodeTlvTree(n.children));
+    }),
   );
 }

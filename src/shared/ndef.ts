@@ -172,15 +172,23 @@ function decodeRecord(tnf: number, type: string, payload: Uint8Array): NdefDecod
   }
 }
 
-/** Encodes one record. MB/ME both set, so the result is a complete single-record message. */
+/**
+ * Encodes one record. MB/ME both set, so the result is a complete single-record message.
+ * Throws a RangeError if the TNF isn't 0-7 or the type or ID is over 255 bytes.
+ */
 export function encodeNdefRecord(
   tnf: number,
   type: Uint8Array,
   payload: Uint8Array,
   id?: Uint8Array,
 ): Uint8Array {
+  if (!(Number.isInteger(tnf) && tnf >= 0 && tnf <= 7)) {
+    throw new RangeError(`TNF out of range (${tnf})`);
+  }
+  if (type.length > 255) throw new RangeError(`Type too long (${type.length} bytes)`);
+  if (id && id.length > 255) throw new RangeError(`ID too long (${id.length} bytes)`);
   const short = payload.length < 256;
-  let header = MB | ME | (tnf & 0x07);
+  let header = MB | ME | tnf;
   if (short) header |= SR;
   if (id) header |= IL;
   const length = short
@@ -206,12 +214,16 @@ export function encodeNdefUri(uri: string): Uint8Array {
   return encodeNdefRecord(1, asciiToBytes('U'), concatBytes([code], rest));
 }
 
+/** Throws a RangeError if the language code is over 63 bytes. */
 export function encodeNdefText(text: string, lang = 'en'): Uint8Array {
   const langBytes = asciiToBytes(lang);
+  if (langBytes.length > 0x3f) {
+    throw new RangeError(`Language code too long (${langBytes.length} bytes)`);
+  }
   return encodeNdefRecord(
     1,
     asciiToBytes('T'),
-    concatBytes([langBytes.length & 0x3f], langBytes, utf8Encoder.encode(text)),
+    concatBytes([langBytes.length], langBytes, utf8Encoder.encode(text)),
   );
 }
 
@@ -284,9 +296,13 @@ export function parseType2Tlvs(data: Uint8Array): Type2TlvBlock[] {
   return blocks;
 }
 
-/** NDEF message TLV plus terminator, ready to write from page 4. */
+/**
+ * NDEF message TLV plus terminator, ready to write from page 4. Throws a RangeError if the message
+ * is over 65534 bytes, the most a TLV length can say.
+ */
 export function wrapNdefForType2(ndefMessage: Uint8Array): Uint8Array {
   const n = ndefMessage.length;
+  if (n > 0xfffe) throw new RangeError(`NDEF message too long (${n} bytes)`);
   const length = n < 0xff ? [n] : [0xff, n >> 8, n & 0xff];
   return concatBytes([0x03], length, ndefMessage, [0xfe]);
 }
