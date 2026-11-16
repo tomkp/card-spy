@@ -244,12 +244,14 @@ export function encodeTlv(tag: number | string, value: Uint8Array): Uint8Array {
 
 /**
  * Encodes a tree of nodes; a node with children encodes them as its value. Throws a RangeError if
- * a node with children has a primitive tag, since a parser wouldn't read them back as children.
+ * a node has both a value and children, or children under a primitive tag, since a parser wouldn't
+ * read them back as children.
  */
 export function encodeTlvTree(nodes: TlvBuildNode[]): Uint8Array {
   return concatBytes(
     ...nodes.map((n) => {
       if (!n.children) return encodeTlv(n.tag, n.value ?? new Uint8Array());
+      if (n.value) throw new RangeError(`${tagToHex(n.tag)} has both a value and children`);
       if ((tagToBytes(n.tag)[0]! & 0x20) === 0) {
         throw new RangeError(`${tagToHex(n.tag)} is a primitive tag, so it can't have children`);
       }
