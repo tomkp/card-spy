@@ -18,11 +18,12 @@
  *   3. Encoding a tree and parsing the result gives back the same tree, with no errors.
  *   4. Lengths encode in as few bytes as possible and read back unchanged.
  *   5. The encoders reject what they can't encode, rather than producing bytes that read back
- *      as something else: a tag that isn't well formed, children under a primitive tag, or a
- *      node with both a value and children.
+ *      as something else: a tag that isn't well formed, or children under a primitive tag.
+ *   6. A node to encode has a value or children, never both. This one is in the TlvBuildNode
+ *      type, so the compiler checks it (npm run typecheck) rather than fast-check.
  */
 
-import { describe, it, expect } from 'vitest';
+import { assertType, describe, it, expect } from 'vitest';
 import fc from 'fast-check';
 import { bytesEqual, fromHex, toHex } from './hex';
 import {
@@ -279,18 +280,15 @@ describe('TLV specification', () => {
         ),
       );
     });
+  });
 
-    it('a node with both a value and children', () => {
-      fc.assert(
-        fc.property(tagArb(true), fc.uint8Array(), trees, (tag, value, children) =>
-          throwsRangeError(() =>
-            encodeTlvTree([
-              { tag: toHex(tag), value, children: children.map((c) => toBuild(c, false)) },
-            ]),
-          ),
-        ),
-      );
-    });
+  it('6. a node has a value or children, never both (checked by npm run typecheck)', () => {
+    const value = Uint8Array.of(1);
+    assertType<TlvBuildNode>({ tag: '70', children: [{ tag: '84', value }] });
+    // @ts-expect-error a node with both a value and children
+    assertType<TlvBuildNode>({ tag: '70', value, children: [{ tag: '84' }] });
+    // @ts-expect-error a parsed node can have both, so a parsed tree needs converting first
+    assertType<TlvBuildNode[]>(parseTlv(fromHex('70038401AA')).nodes);
   });
 });
 
@@ -309,10 +307,5 @@ describe('TLV regressions', () => {
 
   it('encodeTlvTree rejects children under a primitive tag', () => {
     expect(() => encodeTlvTree([{ tag: '5A', children: [{ tag: '84' }] }])).toThrow(RangeError);
-  });
-
-  it('encodeTlvTree rejects a node with both a value and children, rather than dropping the value', () => {
-    const node = { tag: '70', value: Uint8Array.of(1), children: [{ tag: '84' }] };
-    expect(() => encodeTlvTree([node])).toThrow(RangeError);
   });
 });
