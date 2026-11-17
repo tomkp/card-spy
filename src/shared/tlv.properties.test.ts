@@ -23,7 +23,7 @@
  *      type, so the compiler checks it (npm run typecheck) rather than fast-check.
  */
 
-import { assertType, describe, it, expect } from 'vitest';
+import { describe, it, expect, expectTypeOf } from 'vitest';
 import fc from 'fast-check';
 import { bytesEqual, fromHex, toHex } from './hex';
 import {
@@ -283,12 +283,16 @@ describe('TLV specification', () => {
   });
 
   it('6. a node has a value or children, never both (checked by npm run typecheck)', () => {
-    const value = Uint8Array.of(1);
-    assertType<TlvBuildNode>({ tag: '70', children: [{ tag: '84', value }] });
-    // @ts-expect-error a node with both a value and children
-    assertType<TlvBuildNode>({ tag: '70', value, children: [{ tag: '84' }] });
-    // @ts-expect-error a parsed node can have both, so a parsed tree needs converting first
-    assertType<TlvBuildNode[]>(parseTlv(fromHex('70038401AA')).nodes);
+    // Each half on its own is a node, so the only reason the combination isn't is "both"
+    type WithValue = { tag: string; value: Uint8Array };
+    type WithChildren = { tag: string; children: TlvBuildNode[] };
+    expectTypeOf<WithValue>().toExtend<TlvBuildNode>();
+    expectTypeOf<WithChildren>().toExtend<TlvBuildNode>();
+    expectTypeOf<WithValue & WithChildren>().not.toExtend<TlvBuildNode>();
+
+    // Likewise a parsed node, which can have both, so a parsed tree needs converting first
+    expectTypeOf<Omit<TlvNode, 'children'>>().toExtend<TlvBuildNode>();
+    expectTypeOf<TlvNode>().not.toExtend<TlvBuildNode>();
   });
 });
 
