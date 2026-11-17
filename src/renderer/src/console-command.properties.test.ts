@@ -17,7 +17,8 @@
  *      the command word, the spacing, or a comment at the end.
  *   2. Hex that isn't a command is sent as is if it's at least 4 bytes, and is an error if not.
  *   3. Nothing typed is ignored: adding a word to a line gives a different command or an error,
- *      never the same command. A line missing an argument is an error.
+ *      never the same command. A line missing an argument is an error. (Separators , : ; - are
+ *      spacing in hex, so they aren't words.)
  */
 
 import { describe, it, expect } from 'vitest';
@@ -101,10 +102,8 @@ const lineArb: fc.Arbitrary<{ line: string; expected: ConsoleCommand }> = fc.one
     .chain((bytes) => hexOf(bytes).map((line) => ({ line, expected: apdu(bytes) }))),
 );
 
-/** A word to add: letters, digits and dots, never one that hex reading would drop (0x). */
-const wordArb = fc
-  .stringMatching(/^[0-9A-Za-z.]{1,6}$/)
-  .filter((w) => w.replace(/0x/gi, '') !== '');
+/** A word to add: letters, digits and dots. Separators (, : ; -) are spacing in hex, not words. */
+const wordArb = fc.oneof(fc.constantFrom('0x', '0X'), fc.stringMatching(/^[0-9A-Za-z.]{1,6}$/));
 
 function same(a: ConsoleCommand, b: ConsoleCommand): boolean {
   return a.kind === 'apdu'
@@ -185,7 +184,7 @@ describe('Console command regressions', () => {
   });
 
   it('extra arguments are an error, not ignored', () => {
-    for (const line of ['read 1 2 3', 'uid 00', 'reset now']) {
+    for (const line of ['read 1 2 3', 'uid 00', 'reset now', '00A40400 0x', 'getdata 9F36 0x']) {
       expect(() => parseConsoleCommand(line), line).toThrow();
     }
   });

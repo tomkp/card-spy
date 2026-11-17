@@ -21,9 +21,10 @@
  *      sending a different command: an SFI outside 0 to 31, a record number that isn't a byte,
  *      an offset outside 0 to 7FFF, a tag or page outside 0 to FFFF (a tag in hex is 1 or 2
  *      whole bytes), or a length that isn't a whole number from 0 to 65536.
- *   3. nameBytes reads a string as an AID when it's hex: hex digits, with any spacing, separators
- *      (, : ; -), 0x prefixes and a comment at the end. Then it has to be whole bytes, so a
- *      mistyped AID is an error rather than a name. Any other string is an ASCII DF name.
+ *   3. nameBytes reads a string as an AID when it's hex: at least one hex digit, with any spacing,
+ *      separators (, : ; -) and 0x prefixes. Then it has to be whole bytes, so a mistyped AID is
+ *      an error rather than a name. Any other string is an ASCII DF name, including one with # or
+ *      //, which are characters in a name rather than comments.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -82,31 +83,30 @@ const dataArb = fc.oneof(
     .map(({ length, seed }) => Uint8Array.from({ length }, (_, i) => (seed + i * 7) & 0xff)),
 );
 
-/** Bytes in hex the ways people write it: either case, 0x prefixes, separators, a comment. */
+/** Bytes in hex the ways people write it: either case, 0x prefixes, separators. */
 const hexText = (bytes: Uint8Array) =>
   fc
     .record({
       upper: fc.boolean(),
       prefix: fc.boolean(),
       sep: fc.constantFrom('', ' ', ':', '-', ', ', ';'),
-      comment: fc.constantFrom('', ' # an AID', ' // an AID'),
     })
-    .map(({ upper, prefix, sep, comment }) => {
+    .map(({ upper, prefix, sep }) => {
       const text = [...bytes]
         .map((b) => (prefix ? '0x' : '') + b.toString(16).padStart(2, '0'))
         .join(sep);
-      return (upper ? text.toUpperCase() : text) + comment;
+      return upper ? text.toUpperCase() : text;
     });
 
-/** Printable ASCII with no comment in it. */
-const plain = fc
-  .string({ unit: 'grapheme-ascii', maxLength: 8 })
-  .filter((s) => !s.includes('#') && !s.includes('//'));
+const printable = fc.string({ unit: 'grapheme-ascii', maxLength: 8 });
 
-/** An ASCII name: at least one character that can't be in hex, and no comment. */
-const nameArb = fc
-  .tuple(plain, fc.constantFrom(...'GHJKLMNPQRSTUVWYZgjkmpqtuvwyz._!'), plain)
-  .map(([a, c, b]) => a + c + b);
+/** An ASCII name: one with a character that can't be in hex (# and / included), or no digit. */
+const nameArb = fc.oneof(
+  fc
+    .tuple(printable, fc.constantFrom(...'GHJKLMNPQRSTUVWYZgjkmpqtuvwyz._!#/'), printable)
+    .map(([a, c, b]) => a + c + b),
+  fc.stringMatching(/^[\s,:;-]{0,6}$/),
+);
 
 // ---- What a command should parse back to
 
@@ -290,7 +290,7 @@ describe('3. nameBytes reads hex as an AID and anything else as an ASCII name', 
     fc.assert(
       fc.property(
         fc
-          .uint8Array({ maxLength: 16 })
+          .uint8Array({ minLength: 1, maxLength: 16 })
           .chain((aid) => hexText(aid).map((text) => ({ aid, text }))),
         ({ aid, text }) => bytesEqual(nameBytes(text), aid),
       ),
@@ -303,11 +303,8 @@ describe('3. nameBytes reads hex as an AID and anything else as an ASCII name', 
         fc.uint8Array({ maxLength: 16 }).chain(hexText),
         fc.constantFrom(...'0123456789abcdefABCDEF'),
         (text, digit) => {
-          // The extra digit goes before any comment
-          const at = text.search(/ (#|\/\/)/);
-          const odd = at < 0 ? text + digit : text.slice(0, at) + digit + text.slice(at);
           try {
-            nameBytes(odd);
+            nameBytes(text + digit);
           } catch {
             return true;
           }
@@ -317,7 +314,7 @@ describe('3. nameBytes reads hex as an AID and anything else as an ASCII name', 
     );
   });
 
-  it('a string with a character that cannot be in hex is an ASCII name', () => {
+  it('anything else is an ASCII name', () => {
     fc.assert(fc.property(nameArb, (name) => bytesEqual(nameBytes(name), asciiToBytes(name))));
   });
 });
@@ -358,6 +355,16 @@ describe('Command builder regressions', () => {
 
   it('nameBytes rejects a mistyped AID, rather than sending it as an ASCII name', () => {
     expect(() => nameBytes('A000000003101')).toThrow(/Odd number of hex digits/);
+  });
+
+  it('nameBytes reads text with no hex digit as a name, rather than as an empty AID', () => {
+    for (const text of ['-', '0x', ':']) {
+      expect(toHex(nameBytes(text)), text).toBe(toHex(asciiToBytes(text)));
+    }
+  });
+
+  it('nameBytes reads CAFE#1 as a name, rather than as the AID CAFE and a comment', () => {
+    expect(toHex(nameBytes('CAFE#1'))).toBe(toHex(asciiToBytes('CAFE#1')));
   });
 
   it('nameBytes rejects a name that is not ASCII, rather than sending € as AC', () => {

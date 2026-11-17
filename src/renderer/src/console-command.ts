@@ -1,5 +1,5 @@
 import * as commands from '@shared/commands';
-import { fromHex } from '@shared/hex';
+import { fromHex, stripComments } from '@shared/hex';
 
 /** What a line typed in the APDU console asks for. */
 export type ConsoleCommand = { kind: 'apdu'; apdu: Uint8Array } | { kind: 'reset'; cold: boolean };
@@ -14,7 +14,7 @@ export type ConsoleCommand = { kind: 'apdu'; apdu: Uint8Array } | { kind: 'reset
  * is console-command.properties.test.ts.
  */
 export function parseConsoleCommand(line: string): ConsoleCommand {
-  const text = line.replace(/(#|\/\/).*$/s, '').trim();
+  const text = stripComments(line).trim();
   const [, word = '', rest = ''] = /^(\S*)\s*(.*)$/s.exec(text)!;
   const args = rest ? rest.split(/\s+/) : [];
   switch (word.toLowerCase()) {

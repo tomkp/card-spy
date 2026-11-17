@@ -17,20 +17,20 @@ export function selectByName(name: Uint8Array): Uint8Array {
 }
 
 /**
- * Hex is taken as an AID, however it's written (spacing, separators, 0x prefixes, a comment), and
+ * Hex is taken as an AID, however it's spaced or separated and with or without 0x prefixes, and
  * has to be whole bytes, so a mistyped AID is an error. Anything else (e.g. "2PAY.SYS.DDF01") is
- * an ASCII DF name.
+ * an ASCII DF name, including text with # or //, which are characters here rather than comments.
  */
 export function nameBytes(aidOrName: string | ArrayLike<number>): Uint8Array {
   if (typeof aidOrName !== 'string') return toBytes(aidOrName);
   return readsAsHex(aidOrName) ? fromHex(aidOrName) : asciiToBytes(aidOrName);
 }
 
-/** True when the text is hex digits as fromHex reads them, whether or not they make whole bytes. */
+/** True when the text is at least one hex digit as fromHex reads them, without comments. */
 function readsAsHex(text: string): boolean {
+  if (text.includes('#') || text.includes('//')) return false;
   try {
-    normalizeHex(text);
-    return true;
+    return normalizeHex(text).length > 0;
   } catch {
     return false;
   }
