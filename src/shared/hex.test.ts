@@ -62,6 +62,13 @@ describe('hex', () => {
     }
   });
 
+  it('rejects text that is not ASCII, rather than masking it to a different byte', () => {
+    for (const text of ['PAY€', 'é', '日']) {
+      expect(() => asciiToBytes(text), text).toThrow(RangeError);
+    }
+    expect([...asciiToBytes('\x00\x7f')]).toEqual([0x00, 0x7f]);
+  });
+
   it('handles ASCII', () => {
     expect(toAscii(asciiToBytes('VISA\x00'))).toBe('VISA.');
     expect(isPrintable(asciiToBytes('2PAY.SYS.DDF01'))).toBe(true);

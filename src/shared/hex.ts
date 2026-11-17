@@ -110,9 +110,14 @@ export function isPrintable(bytes: ArrayLike<number>): boolean {
   return true;
 }
 
+/** Throws a RangeError for a character that isn't ASCII, rather than masking it to another byte. */
 export function asciiToBytes(text: string): Uint8Array {
   const out = new Uint8Array(text.length);
-  for (let i = 0; i < text.length; i++) out[i] = text.charCodeAt(i) & 0xff;
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i);
+    if (code > 0x7f) throw new RangeError(`Not ASCII: '${text[i]}' at index ${i}`);
+    out[i] = code;
+  }
   return out;
 }
 
