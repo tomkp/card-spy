@@ -74,7 +74,7 @@ declare const card: {
   /** ATR as hex. */
   readonly atr: string;
   send(apdu: ApduInput, options?: SendOptions): Promise<CardResponse>;
-  /** SELECT by DF name: an AID in hex, or an ASCII name such as "2PAY.SYS.DDF01". */
+  /** SELECT by DF name: an AID in hex (whole bytes), or an ASCII name such as "2PAY.SYS.DDF01". */
   select(aidOrName: Bytes): Promise<CardResponse>;
   readRecord(sfi: number, record: number): Promise<CardResponse>;
   readBinary(offset?: number, length?: number): Promise<CardResponse>;
