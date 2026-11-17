@@ -56,6 +56,12 @@ describe('hex', () => {
     expect(toUint([])).toBe(0);
   });
 
+  it('rejects numbers that are not bytes, rather than wrapping them', () => {
+    for (const bad of [256, -1, 1.5, NaN]) {
+      expect(() => toBytes([0, bad]), String(bad)).toThrow(RangeError);
+    }
+  });
+
   it('handles ASCII', () => {
     expect(toAscii(asciiToBytes('VISA\x00'))).toBe('VISA.');
     expect(isPrintable(asciiToBytes('2PAY.SYS.DDF01'))).toBe(true);

@@ -156,7 +156,7 @@ function toCommand(apdu: ApduInput): Uint8Array {
     p1: apdu.p1,
     p2: apdu.p2,
     ...(apdu.data !== undefined ? { data: toBytes(apdu.data) } : {}),
-    ...(apdu.le !== undefined ? { le: apdu.le === 0 ? 256 : apdu.le } : {}),
+    ...(apdu.le !== undefined ? { le: apdu.le } : {}),
   });
 }
 

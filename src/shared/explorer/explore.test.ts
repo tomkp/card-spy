@@ -20,6 +20,68 @@ function explore(index: number) {
   return { root: exploreCard({ transmit, atr: card.atr }), sent };
 }
 
+const tlv = (nodes: Parameters<typeof encodeTlvTree>[0]) => toHex(encodeTlvTree(nodes));
+
+/** A contact card with a PSE, one Link application and a transaction log the card guards. */
+function linkCard(directorySfi: number, logEntry: string) {
+  const aid = fromHex('A0000000291010');
+  return createVirtualCard({
+    format: 'card-spy/virtual-card',
+    version: 1,
+    name: 'Padded label, guarded log',
+    atr: '3B6800000073C84012009000',
+    model: {
+      kind: 'apdu',
+      rules: [
+        {
+          command: '00A404000E315041592E5359532E444446303100',
+          response:
+            tlv([
+              {
+                tag: '6F',
+                children: [
+                  { tag: 'A5', children: [{ tag: '88', value: Uint8Array.of(directorySfi) }] },
+                ],
+              },
+            ]) + '9000',
+        },
+        {
+          command: '00B2010C00',
+          response:
+            tlv([{ tag: '70', children: [{ tag: '61', children: [{ tag: '4F', value: aid }] }] }]) +
+            '9000',
+        },
+        {
+          command: '00A4040007A000000029101000',
+          response:
+            tlv([
+              {
+                tag: '6F',
+                children: [
+                  { tag: '84', value: aid },
+                  {
+                    tag: 'A5',
+                    children: [
+                      { tag: '50', value: asciiToBytes('Link             ') },
+                      { tag: 'BF0C', children: [{ tag: '9F4D', value: fromHex(logEntry) }] },
+                    ],
+                  },
+                ],
+              },
+            ]) + '9000',
+        },
+        { command: '80A80000*', response: tlv([{ tag: '80', value: fromHex('0000') }]) + '9000' },
+        {
+          command: '80CA9F4F00',
+          response: tlv([{ tag: '9F4F', value: fromHex('9A03') }]) + '9000',
+        },
+        { command: '00B2015C00', response: '6985' },
+      ],
+      fallback: '6A88',
+    },
+  });
+}
+
 function find(node: ExplorerNode, label: string): ExplorerNode | undefined {
   if (node.label === label) return node;
   for (const child of node.children ?? []) {
@@ -129,67 +191,26 @@ describe('exploreCard', () => {
   });
 
   it('trims padded labels and says why a transaction log could not be read', async () => {
-    const tlv = (nodes: Parameters<typeof encodeTlvTree>[0]) => toHex(encodeTlvTree(nodes));
-    const aid = fromHex('A0000000291010');
-    const card = createVirtualCard({
-      format: 'card-spy/virtual-card',
-      version: 1,
-      name: 'Padded label, guarded log',
-      atr: '3B6800000073C84012009000',
-      model: {
-        kind: 'apdu',
-        rules: [
-          {
-            command: '00A404000E315041592E5359532E444446303100',
-            response:
-              tlv([
-                {
-                  tag: '6F',
-                  children: [{ tag: 'A5', children: [{ tag: '88', value: Uint8Array.of(1) }] }],
-                },
-              ]) + '9000',
-          },
-          {
-            command: '00B2010C00',
-            response:
-              tlv([
-                { tag: '70', children: [{ tag: '61', children: [{ tag: '4F', value: aid }] }] },
-              ]) + '9000',
-          },
-          {
-            command: '00A4040007A000000029101000',
-            response:
-              tlv([
-                {
-                  tag: '6F',
-                  children: [
-                    { tag: '84', value: aid },
-                    {
-                      tag: 'A5',
-                      children: [
-                        { tag: '50', value: asciiToBytes('Link             ') },
-                        { tag: 'BF0C', children: [{ tag: '9F4D', value: fromHex('0B03') }] },
-                      ],
-                    },
-                  ],
-                },
-              ]) + '9000',
-          },
-          { command: '80A80000*', response: tlv([{ tag: '80', value: fromHex('0000') }]) + '9000' },
-          {
-            command: '80CA9F4F00',
-            response: tlv([{ tag: '9F4F', value: fromHex('9A03') }]) + '9000',
-          },
-          { command: '00B2015C00', response: '6985' },
-        ],
-        fallback: '6A88',
-      },
-    });
+    const card = linkCard(1, '0B03');
     const tree = await exploreCard({ transmit: async (c) => card.transmit(c), atr: card.atr });
     expect(find(tree, 'Link')?.value).toBe('A0000000291010');
     expect(find(tree, 'Transaction log')?.value).toBe(
       'SFI 11 · not readable: 6985 Conditions of use not satisfied',
     );
+  });
+
+  it('reports an SFI from the card that READ RECORD cannot hold, rather than losing the section', async () => {
+    // 9F4D written as in the AFL, SFI shifted left 3: 58 is SFI 11
+    const card = linkCard(1, '5803');
+    const tree = await exploreCard({ transmit: async (c) => card.transmit(c), atr: card.atr });
+    expect(find(tree, 'Link')?.value).toBe('A0000000291010');
+    expect(find(tree, 'Transaction log')?.value).toBe('SFI 88 · not a valid SFI');
+
+    const sent: string[] = [];
+    const pse = linkCard(0x40, '0B03');
+    const transmit = async (c: Uint8Array) => (sent.push(toHex(c)), pse.transmit(c));
+    expect(find(await exploreCard({ transmit, atr: pse.atr }), 'Error')).toBeUndefined();
+    expect(sent.filter((c) => c.startsWith('00B2'))).toEqual([]);
   });
 
   it('reads only the UID of a MIFARE Classic card and says why', async () => {

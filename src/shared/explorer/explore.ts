@@ -134,6 +134,9 @@ async function uidSection({ f, raw }: Context): Promise<ExplorerNode | undefined
 
 // ---- EMV ----
 
+/** The largest SFI READ RECORD can address. The card gives SFIs in tags 88 and 9F4D. */
+const MAX_SFI = 31;
+
 async function emvSection(ctx: Context): Promise<ExplorerNode | undefined> {
   const { f, send } = ctx;
   let directory = await send(selectByName(PPSE));
@@ -161,11 +164,15 @@ async function emvSection(ctx: Context): Promise<ExplorerNode | undefined> {
       aids.push(...findAllTlv(parseTlv(directory.data).nodes, 0x4f).map((n) => n.value));
     } else {
       const sfi = findTlv(parseTlv(directory.data).nodes, 0x88)?.value[0] ?? 1;
-      for (let record = 1; record <= 16; record++) {
-        const r = await send(readRecord(sfi, record));
-        if (!ok(r)) break;
-        dirNode.children!.push(recordNode(f, sfi, record, r.data));
-        aids.push(...findAllTlv(parseTlv(r.data).nodes, 0x4f).map((n) => n.value));
+      if (sfi > MAX_SFI) {
+        dirNode.children!.push(f.node('error', `SFI ${sfi}`, { value: 'not a valid SFI' }));
+      } else {
+        for (let record = 1; record <= 16; record++) {
+          const r = await send(readRecord(sfi, record));
+          if (!ok(r)) break;
+          dirNode.children!.push(recordNode(f, sfi, record, r.data));
+          aids.push(...findAllTlv(parseTlv(r.data).nodes, 0x4f).map((n) => n.value));
+        }
       }
     }
   } else {
@@ -277,6 +284,10 @@ async function transactionLog(
 ): Promise<ExplorerNode> {
   const dol = parseDol(format);
   const log = f.node('section', 'Transaction log', { value: `SFI ${sfi}`, children: [] });
+  if (sfi > MAX_SFI) {
+    log.value = `SFI ${sfi} · not a valid SFI`;
+    return log;
+  }
   for (let record = 1; record <= count; record++) {
     const r = await send(readRecord(sfi, record));
     if (!ok(r)) {

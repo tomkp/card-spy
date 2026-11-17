@@ -54,10 +54,23 @@ export function isHex(input: string): boolean {
   }
 }
 
-/** Accepts bytes or a hex string. */
+/** Accepts bytes or a hex string. Throws a RangeError for a number that isn't a byte. */
 export function toBytes(input: string | ArrayLike<number>): Uint8Array {
   if (typeof input === 'string') return fromHex(input);
-  return input instanceof Uint8Array ? input : Uint8Array.from(input);
+  if (input instanceof Uint8Array) return input;
+  const out = new Uint8Array(input.length);
+  for (let i = 0; i < input.length; i++) out[i] = checkRange(`Byte ${i}`, input[i]!, 0xff);
+  return out;
+}
+
+/** Returns `value` if it's a whole number from 0 to `max`, or throws a RangeError naming it. */
+export function checkRange(name: string, value: number, max: number): number {
+  if (!(Number.isInteger(value) && value >= 0 && value <= max)) {
+    // Quote a string, which scripts can pass, so "1" doesn't read as in range
+    const shown = typeof value === 'string' ? JSON.stringify(value) : String(value);
+    throw new RangeError(`${name} out of range (${shown})`);
+  }
+  return value;
 }
 
 export function concatBytes(...parts: ArrayLike<number>[]): Uint8Array {
