@@ -286,6 +286,10 @@ describe('Command builder regressions', () => {
     expect(toHex(gpo.subarray(0, 8))).toBe('80A8000083838180');
   });
 
+  it('nameBytes rejects a name that is not ASCII, rather than sending € as AC', () => {
+    expect(() => nameBytes('PAY€')).toThrow(RangeError);
+  });
+
   it('nameBytes rejects a number that is not a byte, rather than wrapping it', () => {
     expect(() => nameBytes([0xa0, 0x100])).toThrow(RangeError);
   });

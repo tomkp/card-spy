@@ -214,7 +214,7 @@ export function encodeNdefUri(uri: string): Uint8Array {
   return encodeNdefRecord(1, asciiToBytes('U'), concatBytes([code], rest));
 }
 
-/** Throws a RangeError if the language code is over 63 bytes. */
+/** Throws a RangeError if the language code isn't ASCII or is over 63 bytes. */
 export function encodeNdefText(text: string, lang = 'en'): Uint8Array {
   const langBytes = asciiToBytes(lang);
   if (langBytes.length > 0x3f) {

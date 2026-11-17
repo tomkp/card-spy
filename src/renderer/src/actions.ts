@@ -102,7 +102,7 @@ export async function runConsoleCommand(
       command = commands.readRecord(Number(args[0] ?? 1), Number(args[1] ?? 1));
       break;
     case 'getdata':
-      command = commands.getData(args[0] ?? '');
+      command = commands.getData(args.join(''));
       break;
     case 'uid':
       command = commands.GET_UID;

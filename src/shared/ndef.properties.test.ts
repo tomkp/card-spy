@@ -15,8 +15,8 @@
  *   4. A message wrapped for a Type 2 tag reads back as an NDEF Message block holding exactly
  *      that message, then a terminator.
  *   5. The encoders reject what they can't encode, rather than writing a length that wraps: a
- *      TNF outside 0-7, a type or ID over 255 bytes, a language code over 63 bytes, or a Type 2
- *      message over 65534 bytes.
+ *      TNF outside 0-7, a type or ID over 255 bytes, a language code over 63 bytes or not in
+ *      ASCII, or a Type 2 message over 65534 bytes.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -191,6 +191,15 @@ describe('NDEF specification', () => {
       );
     });
 
+    it('a language code that is not ASCII', () => {
+      const notAscii = fc
+        .string({ unit: 'grapheme', minLength: 1, maxLength: 20 })
+        .filter((s) => /[^\x00-\x7f]/.test(s));
+      fc.assert(
+        fc.property(notAscii, (lang) => throwsRangeError(() => encodeNdefText('hello', lang))),
+      );
+    });
+
     it('a Type 2 message over 65534 bytes', () => {
       expect(() => wrapNdefForType2(new Uint8Array(65535))).toThrow(RangeError);
     });
@@ -202,6 +211,10 @@ describe('NDEF specification', () => {
 describe('NDEF regressions', () => {
   it('rejects a 64-byte language code, rather than writing a length of 0', () => {
     expect(() => encodeNdefText('hello', 'x'.repeat(64))).toThrow(RangeError);
+  });
+
+  it('rejects a language code that is not ASCII, rather than writing 日 as E5', () => {
+    expect(() => encodeNdefText('hello', 'ja-日')).toThrow(RangeError);
   });
 
   it('rejects a 256-byte type, rather than writing a type length of 0', () => {
