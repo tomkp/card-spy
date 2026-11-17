@@ -19,9 +19,11 @@
  *   4. Lengths encode in as few bytes as possible and read back unchanged.
  *   5. The encoders reject what they can't encode, rather than producing bytes that read back
  *      as something else: a tag that isn't well formed, or children under a primitive tag.
+ *   6. A node to encode has a value or children, never both. This one is in the TlvBuildNode
+ *      type, so the compiler checks it (npm run typecheck) rather than fast-check.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, expectTypeOf } from 'vitest';
 import fc from 'fast-check';
 import { bytesEqual, fromHex, toHex } from './hex';
 import {
@@ -278,6 +280,19 @@ describe('TLV specification', () => {
         ),
       );
     });
+  });
+
+  it('6. a node has a value or children, never both (checked by npm run typecheck)', () => {
+    // Each half on its own is a node, so the only reason the combination isn't is "both"
+    type WithValue = { tag: string; value: Uint8Array };
+    type WithChildren = { tag: string; children: TlvBuildNode[] };
+    expectTypeOf<WithValue>().toExtend<TlvBuildNode>();
+    expectTypeOf<WithChildren>().toExtend<TlvBuildNode>();
+    expectTypeOf<WithValue & WithChildren>().not.toExtend<TlvBuildNode>();
+
+    // Likewise a parsed node, which can have both, so a parsed tree needs converting first
+    expectTypeOf<Omit<TlvNode, 'children'>>().toExtend<TlvBuildNode>();
+    expectTypeOf<TlvNode>().not.toExtend<TlvBuildNode>();
   });
 });
 

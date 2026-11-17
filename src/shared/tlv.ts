@@ -33,11 +33,13 @@ export interface TlvParseOptions {
   skipPadding?: boolean;
 }
 
-export interface TlvBuildNode {
-  tag: number | string;
-  value?: Uint8Array;
-  children?: TlvBuildNode[];
-}
+/**
+ * A node to encode: one with a value, or one with children, never both. A parsed TlvNode can have
+ * both, so a parsed tree can't be passed back in without deciding which to keep.
+ */
+export type TlvBuildNode =
+  | { tag: number | string; value?: Uint8Array; children?: never }
+  | { tag: number | string; children: TlvBuildNode[]; value?: never };
 
 const CLASSES: TagClass[] = ['universal', 'application', 'context', 'private'];
 const MAX_DEPTH = 32;
