@@ -21,6 +21,10 @@
  *      sending a different command: an SFI outside 0 to 31, a record number that isn't a byte,
  *      an offset outside 0 to 7FFF, a tag or page outside 0 to FFFF (a tag in hex is 1 or 2
  *      whole bytes), or a length that isn't a whole number from 0 to 65536.
+ *   3. nameBytes reads a string as an AID when it's hex: at least one hex digit, with any spacing,
+ *      separators (, : ; -) and 0x prefixes. Then it has to be whole bytes, so a mistyped AID is
+ *      an error rather than a name. Any other string is an ASCII DF name, including one with # or
+ *      //, which are characters in a name rather than comments.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -36,7 +40,7 @@ import {
   readRecord,
   selectByName,
 } from './commands';
-import { bytesEqual, toHex } from './hex';
+import { asciiToBytes, bytesEqual, toHex } from './hex';
 import { parseTlv } from './tlv';
 
 // ---- Generators
@@ -77,6 +81,31 @@ const dataArb = fc.oneof(
       seed: fc.integer({ min: 0, max: 255 }),
     })
     .map(({ length, seed }) => Uint8Array.from({ length }, (_, i) => (seed + i * 7) & 0xff)),
+);
+
+/** Bytes in hex the ways people write it: either case, 0x prefixes, separators. */
+const hexText = (bytes: Uint8Array) =>
+  fc
+    .record({
+      upper: fc.boolean(),
+      prefix: fc.boolean(),
+      sep: fc.constantFrom('', ' ', ':', '-', ', ', ';'),
+    })
+    .map(({ upper, prefix, sep }) => {
+      const text = [...bytes]
+        .map((b) => (prefix ? '0x' : '') + b.toString(16).padStart(2, '0'))
+        .join(sep);
+      return upper ? text.toUpperCase() : text;
+    });
+
+const printable = fc.string({ unit: 'grapheme-ascii', maxLength: 8 });
+
+/** An ASCII name: one with a character that can't be in hex (# and / included), or no digit. */
+const nameArb = fc.oneof(
+  fc
+    .tuple(printable, fc.constantFrom(...'GHJKLMNPQRSTUVWYZgjkmpqtuvwyz._!#/'), printable)
+    .map(([a, c, b]) => a + c + b),
+  fc.stringMatching(/^[\s,:;-]{0,6}$/),
 );
 
 // ---- What a command should parse back to
@@ -256,6 +285,40 @@ describe('Command builder specification', () => {
   });
 });
 
+describe('3. nameBytes reads hex as an AID and anything else as an ASCII name', () => {
+  it('hex, however it is written, gives its bytes', () => {
+    fc.assert(
+      fc.property(
+        fc
+          .uint8Array({ minLength: 1, maxLength: 16 })
+          .chain((aid) => hexText(aid).map((text) => ({ aid, text }))),
+        ({ aid, text }) => bytesEqual(nameBytes(text), aid),
+      ),
+    );
+  });
+
+  it('an odd number of hex digits is an error, not a name', () => {
+    fc.assert(
+      fc.property(
+        fc.uint8Array({ maxLength: 16 }).chain(hexText),
+        fc.constantFrom(...'0123456789abcdefABCDEF'),
+        (text, digit) => {
+          try {
+            nameBytes(text + digit);
+          } catch {
+            return true;
+          }
+          return false;
+        },
+      ),
+    );
+  });
+
+  it('anything else is an ASCII name', () => {
+    fc.assert(fc.property(nameArb, (name) => bytesEqual(nameBytes(name), asciiToBytes(name))));
+  });
+});
+
 // ---- Examples of each bug the properties found
 
 describe('Command builder regressions', () => {
@@ -284,6 +347,24 @@ describe('Command builder regressions', () => {
   it('getProcessingOptions gives 128 bytes of PDOL data a long-form length', () => {
     const gpo = getProcessingOptions(new Uint8Array(128));
     expect(toHex(gpo.subarray(0, 8))).toBe('80A8000083838180');
+  });
+
+  it('nameBytes reads A0:00:00:00:03:10:10 as an AID, not as an ASCII name', () => {
+    expect(toHex(nameBytes('A0:00:00:00:03:10:10'))).toBe('A0000000031010');
+  });
+
+  it('nameBytes rejects a mistyped AID, rather than sending it as an ASCII name', () => {
+    expect(() => nameBytes('A000000003101')).toThrow(/Odd number of hex digits/);
+  });
+
+  it('nameBytes reads text with no hex digit as a name, rather than as an empty AID', () => {
+    for (const text of ['-', '0x', ':']) {
+      expect(toHex(nameBytes(text)), text).toBe(toHex(asciiToBytes(text)));
+    }
+  });
+
+  it('nameBytes reads CAFE#1 as a name, rather than as the AID CAFE and a comment', () => {
+    expect(toHex(nameBytes('CAFE#1'))).toBe(toHex(asciiToBytes('CAFE#1')));
   });
 
   it('nameBytes rejects a name that is not ASCII, rather than sending € as AC', () => {

@@ -1,5 +1,5 @@
 import { encodeCommand } from './apdu';
-import { asciiToBytes, checkRange, fromHex, isHex, toBytes, toUint } from './hex';
+import { asciiToBytes, checkRange, fromHex, normalizeHex, toBytes, toUint } from './hex';
 import { encodeTlv } from './tlv';
 
 /**
@@ -16,12 +16,24 @@ export function selectByName(name: Uint8Array): Uint8Array {
   return encodeCommand({ cla: 0x00, ins: 0xa4, p1: 0x04, p2: 0x00, data: name, le: 0 });
 }
 
-/** Hex is taken as an AID; anything else (e.g. "2PAY.SYS.DDF01") as an ASCII DF name. */
+/**
+ * Hex is taken as an AID, however it's spaced or separated and with or without 0x prefixes, and
+ * has to be whole bytes, so a mistyped AID is an error. Anything else (e.g. "2PAY.SYS.DDF01") is
+ * an ASCII DF name, including text with # or //, which are characters here rather than comments.
+ */
 export function nameBytes(aidOrName: string | ArrayLike<number>): Uint8Array {
   if (typeof aidOrName !== 'string') return toBytes(aidOrName);
-  return isHex(aidOrName) && /^[0-9a-f\s]+$/i.test(aidOrName)
-    ? fromHex(aidOrName)
-    : asciiToBytes(aidOrName);
+  return readsAsHex(aidOrName) ? fromHex(aidOrName) : asciiToBytes(aidOrName);
+}
+
+/** True when the text is at least one hex digit as fromHex reads them, without comments. */
+function readsAsHex(text: string): boolean {
+  if (text.includes('#') || text.includes('//')) return false;
+  try {
+    return normalizeHex(text).length > 0;
+  } catch {
+    return false;
+  }
 }
 
 export function readRecord(sfi: number, record: number): Uint8Array {

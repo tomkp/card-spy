@@ -267,7 +267,7 @@ const CONSOLE_HELP =
   '  getdata <tag>         e.g. getdata 9F36\n' +
   '  uid                   contactless UID\n' +
   '  reset | reset cold\n' +
-  'Up and down arrows recall earlier commands.';
+  '# or // starts a comment. Up and down arrows recall earlier commands.';
 
 function Console() {
   const [value, setValue] = useState('');

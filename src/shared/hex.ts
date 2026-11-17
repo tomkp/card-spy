@@ -34,10 +34,17 @@ export function fromHex(input: string): Uint8Array {
   return out;
 }
 
-/** Strips comments, separators and 0x prefixes; returns upper-case digits or throws on junk. */
+/** Removes comments: from # or // to the end of the line. */
+export function stripComments(text: string): string {
+  return text.replace(/(#|\/\/).*$/gm, '');
+}
+
+/**
+ * Strips comments, separators and 0x prefixes; returns upper-case digits or throws on junk. A 0x
+ * has to be followed by a digit, so a dangling one is junk rather than nothing.
+ */
 export function normalizeHex(input: string): string {
-  const withoutComments = input.replace(/(#|\/\/).*$/gm, '');
-  const withoutPrefixes = withoutComments.replace(/0x/gi, '');
+  const withoutPrefixes = stripComments(input).replace(/0x(?=[0-9a-f])/gi, '');
   const digits = withoutPrefixes.replace(/[\s,:;-]/g, '');
   const bad = digits.match(/[^0-9a-fA-F]/);
   if (bad) {

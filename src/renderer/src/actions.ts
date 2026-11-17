@@ -1,6 +1,5 @@
 import { parseAtr } from '@shared/atr';
 import { splitResponse } from '@shared/apdu';
-import * as commands from '@shared/commands';
 import { sendWithResponses } from '@shared/exchange';
 import { exploreCard } from '@shared/explorer/explore';
 import { fromHex, toHex } from '@shared/hex';
@@ -8,6 +7,7 @@ import { describeSw, type SwSeverity } from '@shared/sw';
 import type { ExchangeEntry, ExchangeSource, TraceEntry } from '@shared/types';
 import { VIRTUAL_READER_ID } from '@shared/types';
 import { recordVirtualCard } from '@shared/virtual/recorder';
+import { parseConsoleCommand } from './console-command';
 import { errorText, ScriptRun } from './scripting/runner';
 import { appendOutput, get, openScript, scriptContent, selectedReader, set } from './store';
 
@@ -81,41 +81,19 @@ export interface ConsoleResult {
   severity: SwSeverity;
 }
 
-/**
- * Raw hex is sent as is. A few shortcuts save typing:
- *   select <aid | name>   read <sfi> <record>   getdata <tag>   uid   reset   reset cold
- * Resolves with a one-line summary of the outcome.
- */
+/** Runs a line typed in the APDU console. Resolves with a one-line summary of the outcome. */
 export async function runConsoleCommand(
   input: string,
   autoResponse: boolean,
 ): Promise<ConsoleResult> {
   const transmit = transmitter('console');
-  const [word = '', ...args] = input.trim().split(/\s+/);
   const reader = selectedReader()!;
-  let command: Uint8Array;
-  switch (word.toLowerCase()) {
-    case 'select':
-      command = commands.selectByName(commands.nameBytes(args.join('')));
-      break;
-    case 'read':
-      command = commands.readRecord(Number(args[0] ?? 1), Number(args[1] ?? 1));
-      break;
-    case 'getdata':
-      command = commands.getData(args.join(''));
-      break;
-    case 'uid':
-      command = commands.GET_UID;
-      break;
-    case 'reset': {
-      const cold = args[0] === 'cold';
-      const atr = await api.resetCard(reader.id, cold);
-      return { text: `${cold ? 'Cold' : 'Warm'} reset · ATR ${atr}`, severity: 'ok' };
-    }
-    default:
-      command = fromHex(input);
+  const parsed = parseConsoleCommand(input);
+  if (parsed.kind === 'reset') {
+    const atr = await api.resetCard(reader.id, parsed.cold);
+    return { text: `${parsed.cold ? 'Cold' : 'Warm'} reset · ATR ${atr}`, severity: 'ok' };
   }
-  if (command.length < 4) throw new Error('An APDU needs at least CLA INS P1 P2');
+  const command = parsed.apdu;
   const response = autoResponse
     ? await sendWithResponses(transmit, command)
     : splitResponse(await transmit(command));
