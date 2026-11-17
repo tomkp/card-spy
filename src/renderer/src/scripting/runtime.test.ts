@@ -50,6 +50,14 @@ describe('script runtime', () => {
     );
   });
 
+  it('sends le: 0 as the maximum, in extended form too', async () => {
+    const { card, sent } = runtime(0);
+    const data = new Array<number>(300).fill(0);
+    await card.send({ cla: 0x80, ins: 0xe2, p1: 0, p2: 0, data, le: 0 }, { autoResponse: false });
+    expect(sent[0]!.slice(8, 14)).toBe('00012C');
+    expect(sent[0]!.slice(-4)).toBe('0000');
+  });
+
   it('reads Type 2 tag pages and NDEF', async () => {
     const { card, globals } = runtime(1);
     expect(await card.getUid()).toBe('04A23B7A1C5E80');

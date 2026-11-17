@@ -54,10 +54,17 @@ export function isHex(input: string): boolean {
   }
 }
 
-/** Accepts bytes or a hex string. */
+/** Accepts bytes or a hex string. Throws a RangeError for a number that isn't a byte. */
 export function toBytes(input: string | ArrayLike<number>): Uint8Array {
   if (typeof input === 'string') return fromHex(input);
-  return input instanceof Uint8Array ? input : Uint8Array.from(input);
+  if (input instanceof Uint8Array) return input;
+  for (let i = 0; i < input.length; i++) {
+    const b = input[i]!;
+    if (!(Number.isInteger(b) && b >= 0 && b <= 0xff)) {
+      throw new RangeError(`Not a byte (${b}) at index ${i}`);
+    }
+  }
+  return Uint8Array.from(input);
 }
 
 export function concatBytes(...parts: ArrayLike<number>[]): Uint8Array {

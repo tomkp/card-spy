@@ -40,7 +40,10 @@ interface CardResponse {
 
 type Bytes = string | Uint8Array | number[];
 
-/** A raw APDU as hex or bytes, or its fields. `le: 256` (or 0) asks for as much as the card has. */
+/**
+ * A raw APDU as hex or bytes, or its fields. `le: 0` asks for as much as the card has, and so
+ * does `le: 256` in a short APDU.
+ */
 type ApduInput =
   Bytes | { cla: number; ins: number; p1: number; p2: number; data?: Bytes; le?: number };
 
