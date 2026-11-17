@@ -115,7 +115,11 @@ export function asciiToBytes(text: string): Uint8Array {
   const out = new Uint8Array(text.length);
   for (let i = 0; i < text.length; i++) {
     const code = text.charCodeAt(i);
-    if (code > 0x7f) throw new RangeError(`Not ASCII: '${text[i]}' at index ${i}`);
+    if (code > 0x7f) {
+      // The whole character, not half of a surrogate pair
+      const char = String.fromCodePoint(text.codePointAt(i)!);
+      throw new RangeError(`Not ASCII: '${char}' at index ${i}`);
+    }
     out[i] = code;
   }
   return out;

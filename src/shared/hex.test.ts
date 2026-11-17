@@ -67,6 +67,7 @@ describe('hex', () => {
       expect(() => asciiToBytes(text), text).toThrow(RangeError);
     }
     expect([...asciiToBytes('\x00\x7f')]).toEqual([0x00, 0x7f]);
+    expect(() => asciiToBytes('PAY😀')).toThrow("Not ASCII: '😀' at index 3");
   });
 
   it('handles ASCII', () => {
