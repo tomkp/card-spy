@@ -19,8 +19,8 @@
  *      above, in short form unless the data or Le needs extended.
  *   2. Each builder rejects a parameter that doesn't fit its field with a RangeError, rather than
  *      sending a different command: an SFI outside 0 to 31, a record number that isn't a byte,
- *      an offset outside 0 to 7FFF, a tag or page outside 0 to FFFF, or a length that isn't a
- *      whole number from 0 to 65536.
+ *      an offset outside 0 to 7FFF, a tag or page outside 0 to FFFF (a tag in hex is 1 or 2
+ *      whole bytes), or a length that isn't a whole number from 0 to 65536.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -179,7 +179,7 @@ describe('Command builder specification', () => {
         fc.property(dataArb, (pdol) => {
           const bytes = getProcessingOptions(pdol);
           const data = tryParseCommand(bytes)?.data ?? new Uint8Array();
-          const { nodes, error } = parseTlv(data);
+          const { nodes, error } = parseTlv(data, { skipPadding: false });
           return (
             holds(bytes, { cla: 0x80, ins: 0xa8, p1: 0, p2: 0, data, le: 0 }) &&
             error === undefined &&
@@ -269,7 +269,16 @@ describe('Command builder regressions', () => {
 
   it('getData rejects a 3-byte tag, rather than asking for its last two bytes', () => {
     expect(() => getData('DF8101')).toThrow(RangeError);
+    expect(() => getData('0000DF')).toThrow(RangeError);
     expect(() => getData('')).toThrow(RangeError);
+  });
+
+  it('getData rejects an odd number of hex digits, rather than reading 9F3 as 09F3', () => {
+    expect(() => getData('9F3')).toThrow(/Odd number of hex digits/);
+  });
+
+  it('quotes a string where a number belongs, so the message does not look in range', () => {
+    expect(() => readRecord('1' as unknown as number, 1)).toThrow('SFI out of range ("1")');
   });
 
   it('getProcessingOptions gives 128 bytes of PDOL data a long-form length', () => {

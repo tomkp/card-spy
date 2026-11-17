@@ -36,7 +36,7 @@ for (const aid of aids) {
     p1: 0,
     p2: 0,
     data: tlv.encode('83', emv.buildDol(pdol)),
-    le: 256,
+    le: 0,
   });
   if (!gpo.ok) {
     log('GET PROCESSING OPTIONS failed:', gpo.status);

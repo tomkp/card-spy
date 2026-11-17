@@ -63,7 +63,7 @@ const fci = (await card.select('A0000000031010')).expectOk();
 log(fci.tlv()); // printed as a tree, with tag names
 
 const gpo = await card.send({ cla: 0x80, ins: 0xa8, p1: 0, p2: 0,
-  data: tlv.encode('83', emv.buildDol(fci.find('9F38')?.value ?? new Uint8Array())), le: 256 });
+  data: tlv.encode('83', emv.buildDol(fci.find('9F38')?.value ?? new Uint8Array())), le: 0 });
 for (const { sfi, first, last } of emv.parseGpo(gpo.data).afl) { /* card.readRecord(sfi, n) … */ }
 ```
 

@@ -1,6 +1,6 @@
 /** Command and response APDUs (ISO 7816-4), plus naming for trace views. */
 
-import { byteToHex, concatBytes, isPrintable, toAscii, toHex } from './hex';
+import { byteToHex, checkRange, concatBytes, isPrintable, toAscii, toHex } from './hex';
 import { lookupAid } from './aids';
 import { lookupTag } from './tags/emv';
 import { findTlv, parseTlv } from './tlv';
@@ -81,14 +81,12 @@ export function encodeCommand(cmd: CommandApdu & { extended?: boolean }): Uint8A
   const nc = data.length;
   const le = cmd.le;
   if (nc > 65535) throw new RangeError(`Command data too long (${nc} bytes)`);
-  if (le !== undefined && !(Number.isInteger(le) && le >= 0 && le <= 65536)) {
-    throw new RangeError(`Le out of range (${le})`);
-  }
+  if (le !== undefined) checkRange('Le', le, 65536);
   const header = Uint8Array.of(
-    checkByte('CLA', cmd.cla),
-    checkByte('INS', cmd.ins),
-    checkByte('P1', cmd.p1),
-    checkByte('P2', cmd.p2),
+    checkRange('CLA', cmd.cla, 0xff),
+    checkRange('INS', cmd.ins, 0xff),
+    checkRange('P1', cmd.p1, 0xff),
+    checkRange('P2', cmd.p2, 0xff),
   );
   const extended = cmd.extended || nc > 255 || (le !== undefined && le > 256);
 
@@ -105,13 +103,6 @@ export function encodeCommand(cmd: CommandApdu & { extended?: boolean }): Uint8A
     leBytes = nc > 0 ? Uint8Array.of(v >> 8, v & 0xff) : Uint8Array.of(0, v >> 8, v & 0xff);
   }
   return concatBytes(header, lc, leBytes);
-}
-
-function checkByte(name: string, value: number): number {
-  if (!(Number.isInteger(value) && value >= 0 && value <= 0xff)) {
-    throw new RangeError(`${name} out of range (${value})`);
-  }
-  return value;
 }
 
 export function splitResponse(bytes: Uint8Array): ResponseApdu {

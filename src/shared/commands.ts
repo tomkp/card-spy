@@ -1,5 +1,5 @@
 import { encodeCommand } from './apdu';
-import { asciiToBytes, fromHex, isHex, normalizeHex, toBytes } from './hex';
+import { asciiToBytes, checkRange, fromHex, isHex, toBytes, toUint } from './hex';
 import { encodeTlv } from './tlv';
 
 /**
@@ -25,20 +25,19 @@ export function nameBytes(aidOrName: string | ArrayLike<number>): Uint8Array {
 }
 
 export function readRecord(sfi: number, record: number): Uint8Array {
-  check('SFI', sfi, 31);
-  check('Record number', record, 0xff);
+  checkRange('SFI', sfi, 31);
+  checkRange('Record number', record, 0xff);
   return encodeCommand({ cla: 0x00, ins: 0xb2, p1: record, p2: (sfi << 3) | 0x04, le: 0 });
 }
 
 export function readBinary(offset = 0, length = 0): Uint8Array {
-  check('Offset', offset, 0x7fff);
+  checkRange('Offset', offset, 0x7fff);
   return encodeCommand({ cla: 0x00, ins: 0xb0, p1: offset >> 8, p2: offset & 0xff, le: length });
 }
 
 /** GET DATA, EMV style (CLA 80). The tag goes in P1-P2, so it can be at most 2 bytes. */
 export function getData(tag: string | number): Uint8Array {
-  const t = typeof tag === 'number' ? tag : parseInt(normalizeHex(tag), 16);
-  check('Tag', t, 0xffff);
+  const t = typeof tag === 'number' ? checkRange('Tag', tag, 0xffff) : hexTag(tag);
   return encodeCommand({ cla: 0x80, ins: 0xca, p1: t >> 8, p2: t & 0xff, le: 0 });
 }
 
@@ -56,13 +55,15 @@ export function getProcessingOptions(pdolData: Uint8Array): Uint8Array {
 export const GET_UID = Uint8Array.of(0xff, 0xca, 0x00, 0x00, 0x00);
 
 export function readPages(page: number, bytes: number): Uint8Array {
-  check('Page', page, 0xffff);
+  checkRange('Page', page, 0xffff);
   return encodeCommand({ cla: 0xff, ins: 0xb0, p1: page >> 8, p2: page & 0xff, le: bytes });
 }
 
-/** Throws a RangeError unless `value` is a whole number from 0 to `max`. */
-function check(name: string, value: number, max: number): void {
-  if (!(Number.isInteger(value) && value >= 0 && value <= max)) {
-    throw new RangeError(`${name} out of range (${value})`);
+/** A tag written in hex: whole bytes, and 1 or 2 of them to fit in P1-P2. */
+function hexTag(hex: string): number {
+  const bytes = fromHex(hex);
+  if (bytes.length < 1 || bytes.length > 2) {
+    throw new RangeError(`Tag out of range (${JSON.stringify(hex)})`);
   }
+  return toUint(bytes);
 }
