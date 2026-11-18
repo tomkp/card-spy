@@ -14,6 +14,9 @@ import { createVirtualCard } from '@shared/virtual/simulator';
 
 const TRACE_LIMIT = 20_000;
 
+/** How long a PC/SC error has to stop before it's recorded again. */
+const ERROR_REPEAT_MS = 10_000;
+
 /** How to talk to one card. Each insertion gets its own, so work for a card can't reach the next. */
 interface CardHandle {
   transmit(command: Uint8Array): Promise<Uint8Array>;
@@ -60,6 +63,8 @@ export class DeviceManager extends EventEmitter<DeviceEvents> {
   private nextId = 1;
   private nextSession = 1;
   private pcsc?: Devices;
+  /** When each PC/SC error message was last seen. */
+  private pcscErrors = new Map<string, number>();
 
   constructor(private readonly loadPcsc: () => Promise<Smartcard> = loadSmartcard) {
     super();
@@ -173,6 +178,7 @@ export class DeviceManager extends EventEmitter<DeviceEvents> {
       smartcard = await this.loadPcsc();
     } catch (e) {
       console.error('PC/SC unavailable, continuing with virtual cards only:', e);
+      this.pcscError(`PC/SC unavailable, so only virtual cards work: ${(e as Error).message}`);
       return;
     }
     const devices = new smartcard.Devices();
@@ -240,13 +246,20 @@ export class DeviceManager extends EventEmitter<DeviceEvents> {
       if (!slot) return;
       this.setCard(slot, undefined);
     });
-    devices.on('error', (error) => console.error('PC/SC:', error.message));
+    devices.on('error', (error) => {
+      console.error('PC/SC:', error.message);
+      this.pcscError(error.message);
+    });
+    // A reader or card showing up means PC/SC is working again: a repeat after that is news.
+    devices.on('reader-attached', () => this.pcscErrors.clear());
+    devices.on('card-inserted', () => this.pcscErrors.clear());
 
     try {
       devices.start();
       this.pcsc = devices;
     } catch (e) {
       console.error('PC/SC failed to start, continuing with virtual cards only:', e);
+      this.pcscError(`PC/SC failed to start, so only virtual cards work: ${(e as Error).message}`);
     }
   }
 
@@ -297,6 +310,19 @@ export class DeviceManager extends EventEmitter<DeviceEvents> {
       ...(atr !== undefined ? { atr } : {}),
       at: Date.now(),
     });
+  }
+
+  /**
+   * Records a PC/SC error in the trace. While the service is down the same error arrives about
+   * once a second, so a message is recorded again only once it has stopped for ERROR_REPEAT_MS, or
+   * after a reader or card has shown up.
+   */
+  private pcscError(message: string): void {
+    const now = Date.now();
+    const seen = this.pcscErrors.get(message);
+    this.pcscErrors.set(message, now);
+    if (seen !== undefined && now - seen < ERROR_REPEAT_MS) return;
+    this.record({ type: 'pcsc-error', id: this.nextId++, message, at: now });
   }
 
   private record(entry: TraceEntry): void {

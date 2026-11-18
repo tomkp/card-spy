@@ -55,7 +55,18 @@ export interface CardEventEntry {
   at: number;
 }
 
-export type TraceEntry = ExchangeEntry | CardEventEntry;
+/**
+ * An error from PC/SC that isn't the answer to a command: the service stopping, a card that
+ * couldn't be connected, PC/SC support failing to load.
+ */
+export interface PcscErrorEntry {
+  type: 'pcsc-error';
+  id: number;
+  message: string;
+  at: number;
+}
+
+export type TraceEntry = ExchangeEntry | CardEventEntry | PcscErrorEntry;
 
 export interface ScriptFile {
   name: string;

@@ -118,6 +118,10 @@ interface Row {
 }
 
 function describeEntry(entry: TraceEntry): Row {
+  if (entry.type === 'pcsc-error') {
+    const name = 'PC/SC error';
+    return { entry, name, search: `${name} ${entry.message}`.toLowerCase() };
+  }
   if (entry.type === 'event') {
     const name = EVENT_NAMES[entry.event];
     return { entry, name, search: `${name} ${entry.readerName} ${entry.atr ?? ''}`.toLowerCase() };
@@ -250,6 +254,22 @@ function time(ms: number): string {
 function TraceRow({ row, top, selected }: { row: Row; top: number; selected: boolean }) {
   const { entry } = row;
   const select = () => set({ selection: { kind: 'entry', id: entry.id } });
+  if (entry.type === 'pcsc-error') {
+    return (
+      <div
+        className={`trace-row event pcsc-error${selected ? ' selected' : ''}`}
+        style={{ top }}
+        onClick={select}
+        title={entry.message}
+      >
+        <span className="num mono">{entry.id}</span>
+        <span className="mono faint">{time(entry.at)}</span>
+        <span className="what">
+          {row.name} · {entry.message}
+        </span>
+      </div>
+    );
+  }
   if (entry.type === 'event') {
     return (
       <div
