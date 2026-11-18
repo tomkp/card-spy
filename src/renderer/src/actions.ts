@@ -22,17 +22,15 @@ export async function init(): Promise<void> {
     endWorkForRemovedCards(readers);
   };
   api.onReadersChanged(readersChanged);
-  const [, trace, workspace] = await Promise.all([
-    api.listReaders().then(readersChanged),
-    api.getTrace(),
-    api.listWorkspace(),
-  ]);
-  set({ trace, workspace });
 
+  // The same for the trace: entries that arrive before getTrace's answer are in it, and later ones
+  // aren't. One lost in between could be a PC/SC error that isn't recorded again for a whole outage.
   // Entries can arrive in bursts (an exploration sends dozens); batch them into one render per frame.
   // A console command's last exchange is selected, so its response shows in the inspector.
+  let traceLoaded = false;
   let queued: TraceEntry[] = [];
   api.onTrace((entry) => {
+    if (!traceLoaded) return;
     if (queued.length === 0) {
       requestAnimationFrame(() => {
         const batch = queued;
@@ -51,6 +49,16 @@ export async function init(): Promise<void> {
     }
     queued.push(entry);
   });
+
+  const [, , workspace] = await Promise.all([
+    api.listReaders().then(readersChanged),
+    api.getTrace().then((trace) => {
+      set({ trace });
+      traceLoaded = true;
+    }),
+    api.listWorkspace(),
+  ]);
+  set({ workspace });
 }
 
 /** Keeps a sensible reader selected: the current one if it still exists, else the first with a card. */

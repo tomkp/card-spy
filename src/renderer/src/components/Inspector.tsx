@@ -6,7 +6,12 @@ import { fromHex, isPrintable, toAscii, toHex } from '@shared/hex';
 import { describeSw } from '@shared/sw';
 import { decodeTagValue, lookupTag } from '@shared/tags/emv';
 import { looksLikeTlv, parseTlv, type TlvNode } from '@shared/tlv';
-import type { CardEventEntry, ExchangeEntry, PcscErrorEntry } from '@shared/types';
+import {
+  PCSC_ERROR_REPEAT_MS,
+  type CardEventEntry,
+  type ExchangeEntry,
+  type PcscErrorEntry,
+} from '@shared/types';
 import { useStore } from '../store';
 import { Icon } from './icons';
 
@@ -160,8 +165,8 @@ function PcscErrorInspector({ entry }: { entry: PcscErrorEntry }) {
       </div>
       <div className="note">
         From PC/SC, not in answer to a command. An error that keeps repeating, as one does about
-        once a second while the service is down, shows again only after it has stopped for 10
-        seconds, or after a reader or card has come back.
+        once a second while the service is down, shows again only after it has stopped for{' '}
+        {PCSC_ERROR_REPEAT_MS / 1000} seconds, or after a reader or card comes or goes.
       </div>
     </div>
   );

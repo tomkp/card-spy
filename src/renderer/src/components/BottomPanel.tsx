@@ -254,34 +254,20 @@ function time(ms: number): string {
 function TraceRow({ row, top, selected }: { row: Row; top: number; selected: boolean }) {
   const { entry } = row;
   const select = () => set({ selection: { kind: 'entry', id: entry.id } });
-  if (entry.type === 'pcsc-error') {
+  if (entry.type !== 'exchange') {
+    const error = entry.type === 'pcsc-error';
     return (
       <div
-        className={`trace-row event pcsc-error${selected ? ' selected' : ''}`}
+        className={`trace-row event${error ? ' pcsc-error' : ''}${selected ? ' selected' : ''}`}
         style={{ top }}
         onClick={select}
-        title={entry.message}
+        title={error ? entry.message : undefined}
       >
         <span className="num mono">{entry.id}</span>
         <span className="mono faint">{time(entry.at)}</span>
         <span className="what">
-          {row.name} · {entry.message}
-        </span>
-      </div>
-    );
-  }
-  if (entry.type === 'event') {
-    return (
-      <div
-        className={`trace-row event${selected ? ' selected' : ''}`}
-        style={{ top }}
-        onClick={select}
-      >
-        <span className="num mono">{entry.id}</span>
-        <span className="mono faint">{time(entry.at)}</span>
-        <span className="what">
-          {row.name} · {entry.readerName}
-          {entry.atr ? <span className="mono"> · ATR {entry.atr}</span> : null}
+          {row.name} · {error ? entry.message : entry.readerName}
+          {!error && entry.atr ? <span className="mono"> · ATR {entry.atr}</span> : null}
         </span>
       </div>
     );
