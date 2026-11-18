@@ -31,7 +31,7 @@
     "site": "node scripts/site.mjs"
   },
   "dependencies": {
-    "smartcard": "^3.8.0"
+    "smartcard": "^3.9.0"
   },
   "devDependencies": {
     "@types/node": "^24.19.2",
