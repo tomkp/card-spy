@@ -27,7 +27,10 @@ export function BottomPanel() {
       initial: card.virtualName ? `${card.virtualName} (recorded)` : 'Recorded card',
       confirmLabel: 'Save',
     });
-    if (name) await recordCard(name, reader, card);
+    if (!name) return;
+    // A reset while the dialog was open changes the ATR, not the card: take the latest.
+    const now = get().readers.find((r) => r.id === reader.id)?.card;
+    await recordCard(name, reader, now?.session === card.session ? now : card);
   };
 
   return (
@@ -100,8 +103,8 @@ function recordingMessage(reader: ReaderInfo, card: CardInfo, trace: TraceEntry[
     `${count === 1 ? 'response' : 'responses'}) becomes a virtual card you can replay without ` +
     'the real one.' +
     (earlier
-      ? ' Responses from before then are left out: a card removed and put back, or reconnected ' +
-        'after a PC/SC service outage, starts a new recording.'
+      ? ' Earlier responses in this reader are left out: every card starts a new recording when ' +
+        'it goes in, even the same card put back, or reconnected after a PC/SC service outage.'
       : '')
   );
 }

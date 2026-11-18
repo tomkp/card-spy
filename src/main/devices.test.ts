@@ -6,6 +6,9 @@ import { VIRTUAL_READER_ID } from '@shared/types';
 import { DEMO_CARDS } from '@shared/virtual/demo-cards';
 import { DeviceManager, type Smartcard } from './devices';
 
+// CARDSPY_PCSC=off would leave the fake Devices out.
+vi.stubEnv('CARDSPY_PCSC', 'on');
+
 /** Stands in for smartcard's Devices: the tests emit its events. */
 class FakeDevices extends EventEmitter {
   start(): void {}
@@ -215,7 +218,7 @@ describe('DeviceManager', () => {
     expect(reader().card).toBeUndefined();
     expect(events()).not.toContain('card-reset');
     await expect(manager.transmit('pcsc:R', session, '00A4040000', 'console')).rejects.toThrow(
-      'No card in R',
+      'The card in R was removed',
     );
   });
 
@@ -258,7 +261,7 @@ describe('DeviceManager', () => {
 
     manager.ejectVirtualCard();
     await expect(manager.resetCard(VIRTUAL_READER_ID, second)).rejects.toThrow(
-      'No card in Virtual Reader',
+      'The card in Virtual Reader was removed',
     );
   });
 });

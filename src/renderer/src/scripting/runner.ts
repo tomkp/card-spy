@@ -1,4 +1,4 @@
-import type { ReaderInfo } from '@shared/types';
+import { cardRemoved, type ReaderInfo } from '@shared/types';
 import type { HostMessage, WorkerMessage } from './protocol';
 import ScriptWorker from './worker?worker';
 
@@ -49,10 +49,7 @@ export class ScriptRun {
 
   /** Ends the run with an error when its card goes: whatever it sent next would fail. */
   cardRemoved(): void {
-    this.finish({
-      error: `The card in ${this.reader.name} was removed`,
-      durationMs: this.elapsed(),
-    });
+    this.finish({ error: cardRemoved(this.reader.name).message, durationMs: this.elapsed() });
   }
 
   private async handle(message: WorkerMessage): Promise<void> {

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ReaderInfo } from '@shared/types';
+import type { ReaderInfo, TraceEntry } from '@shared/types';
+import type { RunCallbacks } from './scripting/runner';
 
 // actions.ts reads window.cardspy when it loads, so the fake API is in place before it's imported.
 const fake = vi.hoisted(() => {
@@ -8,7 +9,7 @@ const fake = vi.hoisted(() => {
     runs: [] as Array<{ reader: ReaderInfo; session: number; cardRemoved: () => void }>,
     api: {
       listReaders: vi.fn(async (): Promise<ReaderInfo[]> => []),
-      getTrace: vi.fn(async () => []),
+      getTrace: vi.fn(async (): Promise<TraceEntry[]> => []),
       listWorkspace: vi.fn(async () => ({ root: '', scripts: [], cards: [] })),
       onReadersChanged: vi.fn((listener: (readers: ReaderInfo[]) => void) => {
         fake.readersChanged = listener;
@@ -25,15 +26,17 @@ const fake = vi.hoisted(() => {
   return fake;
 });
 
-// The real runner starts a Web Worker; this one records the runs.
+// The real runner starts a Web Worker; this one records the runs, and ends one when told to.
 vi.mock('./scripting/runner', () => ({
   errorText: (e: unknown) => (e instanceof Error ? e.message : String(e)),
   ScriptRun: class {
-    cardRemoved = vi.fn();
+    cardRemoved = vi.fn(() => this.callbacks.done({ error: 'removed', durationMs: 0 }));
     constructor(
       _code: string,
       readonly reader: ReaderInfo,
       readonly session: number,
+      _step: boolean,
+      private callbacks: RunCallbacks,
     ) {
       fake.runs.push(this);
     }
@@ -77,6 +80,7 @@ describe('work on a card ends with the card', () => {
     expect(get().explorer).toEqual({
       status: 'error',
       readerId: 'pcsc:R',
+      session: 2,
       error: 'The card was removed before the exploration finished.',
     });
 
@@ -85,6 +89,18 @@ describe('work on a card ends with the card', () => {
     expect(get().explorer.status).toBe('error');
     // Nothing more was sent once the exploration was aborted.
     expect(fake.api.transmit).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps that message for the next card in the reader, and drops it with that card', async () => {
+    fake.api.transmit.mockImplementationOnce(() => new Promise(() => {}));
+    void explore();
+    fake.readersChanged([reader()]);
+    fake.readersChanged([reader(2)]);
+    expect(get().explorer).toMatchObject({ status: 'error', session: 2 });
+    fake.readersChanged([reader(2)]);
+    expect(get().explorer.status).toBe('error');
+    fake.readersChanged([reader()]);
+    expect(get().explorer).toEqual({ status: 'idle' });
   });
 
   it("drops an exploration's results when its card goes", async () => {
@@ -104,5 +120,23 @@ describe('work on a card ends with the card', () => {
     expect(run!.cardRemoved).not.toHaveBeenCalled();
     fake.readersChanged([reader(2)]);
     expect(run!.cardRemoved).toHaveBeenCalled();
+    expect(get().run).toBeUndefined();
+  });
+
+  it('takes a reader change that arrives while the app is loading', async () => {
+    fake.readersChanged = () => {};
+    set({ readers: [] });
+    let traceLoaded!: (trace: TraceEntry[]) => void;
+    fake.api.getTrace.mockImplementationOnce(
+      () => new Promise((resolve) => (traceLoaded = resolve)),
+    );
+    const loading = init();
+    await vi.waitFor(() => expect(get().readers).toEqual([reader(1)]));
+    // The card is replaced after listReaders answered, before the rest has loaded.
+    fake.readersChanged([reader(2)]);
+    traceLoaded([]);
+    await loading;
+    await runConsoleCommand('00A4040000', false);
+    expect(fake.api.transmit).toHaveBeenCalledWith('pcsc:R', 2, '00A4040000', 'console');
   });
 });

@@ -8,7 +8,7 @@ import type {
   ReaderInfo,
   TraceEntry,
 } from '@shared/types';
-import { VIRTUAL_READER_ID } from '@shared/types';
+import { cardRemoved, VIRTUAL_READER_ID } from '@shared/types';
 import { parseVirtualCard, type VirtualCardDefinition } from '@shared/virtual/definition';
 import { createVirtualCard } from '@shared/virtual/simulator';
 
@@ -254,15 +254,14 @@ export class DeviceManager extends EventEmitter<DeviceEvents> {
   private requireCard(readerId: string, session: number): { slot: Slot; card: CardHandle } {
     const slot = this.slots.get(readerId);
     if (!slot) throw new Error(`Unknown reader ${readerId}`);
-    if (!slot.card || !slot.info.card) throw new Error(`No card in ${slot.info.name}`);
-    if (slot.info.card.session !== session) throw cardRemoved(slot);
+    if (!slot.card || slot.info.card?.session !== session) throw cardRemoved(slot.info.name);
     return { slot, card: slot.card };
   }
 
   /** Throws unless `card` is still in the reader: queued work runs only for the card it was for. */
   private requireCurrent(slot: Slot, card: CardHandle): CardInfo {
     const current = this.slots.get(slot.info.id) === slot && slot.card === card;
-    if (!current || !slot.info.card) throw cardRemoved(slot);
+    if (!current || !slot.info.card) throw cardRemoved(slot.info.name);
     return slot.info.card;
   }
 
@@ -309,8 +308,4 @@ export class DeviceManager extends EventEmitter<DeviceEvents> {
   private emitReaders(): void {
     this.emit('readers', this.listReaders());
   }
-}
-
-function cardRemoved(slot: Slot): Error {
-  return new Error(`The card in ${slot.info.name} was removed`);
 }

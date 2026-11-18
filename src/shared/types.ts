@@ -111,3 +111,8 @@ export interface CardSpyApi {
 }
 
 export const VIRTUAL_READER_ID = 'virtual:0';
+
+/** The error for work on a card that has gone, whether the main process or the renderer ends it. */
+export function cardRemoved(readerName: string): Error {
+  return new Error(`The card in ${readerName} was removed`);
+}

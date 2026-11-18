@@ -14,19 +14,20 @@ import { appendOutput, get, openScript, scriptContent, selectedReader, set } fro
 const api = window.cardspy;
 
 export async function init(): Promise<void> {
-  const [readers, trace, workspace] = await Promise.all([
-    api.listReaders(),
-    api.getTrace(),
-    api.listWorkspace(),
-  ]);
-  set({ readers, trace, workspace });
-  chooseReader();
-
-  api.onReadersChanged((readers) => {
+  // Listen before asking for the readers, and take each list as it arrives: one that changed while
+  // the rest loaded would otherwise go unseen, with commands for its old card failing.
+  const readersChanged = (readers: ReaderInfo[]) => {
     set({ readers });
     chooseReader();
     endWorkForRemovedCards(readers);
-  });
+  };
+  api.onReadersChanged(readersChanged);
+  const [, trace, workspace] = await Promise.all([
+    api.listReaders().then(readersChanged),
+    api.getTrace(),
+    api.listWorkspace(),
+  ]);
+  set({ trace, workspace });
 
   // Entries can arrive in bursts (an exploration sends dozens); batch them into one render per frame.
   // A console command's last exchange is selected, so its response shows in the inspector.
@@ -79,14 +80,21 @@ function holdsCard(readers: ReaderInfo[], readerId: string | undefined, session:
 function endWorkForRemovedCards(readers: ReaderInfo[]): void {
   if (current && !holdsCard(readers, current.reader.id, current.session)) current.cardRemoved();
   const { explorer } = get();
-  if (explorer.session === undefined || holdsCard(readers, explorer.readerId, explorer.session))
+  const card = readers.find((r) => r.id === explorer.readerId)?.card;
+  if (explorer.session === undefined) {
+    // An aborted exploration's message stays for the next card in the reader, and goes with it.
+    if (explorer.status === 'error' && card)
+      set({ explorer: { ...explorer, session: card.session } });
     return;
+  }
+  if (card?.session === explorer.session) return;
   if (explorer.status === 'running') {
     exploring?.abort();
     set({
       explorer: {
         status: 'error',
         readerId: explorer.readerId,
+        session: card?.session,
         error: 'The card was removed before the exploration finished.',
       },
     });
