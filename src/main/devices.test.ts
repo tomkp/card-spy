@@ -1,5 +1,5 @@
 import { EventEmitter } from 'node:events';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fromHex } from '@shared/hex';
 import type { CardEventEntry, ReaderInfo, TraceEntry } from '@shared/types';
 import { VIRTUAL_READER_ID } from '@shared/types';
@@ -11,7 +11,11 @@ vi.stubEnv('CARDSPY_PCSC', 'on');
 
 /** Stands in for smartcard's Devices: the tests emit its events. */
 class FakeDevices extends EventEmitter {
-  start(): void {}
+  /** smartcard reports a failure to start as an error event when something listens for one. */
+  startError?: Error;
+  start(): void {
+    if (this.startError) this.emit('error', this.startError);
+  }
   stop(): void {}
 }
 
@@ -46,8 +50,9 @@ function fakeCard(atr: string) {
 const settle = () => new Promise((resolve) => setImmediate(resolve));
 
 /** A DeviceManager on a fake Devices, with one PC/SC reader, "R", attached. */
-async function setup() {
+async function setup(startError?: Error) {
   const devices = new FakeDevices();
+  devices.startError = startError;
   const smartcard = {
     Devices: class {
       constructor() {
@@ -263,5 +268,97 @@ describe('DeviceManager', () => {
     await expect(manager.resetCard(VIRTUAL_READER_ID, second)).rejects.toThrow(
       'The card in Virtual Reader was removed',
     );
+  });
+});
+
+describe('PC/SC errors', () => {
+  afterEach(() => vi.restoreAllMocks());
+  afterEach(() => vi.useRealTimers());
+
+  const quiet = () => vi.spyOn(console, 'error').mockImplementation(() => {});
+  const fakeClock = () => vi.useFakeTimers({ toFake: ['Date', 'performance'] });
+  const later = (ms: number) => vi.advanceTimersByTime(ms);
+  const errors = (trace: readonly TraceEntry[]) =>
+    trace.flatMap((e) => (e.type === 'pcsc-error' ? [e.message] : []));
+
+  it('records an error in the trace once while it keeps repeating', async () => {
+    quiet();
+    fakeClock();
+    const { devices, trace } = await setup();
+    // While the service is down, smartcard reports it about once a second.
+    const down = new Error('The Smart Card Resource Manager is not running. (0x8010001D)');
+    for (let i = 0; i < 30; i++) {
+      devices.emit('error', down);
+      later(1_000);
+    }
+    devices.emit('error', new Error('Unknown error. (0x80100014)'));
+    expect(errors(trace)).toEqual([down.message, 'Unknown error. (0x80100014)']);
+  });
+
+  it('records an error again once it has stopped for 10 s', async () => {
+    quiet();
+    fakeClock();
+    const { devices, trace } = await setup();
+    const fail = () => devices.emit('error', new Error('down'));
+    fail();
+    later(9_000);
+    fail();
+    later(9_000);
+    fail();
+    expect(errors(trace)).toHaveLength(1);
+    later(10_000);
+    fail();
+    expect(errors(trace)).toHaveLength(2);
+  });
+
+  it('records an error again after any reader or card event', async () => {
+    quiet();
+    const { devices, trace, insert, remove } = await setup();
+    // A card that fails to connect, is put back, and fails again.
+    const fail = () => devices.emit('error', new Error('The smart card is not responding.'));
+    fail();
+    fail();
+    remove(null);
+    fail();
+    insert(fakeCard('3B00'));
+    fail();
+    devices.emit('reader-detached', { name: 'R' });
+    fail();
+    devices.emit('reader-attached', { name: 'R' });
+    fail();
+    expect(errors(trace)).toHaveLength(5);
+  });
+
+  it('records a repeating error again after the trace is cleared', async () => {
+    quiet();
+    const { manager, devices } = await setup();
+    devices.emit('error', new Error('down'));
+    manager.clearTrace();
+    devices.emit('error', new Error('down'));
+    expect(errors(manager.getTrace())).toEqual(['down']);
+  });
+
+  it('records PC/SC failing to start', async () => {
+    quiet();
+    const { manager } = await setup(new Error('The Smart Card Resource Manager is not running.'));
+    expect(errors(manager.getTrace())).toEqual(['The Smart Card Resource Manager is not running.']);
+  });
+
+  it('records PC/SC support failing to load', async () => {
+    quiet();
+    const manager = new DeviceManager(async () => {
+      throw new Error('libpcsclite.so.1: cannot open shared object file');
+    });
+    await manager.start();
+    expect(errors(manager.getTrace())).toEqual([
+      'PC/SC unavailable, so only virtual cards work: libpcsclite.so.1: cannot open shared object file',
+    ]);
+    expect(manager.listReaders().map((r) => r.id)).toEqual([VIRTUAL_READER_ID]);
+
+    const odd = new DeviceManager(() => Promise.reject('no addon'));
+    await odd.start();
+    expect(errors(odd.getTrace())).toEqual([
+      'PC/SC unavailable, so only virtual cards work: no addon',
+    ]);
   });
 });

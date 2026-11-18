@@ -649,6 +649,10 @@ input {
   font-style: italic;
 }
 
+.trace-row.pcsc-error {
+  color: var(--error);
+}
+
 .src {
   font-size: 11px;
   padding: 0 6px;

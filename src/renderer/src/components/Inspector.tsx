@@ -6,7 +6,12 @@ import { fromHex, isPrintable, toAscii, toHex } from '@shared/hex';
 import { describeSw } from '@shared/sw';
 import { decodeTagValue, lookupTag } from '@shared/tags/emv';
 import { looksLikeTlv, parseTlv, type TlvNode } from '@shared/tlv';
-import type { CardEventEntry, ExchangeEntry } from '@shared/types';
+import {
+  PCSC_ERROR_REPEAT_MS,
+  type CardEventEntry,
+  type ExchangeEntry,
+  type PcscErrorEntry,
+} from '@shared/types';
 import { useStore } from '../store';
 import { Icon } from './icons';
 
@@ -24,6 +29,7 @@ export function Inspector() {
       <div className="panel-scroll">
         {entry?.type === 'exchange' && <ExchangeInspector entry={entry} />}
         {entry?.type === 'event' && <EventInspector entry={entry} />}
+        {entry?.type === 'pcsc-error' && <PcscErrorInspector entry={entry} />}
         {selection?.kind === 'node' && <NodeInspector node={selection.node} />}
         {!selection && (
           <div className="empty">
@@ -144,6 +150,24 @@ function EventInspector({ entry }: { entry: CardEventEntry }) {
         <span>{new Date(entry.at).toLocaleTimeString()}</span>
       </div>
       {entry.atr && <AtrDetails atr={entry.atr} />}
+    </div>
+  );
+}
+
+function PcscErrorInspector({ entry }: { entry: PcscErrorEntry }) {
+  return (
+    <div className="inspector">
+      <h2>PC/SC error</h2>
+      <div className="subtitle selectable">{entry.message}</div>
+      <div className="meta">
+        <span>#{entry.id}</span>
+        <span>{new Date(entry.at).toLocaleTimeString()}</span>
+      </div>
+      <div className="note">
+        From PC/SC, not in answer to a command. An error that keeps repeating, as one does about
+        once a second while the service is down, shows again only after it has stopped for{' '}
+        {PCSC_ERROR_REPEAT_MS / 1000} seconds, or after a reader or card comes or goes.
+      </div>
     </div>
   );
 }

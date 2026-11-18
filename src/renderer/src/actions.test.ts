@@ -6,6 +6,7 @@ import type { RunCallbacks } from './scripting/runner';
 const fake = vi.hoisted(() => {
   const fake = {
     readersChanged: (_readers: ReaderInfo[]) => {},
+    traced: (_entry: TraceEntry) => {},
     runs: [] as Array<{ reader: ReaderInfo; session: number; cardRemoved: () => void }>,
     api: {
       listReaders: vi.fn(async (): Promise<ReaderInfo[]> => []),
@@ -15,7 +16,10 @@ const fake = vi.hoisted(() => {
         fake.readersChanged = listener;
         return () => {};
       }),
-      onTrace: vi.fn(() => () => {}),
+      onTrace: vi.fn((listener: (entry: TraceEntry) => void) => {
+        fake.traced = listener;
+        return () => {};
+      }),
       transmit: vi.fn(
         async (_readerId: string, _session: number, _command: string, _source: string) => '9000',
       ),
@@ -23,6 +27,7 @@ const fake = vi.hoisted(() => {
     },
   };
   vi.stubGlobal('window', { cardspy: fake.api });
+  vi.stubGlobal('requestAnimationFrame', (callback: () => void) => setTimeout(callback, 0));
   return fake;
 });
 
@@ -138,5 +143,28 @@ describe('work on a card ends with the card', () => {
     await loading;
     await runConsoleCommand('00A4040000', false);
     expect(fake.api.transmit).toHaveBeenCalledWith('pcsc:R', 2, '00A4040000', 'console');
+  });
+
+  it('keeps a trace entry that arrives while the app is loading', async () => {
+    const error = (id: number): TraceEntry => ({ type: 'pcsc-error', id, message: 'down', at: 0 });
+    fake.traced = () => {};
+    let traceLoaded!: (trace: TraceEntry[]) => void;
+    let workspaceLoaded!: (workspace: { root: string; scripts: []; cards: [] }) => void;
+    fake.api.getTrace.mockImplementationOnce(
+      () => new Promise((resolve) => (traceLoaded = resolve)),
+    );
+    fake.api.listWorkspace.mockImplementationOnce(
+      () => new Promise((resolve) => (workspaceLoaded = resolve)),
+    );
+    const loading = init();
+    // Sent before getTrace's answer, so it's in that answer.
+    fake.traced(error(1));
+    traceLoaded([error(1)]);
+    await vi.waitFor(() => expect(get().trace).toEqual([error(1)]));
+    // Sent after it, while the workspace is still loading.
+    fake.traced(error(2));
+    workspaceLoaded({ root: '', scripts: [], cards: [] });
+    await loading;
+    await vi.waitFor(() => expect(get().trace).toEqual([error(1), error(2)]));
   });
 });
