@@ -2,10 +2,11 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { describeCommand } from '@shared/apdu';
 import { fromHex } from '@shared/hex';
 import { describeSw } from '@shared/sw';
-import type { CardEventKind, TraceEntry } from '@shared/types';
-import { clearTrace, recordCurrentCard, runConsoleCommand, type ConsoleResult } from '../actions';
+import type { CardEventKind, CardInfo, ReaderInfo, TraceEntry } from '@shared/types';
+import { sessionExchanges } from '@shared/virtual/recorder';
+import { clearTrace, recordCard, runConsoleCommand, type ConsoleResult } from '../actions';
 import { errorText } from '../scripting/runner';
-import { selectedReader, set, useStore } from '../store';
+import { get, selectedReader, set, useStore } from '../store';
 import { prompt } from './Dialog';
 import { Icon } from './icons';
 
@@ -18,15 +19,18 @@ export function BottomPanel() {
 
   const record = async () => {
     const reader = selectedReader();
+    const card = reader?.card;
+    if (!reader || !card) return;
     const name = await prompt({
       title: 'Save as virtual card',
-      message: `Everything sent to ${reader?.name ?? 'this reader'} since the card went in becomes a virtual card you can replay without the real one.`,
-      initial: reader?.card?.virtualName
-        ? `${reader.card.virtualName} (recorded)`
-        : 'Recorded card',
+      message: recordingMessage(reader, card, get().trace),
+      initial: card.virtualName ? `${card.virtualName} (recorded)` : 'Recorded card',
       confirmLabel: 'Save',
     });
-    if (name) await recordCurrentCard(name);
+    if (!name) return;
+    // A reset while the dialog was open changes the ATR, not the card: take the latest.
+    const now = get().readers.find((r) => r.id === reader.id)?.card;
+    await recordCard(name, reader, now?.session === card.session ? now : card);
   };
 
   return (
@@ -83,6 +87,25 @@ export function BottomPanel() {
         <Output />
       )}
     </div>
+  );
+}
+
+/** What Save as virtual card records: the card's answers since it went in, and no earlier ones. */
+function recordingMessage(reader: ReaderInfo, card: CardInfo, trace: TraceEntry[]): string {
+  const count = sessionExchanges(trace, card.session).length;
+  const earlier = trace.some(
+    (e) =>
+      e.type === 'exchange' && e.readerId === reader.id && e.session !== card.session && e.response,
+  );
+  return (
+    `What the card in ${reader.name} answered since it went in at ` +
+    `${new Date(card.insertedAt).toLocaleTimeString()} (${count} ` +
+    `${count === 1 ? 'response' : 'responses'}) becomes a virtual card you can replay without ` +
+    'the real one.' +
+    (earlier
+      ? ' Earlier responses in this reader are left out: every card starts a new recording when ' +
+        'it goes in, even the same card put back, or reconnected after a PC/SC service outage.'
+      : '')
   );
 }
 

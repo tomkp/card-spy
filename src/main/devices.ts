@@ -8,18 +8,41 @@ import type {
   ReaderInfo,
   TraceEntry,
 } from '@shared/types';
-import { VIRTUAL_READER_ID } from '@shared/types';
+import { cardRemoved, VIRTUAL_READER_ID } from '@shared/types';
 import { parseVirtualCard, type VirtualCardDefinition } from '@shared/virtual/definition';
 import { createVirtualCard } from '@shared/virtual/simulator';
 
 const TRACE_LIMIT = 20_000;
 
+/** How to talk to one card. Each insertion gets its own, so work for a card can't reach the next. */
+interface CardHandle {
+  transmit(command: Uint8Array): Promise<Uint8Array>;
+  reset(cold: boolean): Promise<Uint8Array>;
+}
+
 interface Slot {
   info: ReaderInfo;
-  transmit?: (command: Uint8Array) => Promise<Uint8Array>;
-  reset?: (cold: boolean) => Promise<Uint8Array>;
+  /** The card in `info.card`, if any. */
+  card?: CardHandle;
   /** Tail of this reader's command queue: APDUs to one card must never interleave. */
   queue: Promise<unknown>;
+}
+
+/** The parts of the smartcard package used here. Tests pass a fake. */
+export type Smartcard = Pick<
+  typeof import('smartcard'),
+  | 'Devices'
+  | 'SCARD_SHARE_SHARED'
+  | 'SCARD_PROTOCOL_T0'
+  | 'SCARD_PROTOCOL_T1'
+  | 'SCARD_RESET_CARD'
+  | 'SCARD_UNPOWER_CARD'
+>;
+
+async function loadSmartcard(): Promise<Smartcard> {
+  const loaded = await import('smartcard');
+  // A CommonJS package imported dynamically may only expose its exports on `default`.
+  return ('default' in loaded ? loaded.default : loaded) as typeof import('smartcard');
 }
 
 interface DeviceEvents {
@@ -35,7 +58,12 @@ export class DeviceManager extends EventEmitter<DeviceEvents> {
   private slots = new Map<string, Slot>();
   private trace: TraceEntry[] = [];
   private nextId = 1;
+  private nextSession = 1;
   private pcsc?: Devices;
+
+  constructor(private readonly loadPcsc: () => Promise<Smartcard> = loadSmartcard) {
+    super();
+  }
 
   async start(): Promise<void> {
     this.slots.set(VIRTUAL_READER_ID, {
@@ -63,10 +91,20 @@ export class DeviceManager extends EventEmitter<DeviceEvents> {
     this.trace = [];
   }
 
-  async transmit(readerId: string, commandHex: string, source: ExchangeSource): Promise<string> {
-    const slot = this.requireCard(readerId);
+  /**
+   * Sends an APDU to the card whose `CardInfo.session` is `session`. If that card has gone, even if
+   * another has taken its place, it fails instead, including when it was queued before the card went.
+   */
+  async transmit(
+    readerId: string,
+    session: number,
+    commandHex: string,
+    source: ExchangeSource,
+  ): Promise<string> {
+    const { slot, card } = this.requireCard(readerId, session);
     const command = fromHex(commandHex);
     return this.enqueue(slot, async () => {
+      this.requireCurrent(slot, card);
       const startedAt = Date.now();
       const t0 = performance.now();
       const base = {
@@ -74,12 +112,13 @@ export class DeviceManager extends EventEmitter<DeviceEvents> {
         id: this.nextId++,
         readerId,
         readerName: slot.info.name,
+        session,
         source,
         command: toHex(command),
         startedAt,
       };
       try {
-        const response = toHex(await slot.transmit!(command));
+        const response = toHex(await card.transmit(command));
         this.record({ ...base, response, durationMs: performance.now() - t0 });
         return response;
       } catch (e) {
@@ -90,11 +129,15 @@ export class DeviceManager extends EventEmitter<DeviceEvents> {
     });
   }
 
-  async resetCard(readerId: string, cold = false): Promise<string> {
-    const slot = this.requireCard(readerId);
+  /** Resets the card in `session` (see `transmit`); the card stays in the same session. */
+  async resetCard(readerId: string, session: number, cold = false): Promise<string> {
+    const { slot, card } = this.requireCard(readerId, session);
     return this.enqueue(slot, async () => {
-      const atr = toHex(await slot.reset!(cold));
-      slot.info = { ...slot.info, card: { ...slot.info.card!, atr } };
+      this.requireCurrent(slot, card);
+      const atr = toHex(await card.reset(cold));
+      // The card can go while it's being reset. The ATR then belongs to no card in the reader.
+      const info = this.requireCurrent(slot, card);
+      slot.info = { ...slot.info, card: { ...info, atr } };
       this.event(slot, 'card-reset', atr);
       this.emitReaders();
       return atr;
@@ -106,32 +149,28 @@ export class DeviceManager extends EventEmitter<DeviceEvents> {
     const slot = this.slots.get(VIRTUAL_READER_ID)!;
     if (slot.info.card) this.ejectVirtualCard();
     const card = createVirtualCard(definition);
-    slot.transmit = async (command) => card.transmit(command);
-    slot.reset = async () => {
-      card.reset();
-      return card.atr;
-    };
     this.setCard(slot, {
-      atr: toHex(card.atr),
-      virtualName: definition.name,
-      insertedAt: Date.now(),
+      handle: {
+        transmit: async (command) => card.transmit(command),
+        reset: async () => {
+          card.reset();
+          return card.atr;
+        },
+      },
+      info: { atr: toHex(card.atr), virtualName: definition.name, insertedAt: Date.now() },
     });
   }
 
   ejectVirtualCard(): void {
     const slot = this.slots.get(VIRTUAL_READER_ID)!;
     if (!slot.info.card) return;
-    slot.transmit = undefined;
-    slot.reset = undefined;
     this.setCard(slot, undefined);
   }
 
   private async startPcsc(): Promise<void> {
-    let smartcard: typeof import('smartcard');
+    let smartcard: Smartcard;
     try {
-      const loaded = await import('smartcard');
-      // A CommonJS package imported dynamically may only expose its exports on `default`.
-      smartcard = ('default' in loaded ? loaded.default : loaded) as typeof import('smartcard');
+      smartcard = await this.loadPcsc();
     } catch (e) {
       console.error('PC/SC unavailable, continuing with virtual cards only:', e);
       return;
@@ -167,37 +206,38 @@ export class DeviceManager extends EventEmitter<DeviceEvents> {
       ({ reader, card }: { reader: { name: string }; card: PcscCard }) => {
         const slot = this.slots.get(id(reader.name));
         if (!slot) return;
-        slot.transmit = async (command) =>
-          // Raw exchanges only: GET RESPONSE chaining is done by the caller so every APDU shows in the trace.
-          new Uint8Array(
-            await card.transmit(Buffer.from(command), {
-              maxRecvLength: 65538,
-              autoGetResponse: false,
-            }),
-          );
-        slot.reset = async (cold) => {
-          // Keep the protocol in use: offering T=0|T=1 to a T=0-only card makes some readers (an
-          // SCM SCR35xx, for one) report it unresponsive. smartcard 3.8 retries with the active
-          // protocol by itself, but asking for it directly saves a second reset.
-          await card.reconnect(
-            SCARD_SHARE_SHARED,
-            card.protocol || SCARD_PROTOCOL_T0 | SCARD_PROTOCOL_T1,
-            cold ? SCARD_UNPOWER_CARD : SCARD_RESET_CARD,
-          );
-          return new Uint8Array(card.getStatus().atr);
+        const handle: CardHandle = {
+          transmit: async (command) =>
+            // Raw exchanges only: GET RESPONSE chaining is done by the caller so every APDU shows in the trace.
+            new Uint8Array(
+              await card.transmit(Buffer.from(command), {
+                maxRecvLength: 65538,
+                autoGetResponse: false,
+              }),
+            ),
+          reset: async (cold) => {
+            // Keep the protocol in use: offering T=0|T=1 to a T=0-only card makes some readers (an
+            // SCM SCR35xx, for one) report it unresponsive. smartcard 3.8 retries with the active
+            // protocol by itself, but asking for it directly saves a second reset.
+            await card.reconnect(
+              SCARD_SHARE_SHARED,
+              card.protocol || SCARD_PROTOCOL_T0 | SCARD_PROTOCOL_T1,
+              cold ? SCARD_UNPOWER_CARD : SCARD_RESET_CARD,
+            );
+            return new Uint8Array(card.getStatus().atr);
+          },
         };
         this.setCard(slot, {
-          atr: toHex(card.atr ?? []),
-          protocol: card.protocol,
-          insertedAt: Date.now(),
+          handle,
+          info: { atr: toHex(card.atr ?? []), protocol: card.protocol, insertedAt: Date.now() },
         });
       },
     );
+    // smartcard reports a card held through a short PC/SC outage as removed and inserted again,
+    // with a new Card: like a real swap, that ends the card's session.
     devices.on('card-removed', ({ reader }) => {
       const slot = this.slots.get(id(reader.name));
       if (!slot) return;
-      slot.transmit = undefined;
-      slot.reset = undefined;
       this.setCard(slot, undefined);
     });
     devices.on('error', (error) => console.error('PC/SC:', error.message));
@@ -210,11 +250,19 @@ export class DeviceManager extends EventEmitter<DeviceEvents> {
     }
   }
 
-  private requireCard(readerId: string): Slot {
+  /** The reader and its card, if the card is the one in `session`. */
+  private requireCard(readerId: string, session: number): { slot: Slot; card: CardHandle } {
     const slot = this.slots.get(readerId);
     if (!slot) throw new Error(`Unknown reader ${readerId}`);
-    if (!slot.info.card || !slot.transmit) throw new Error(`No card in ${slot.info.name}`);
-    return slot;
+    if (!slot.card || slot.info.card?.session !== session) throw cardRemoved(slot.info.name);
+    return { slot, card: slot.card };
+  }
+
+  /** Throws unless `card` is still in the reader: queued work runs only for the card it was for. */
+  private requireCurrent(slot: Slot, card: CardHandle): CardInfo {
+    const current = this.slots.get(slot.info.id) === slot && slot.card === card;
+    if (!current || !slot.info.card) throw cardRemoved(slot.info.name);
+    return slot.info.card;
   }
 
   private enqueue<T>(slot: Slot, task: () => Promise<T>): Promise<T> {
@@ -223,10 +271,18 @@ export class DeviceManager extends EventEmitter<DeviceEvents> {
     return run;
   }
 
-  private setCard(slot: Slot, card: CardInfo | undefined): void {
+  /** Puts a card in a reader, in a new session, or takes it out. */
+  private setCard(
+    slot: Slot,
+    card: { handle: CardHandle; info: Omit<CardInfo, 'session'> } | undefined,
+  ): void {
     const removed = slot.info.card;
-    slot.info = { ...slot.info, card };
-    if (card) this.event(slot, 'card-inserted', card.atr);
+    slot.card = card?.handle;
+    slot.info = {
+      ...slot.info,
+      card: card ? { ...card.info, session: this.nextSession++ } : undefined,
+    };
+    if (slot.info.card) this.event(slot, 'card-inserted', slot.info.card.atr);
     else if (removed) this.event(slot, 'card-removed');
     this.emitReaders();
   }

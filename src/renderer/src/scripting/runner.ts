@@ -1,4 +1,4 @@
-import type { ReaderInfo } from '@shared/types';
+import { cardRemoved, type ReaderInfo } from '@shared/types';
 import type { HostMessage, WorkerMessage } from './protocol';
 import ScriptWorker from './worker?worker';
 
@@ -16,7 +16,7 @@ export interface RunCallbacks {
 }
 
 /**
- * Runs one script in its own worker against one reader. Stopping terminates the worker,
+ * Runs one script in its own worker against one card. Stopping terminates the worker,
  * which is the only reliable way to halt a script that is stuck in a loop.
  */
 export class ScriptRun {
@@ -26,7 +26,9 @@ export class ScriptRun {
 
   constructor(
     code: string,
-    private reader: ReaderInfo,
+    readonly reader: ReaderInfo,
+    /** The `CardInfo.session` of the card it runs against. */
+    readonly session: number,
     step: boolean,
     private callbacks: RunCallbacks,
   ) {
@@ -45,11 +47,21 @@ export class ScriptRun {
     this.finish({ stopped: true, durationMs: this.elapsed() });
   }
 
+  /** Ends the run with an error when its card goes: whatever it sent next would fail. */
+  cardRemoved(): void {
+    this.finish({ error: cardRemoved(this.reader.name).message, durationMs: this.elapsed() });
+  }
+
   private async handle(message: WorkerMessage): Promise<void> {
     switch (message.type) {
       case 'transmit':
         try {
-          const response = await window.cardspy.transmit(this.reader.id, message.command, 'script');
+          const response = await window.cardspy.transmit(
+            this.reader.id,
+            this.session,
+            message.command,
+            'script',
+          );
           this.send({ type: 'transmit-result', id: message.id, response });
         } catch (e) {
           this.send({ type: 'transmit-result', id: message.id, error: errorText(e) });
@@ -57,7 +69,7 @@ export class ScriptRun {
         break;
       case 'reset':
         try {
-          const atr = await window.cardspy.resetCard(this.reader.id, message.cold);
+          const atr = await window.cardspy.resetCard(this.reader.id, this.session, message.cold);
           this.send({ type: 'reset-result', id: message.id, atr });
         } catch (e) {
           this.send({ type: 'reset-result', id: message.id, error: errorText(e) });

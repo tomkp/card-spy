@@ -27,6 +27,7 @@ export function ExplorerView() {
     return (
       <div className="explorer-empty">
         <h2>{reader.card.virtualName ?? reader.name}</h2>
+        {!stale && explorer.error && <p className="error-text">{explorer.error}</p>}
         <p>
           Explore reads everything Card Spy understands: the ATR, payment applications and their
           records, NFC tag memory and NDEF, and well-known applications such as PIV and OpenPGP.

@@ -11,9 +11,10 @@ function subscribe<T>(channel: string, listener: (value: T) => void): () => void
 const api: CardSpyApi = {
   listReaders: () => ipcRenderer.invoke(Channels.listReaders),
   onReadersChanged: (listener) => subscribe(Channels.readersChanged, listener),
-  transmit: (readerId, command, source) =>
-    ipcRenderer.invoke(Channels.transmit, readerId, command, source),
-  resetCard: (readerId, cold) => ipcRenderer.invoke(Channels.resetCard, readerId, cold),
+  transmit: (readerId, session, command, source) =>
+    ipcRenderer.invoke(Channels.transmit, readerId, session, command, source),
+  resetCard: (readerId, session, cold) =>
+    ipcRenderer.invoke(Channels.resetCard, readerId, session, cold),
   getTrace: () => ipcRenderer.invoke(Channels.getTrace),
   clearTrace: () => ipcRenderer.invoke(Channels.clearTrace),
   onTrace: (listener) => subscribe(Channels.traceEntry, listener),
