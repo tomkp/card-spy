@@ -8,6 +8,7 @@ import type { ExchangeEntry, ExchangeSource, TraceEntry } from '@shared/types';
 import { VIRTUAL_READER_ID } from '@shared/types';
 import { recordVirtualCard } from '@shared/virtual/recorder';
 import { parseConsoleCommand } from './console-command';
+import { pickReader } from './reader-choice';
 import { errorText, ScriptRun } from './scripting/runner';
 import { appendOutput, get, openScript, scriptContent, selectedReader, set } from './store';
 
@@ -54,16 +55,19 @@ export async function init(): Promise<void> {
   });
 }
 
-/** Keeps a sensible reader selected: the current one if it still exists, else the first with a card. */
+/** The reader the user picked last, or the first with a card picked for them: see `ReaderChoice`. */
+let preferredReaderId: string | undefined;
+
+/** Keeps a sensible reader selected as readers come and go. */
 function chooseReader(): void {
   const { readers, readerId } = get();
-  if (readers.some((r) => r.id === readerId)) return;
-  const pick =
-    readers.find((r) => r.kind === 'pcsc' && r.card) ?? readers.find((r) => r.card) ?? readers[0];
-  set({ readerId: pick?.id });
+  const choice = pickReader(readers, { selected: readerId, preferred: preferredReaderId });
+  preferredReaderId = choice.preferred;
+  if (choice.selected !== readerId) set({ readerId: choice.selected });
 }
 
 export function selectReader(readerId: string): void {
+  preferredReaderId = readerId;
   set({ readerId });
 }
 
@@ -238,7 +242,7 @@ export async function insertVirtualCard(id: string): Promise<void> {
   const card = get().workspace?.cards.find((c) => c.id === id);
   if (!card) return;
   await api.insertVirtualCard(card.definition);
-  set({ readerId: VIRTUAL_READER_ID });
+  selectReader(VIRTUAL_READER_ID);
 }
 
 export async function ejectVirtualCard(): Promise<void> {
