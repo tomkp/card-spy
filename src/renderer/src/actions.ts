@@ -4,9 +4,9 @@ import { sendWithResponses } from '@shared/exchange';
 import { exploreCard } from '@shared/explorer/explore';
 import { fromHex, toHex } from '@shared/hex';
 import { describeSw, type SwSeverity } from '@shared/sw';
-import type { ExchangeEntry, ExchangeSource, TraceEntry } from '@shared/types';
+import type { CardInfo, ExchangeSource, ReaderInfo, TraceEntry } from '@shared/types';
 import { VIRTUAL_READER_ID } from '@shared/types';
-import { recordVirtualCard } from '@shared/virtual/recorder';
+import { recordVirtualCard, sessionExchanges } from '@shared/virtual/recorder';
 import { parseConsoleCommand } from './console-command';
 import { errorText, ScriptRun } from './scripting/runner';
 import { appendOutput, get, openScript, scriptContent, selectedReader, set } from './store';
@@ -25,9 +25,7 @@ export async function init(): Promise<void> {
   api.onReadersChanged((readers) => {
     set({ readers });
     chooseReader();
-    const { explorer } = get();
-    const explored = readers.find((r) => r.id === explorer.readerId);
-    if (explorer.status !== 'idle' && !explored?.card) set({ explorer: { status: 'idle' } });
+    endWorkForRemovedCards(readers);
   });
 
   // Entries can arrive in bursts (an exploration sends dozens); batch them into one render per frame.
@@ -67,11 +65,38 @@ export function selectReader(readerId: string): void {
   set({ readerId });
 }
 
-function transmitter(source: ExchangeSource) {
-  const reader = selectedReader();
-  if (!reader?.card) throw new Error('Insert a card first');
+/** Whether a reader still holds the card from `session`. */
+function holdsCard(readers: ReaderInfo[], readerId: string | undefined, session: number): boolean {
+  return readers.some((r) => r.id === readerId && r.card?.session === session);
+}
+
+/**
+ * Ends work on cards that have gone. A card removed and inserted again, or held through a PC/SC
+ * service outage, comes back reset, without the application it had selected, a verified PIN or a
+ * secure channel. The main process already refuses commands meant for a card that has gone; this
+ * stops the script or exploration at once, and says why.
+ */
+function endWorkForRemovedCards(readers: ReaderInfo[]): void {
+  if (current && !holdsCard(readers, current.reader.id, current.session)) current.cardRemoved();
+  const { explorer } = get();
+  if (explorer.session === undefined || holdsCard(readers, explorer.readerId, explorer.session))
+    return;
+  if (explorer.status === 'running') {
+    exploring?.abort();
+    set({
+      explorer: {
+        status: 'error',
+        readerId: explorer.readerId,
+        error: 'The card was removed before the exploration finished.',
+      },
+    });
+  } else set({ explorer: { status: 'idle' } });
+}
+
+/** Sends APDUs to the card in `session`; they fail once it has gone. */
+function transmitter(readerId: string, session: number, source: ExchangeSource) {
   return async (command: Uint8Array) =>
-    fromHex(await api.transmit(reader.id, toHex(command), source));
+    fromHex(await api.transmit(readerId, session, toHex(command), source));
 }
 
 // ---- Console ----
@@ -86,11 +111,13 @@ export async function runConsoleCommand(
   input: string,
   autoResponse: boolean,
 ): Promise<ConsoleResult> {
-  const transmit = transmitter('console');
-  const reader = selectedReader()!;
+  const reader = selectedReader();
+  if (!reader?.card) throw new Error('Insert a card first');
+  const { session } = reader.card;
+  const transmit = transmitter(reader.id, session, 'console');
   const parsed = parseConsoleCommand(input);
   if (parsed.kind === 'reset') {
-    const atr = await api.resetCard(reader.id, parsed.cold);
+    const atr = await api.resetCard(reader.id, session, parsed.cold);
     return { text: `${parsed.cold ? 'Cold' : 'Warm'} reset · ATR ${atr}`, severity: 'ok' };
   }
   const command = parsed.apdu;
@@ -116,19 +143,18 @@ export async function explore(): Promise<void> {
   if (!reader?.card) return;
   exploring?.abort();
   const controller = (exploring = new AbortController());
-  set({ explorer: { status: 'running', readerId: reader.id }, activeTab: 'explorer' });
+  const target = { readerId: reader.id, session: reader.card.session };
+  set({ explorer: { status: 'running', ...target }, activeTab: 'explorer' });
   try {
     const root = await exploreCard({
-      transmit: transmitter('explorer'),
+      transmit: transmitter(target.readerId, target.session, 'explorer'),
       atr: fromHex(reader.card.atr),
       signal: controller.signal,
       onUpdate: (root) => {
-        if (!controller.signal.aborted)
-          set({ explorer: { status: 'running', readerId: reader.id, root } });
+        if (!controller.signal.aborted) set({ explorer: { status: 'running', ...target, root } });
       },
     });
-    if (!controller.signal.aborted)
-      set({ explorer: { status: 'done', readerId: reader.id, root } });
+    if (!controller.signal.aborted) set({ explorer: { status: 'done', ...target, root } });
   } catch (e) {
     if (!controller.signal.aborted) {
       set((s) => ({ explorer: { ...s.explorer, status: 'error', error: errorText(e) } }));
@@ -154,7 +180,7 @@ export function runScript(name: string, step = false): void {
     return;
   }
   appendOutput(`▶ ${name} on ${reader.name}`, 'system');
-  current = new ScriptRun(scriptContent(name), reader, step, {
+  current = new ScriptRun(scriptContent(name), reader, reader.card.session, step, {
     log: (text, level) => appendOutput(text, level),
     paused: (command, line) =>
       set({
@@ -251,33 +277,19 @@ export async function deleteVirtualCard(id: string): Promise<void> {
 }
 
 /**
- * Turns everything sent to the selected reader since its card was inserted into a virtual card,
- * saved in the workspace. Returns the file name.
+ * Turns everything a card answered since it went in (its session) into a virtual card, saved in
+ * the workspace. Returns the file name.
  */
-export async function recordCurrentCard(name: string): Promise<string | undefined> {
-  const reader = selectedReader();
-  if (!reader?.card) return undefined;
-  const { trace } = get();
-  let start = 0;
-  for (let i = trace.length - 1; i >= 0; i--) {
-    const e = trace[i]!;
-    if (e.readerId === reader.id && e.type === 'event' && e.event === 'card-inserted') {
-      start = i + 1;
-      break;
-    }
-  }
-  const exchanges = trace
-    .slice(start)
-    .filter(
-      (e): e is ExchangeEntry & { response: string } =>
-        e.type === 'exchange' && e.readerId === reader.id && !!e.response,
-    )
-    .map(({ command, response }) => ({ command, response }));
+export async function recordCard(
+  name: string,
+  reader: ReaderInfo,
+  card: CardInfo,
+): Promise<string> {
   const definition = recordVirtualCard({
     name,
-    atr: reader.card.atr,
-    interface: parseAtr(fromHex(reader.card.atr)).contactless ? 'contactless' : 'contact',
-    exchanges,
+    atr: card.atr,
+    interface: parseAtr(fromHex(card.atr)).contactless ? 'contactless' : 'contact',
+    exchanges: sessionExchanges(get().trace, card.session),
     description: `Recorded from ${reader.name} on ${new Date().toLocaleString()}`,
   });
   const file = await api.saveVirtualCard(definition);

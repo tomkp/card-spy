@@ -13,6 +13,8 @@ export interface OutputLine {
 export interface ExplorerState {
   status: 'idle' | 'running' | 'done' | 'error';
   readerId?: string;
+  /** The `CardInfo.session` of the card explored: the results go when it does. */
+  session?: number;
   root?: ExplorerNode;
   error?: string;
 }

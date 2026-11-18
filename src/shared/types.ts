@@ -12,6 +12,11 @@ export interface CardInfo {
   /** Name of the virtual card definition, for virtual readers. */
   virtualName?: string;
   insertedAt: number;
+  /**
+   * Identifies this card's time in the reader. A card removed and inserted again, or held through
+   * a PC/SC service outage, comes back with a new one, and commands for the old one then fail.
+   */
+  session: number;
 }
 
 export interface ReaderInfo {
@@ -26,6 +31,8 @@ export interface ExchangeEntry {
   id: number;
   readerId: string;
   readerName: string;
+  /** The `CardInfo.session` of the card it was sent to. */
+  session: number;
   source: ExchangeSource;
   /** Hex, no separators. */
   command: string;
@@ -74,10 +81,18 @@ export interface CardSpyApi {
   listReaders(): Promise<ReaderInfo[]>;
   onReadersChanged(listener: (readers: ReaderInfo[]) => void): () => void;
 
-  /** Sends one APDU (hex) and resolves with the raw response (hex), status word included. */
-  transmit(readerId: string, command: string, source: ExchangeSource): Promise<string>;
-  /** Warm reset (or cold when `cold`); resolves with the new ATR. */
-  resetCard(readerId: string, cold?: boolean): Promise<string>;
+  /**
+   * Sends one APDU (hex) to the card in `session` and resolves with the raw response (hex), status
+   * word included. Fails if that card is no longer in the reader.
+   */
+  transmit(
+    readerId: string,
+    session: number,
+    command: string,
+    source: ExchangeSource,
+  ): Promise<string>;
+  /** Warm reset (or cold when `cold`) of the card in `session`; resolves with the new ATR. */
+  resetCard(readerId: string, session: number, cold?: boolean): Promise<string>;
 
   getTrace(): Promise<TraceEntry[]>;
   clearTrace(): Promise<void>;

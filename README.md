@@ -54,6 +54,8 @@ examples/          example scripts, type-checked against the script API
 
 Every APDU goes through the main process one at a time per reader, and is recorded in the trace with its source (`console`, `explorer` or `script`). 61xx/6Cxx handling happens above the transport, so GET RESPONSE shows up in the trace as an exchange of its own.
 
+Each command is for one card, not just a reader. When the card is removed, or reconnected after a PC/SC service outage, commands still queued for it fail, and a script or exploration using it stops, instead of carrying on with whatever card is in the reader now.
+
 ## Scripts
 
 Scripts are TypeScript modules with top-level `await`, run in a sandboxed worker. The globals are declared in [`script-globals.d.ts`](src/renderer/src/scripting/script-globals.d.ts), which is also what the editor uses for completions:

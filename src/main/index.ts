@@ -52,11 +52,11 @@ function registerIpc(): void {
   ipcMain.handle(Channels.listReaders, () => devices.listReaders());
   ipcMain.handle(
     Channels.transmit,
-    (_e, readerId: string, command: string, source: ExchangeSource) =>
-      devices.transmit(readerId, command, source),
+    (_e, readerId: string, session: number, command: string, source: ExchangeSource) =>
+      devices.transmit(readerId, session, command, source),
   );
-  ipcMain.handle(Channels.resetCard, (_e, readerId: string, cold?: boolean) =>
-    devices.resetCard(readerId, cold),
+  ipcMain.handle(Channels.resetCard, (_e, readerId: string, session: number, cold?: boolean) =>
+    devices.resetCard(readerId, session, cold),
   );
   ipcMain.handle(Channels.getTrace, () => devices.getTrace());
   ipcMain.handle(Channels.clearTrace, () => devices.clearTrace());

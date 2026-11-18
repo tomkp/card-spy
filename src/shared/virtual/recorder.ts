@@ -1,4 +1,5 @@
 import { fromHex, toHex } from '../hex';
+import type { ExchangeEntry, TraceEntry } from '../types';
 import { INITIAL_STATE, type ApduRule, type VirtualCardDefinition } from './definition';
 
 export interface RecordedExchange {
@@ -77,6 +78,19 @@ export function recordVirtualCard(options: RecordOptions): VirtualCardDefinition
     ...(options.interface ? { interface: options.interface } : {}),
     model: { kind: 'apdu', rules },
   };
+}
+
+/** The exchanges in a trace that the card in `session` answered, in order. */
+export function sessionExchanges(
+  trace: readonly TraceEntry[],
+  session: number,
+): RecordedExchange[] {
+  return trace
+    .filter(
+      (e): e is ExchangeEntry & { response: string } =>
+        e.type === 'exchange' && e.session === session && !!e.response,
+    )
+    .map(({ command, response }) => ({ command, response }));
 }
 
 function baseState(state: string): string {

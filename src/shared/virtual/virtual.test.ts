@@ -6,7 +6,8 @@ import {
   parseVirtualCard,
   type VirtualCardDefinition,
 } from './definition';
-import { recordVirtualCard } from './recorder';
+import type { TraceEntry } from '../types';
+import { recordVirtualCard, sessionExchanges } from './recorder';
 import { createVirtualCard } from './simulator';
 
 const send = (card: ReturnType<typeof createVirtualCard>, hex: string) =>
@@ -158,5 +159,33 @@ describe('recorder', () => {
       ],
     });
     expect(def.model.kind === 'apdu' && def.model.rules).toHaveLength(1);
+  });
+
+  it("takes only the answers from one card's session", () => {
+    const entry = (id: number, session: number, response?: string): TraceEntry => ({
+      type: 'exchange',
+      id,
+      readerId: 'pcsc:R',
+      readerName: 'R',
+      session,
+      source: 'console',
+      command: `00B2010C0${id}`,
+      ...(response ? { response } : { error: 'Card removed' }),
+      startedAt: 0,
+      durationMs: 1,
+    });
+    const trace: TraceEntry[] = [
+      entry(1, 1, '9000'),
+      { type: 'event', id: 2, readerId: 'pcsc:R', readerName: 'R', event: 'card-removed', at: 0 },
+      // The answer to a command sent to the first card can arrive after the second is in.
+      entry(3, 2, '6A82'),
+      entry(4, 1, '6A83'),
+      entry(5, 2),
+      entry(6, 2, '9000'),
+    ];
+    expect(sessionExchanges(trace, 2)).toEqual([
+      { command: '00B2010C03', response: '6A82' },
+      { command: '00B2010C06', response: '9000' },
+    ]);
   });
 });
