@@ -32,7 +32,7 @@ To try the pipeline without releasing anything, run the **Release** workflow by 
 
 ## One-time setup: macOS signing and notarization
 
-Until these secrets exist, the macOS build is unsigned. People can still open an unsigned build, but only by right-clicking it and choosing **Open**. Add the secrets once:
+Until these secrets exist, the macOS build is unsigned. People can still open an unsigned build: they try to open it once, then click **Open Anyway** in **System Settings → Privacy & Security**. (Right-clicking it and choosing **Open** stopped working in macOS 15.) Add the secrets once:
 
 1. **Export the signing certificate.** In Keychain Access, under **My Certificates**, right-click **Developer ID Application: Tom Kemp-Potter (7JSTFD84WQ)**, choose **Export**, and save it as a `.p12` with a strong password.
 2. **Create an app-specific password** for notarization. Go to [account.apple.com](https://account.apple.com), then **Sign-In and Security → App-Specific Passwords**.
