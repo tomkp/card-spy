@@ -26,11 +26,9 @@ describe('pickReader', () => {
     expect(pickReader([], {})).toEqual({ selected: undefined, preferred: undefined });
   });
 
-  it('keeps the selection while its reader is present', () => {
-    const readers = [virtual, pcsc('A', true)];
-    expect(pickReader(readers, { selected: 'virtual:0', preferred: 'virtual:0' }).selected).toBe(
-      'virtual:0',
-    );
+  it('keeps a present selection when the preferred reader is gone', () => {
+    const choice = { selected: 'virtual:0', preferred: 'pcsc:A' };
+    expect(pickReader([virtual, pcsc('B', true)], choice)).toEqual(choice);
   });
 
   it('gives the selection back to a reader that goes away and comes back', () => {
@@ -46,25 +44,49 @@ describe('pickReader', () => {
     ).toEqual(['pcsc:A', 'pcsc:A', 'virtual:0', 'pcsc:A', 'pcsc:A']);
   });
 
-  it('returns to the reader the user picked, not the first automatic pick', () => {
-    const start = { selected: 'pcsc:B', preferred: 'pcsc:B' };
+  it('gives the selection back to the reader the user picked, not the one picked for them', () => {
+    const first = pickReader([virtual, pcsc('A', true), pcsc('B')], {});
+    expect(first).toEqual({ selected: 'pcsc:A', preferred: 'pcsc:A' });
+    // The user clicks B (selectReader), which then goes away and comes back.
+    const clicked = { selected: 'pcsc:B', preferred: 'pcsc:B' };
     expect(
       selections(
         [
-          [virtual, pcsc('A', true), pcsc('B')],
-          [virtual, pcsc('A', true)],
-          [virtual, pcsc('A', true), pcsc('B')],
+          [virtual, pcsc('A')],
+          [virtual, pcsc('A'), pcsc('B')],
         ],
-        start,
+        clicked,
       ),
-    ).toEqual(['pcsc:B', 'pcsc:A', 'pcsc:B']);
+    ).toEqual(['virtual:0', 'pcsc:B']);
+  });
+
+  it('leaves the selection on another hardware reader with a card', () => {
+    // A is unplugged and B, with a card, is picked instead: B may be in use, so A doesn't take it back.
+    expect(
+      selections([
+        [virtual, pcsc('A', true), pcsc('B', true)],
+        [virtual, pcsc('B', true)],
+        [virtual, pcsc('A'), pcsc('B', true)],
+        [virtual, pcsc('A', true), pcsc('B', true)],
+      ]),
+    ).toEqual(['pcsc:A', 'pcsc:B', 'pcsc:B', 'pcsc:B']);
+  });
+
+  it('picks the card that connects just after its reader appears', () => {
+    // smartcard reports a reader before it has connected to the card in it.
+    expect(
+      selections([
+        [virtual, pcsc('A')],
+        [virtual, pcsc('A', true)],
+      ]),
+    ).toEqual(['virtual:0', 'pcsc:A']);
   });
 
   it("doesn't let a fallback replace the preferred reader", () => {
     let choice = pickReader([virtual, pcsc('A', true)], {});
-    choice = pickReader([virtual, pcsc('B', true)], choice);
-    expect(choice).toEqual({ selected: 'pcsc:B', preferred: 'pcsc:A' });
-    choice = pickReader([virtual, pcsc('B', true)], choice);
-    expect(choice.selected).toBe('pcsc:B');
+    choice = pickReader([virtual], choice);
+    expect(choice).toEqual({ selected: 'virtual:0', preferred: 'pcsc:A' });
+    choice = pickReader([virtual, pcsc('A')], choice);
+    expect(choice.selected).toBe('pcsc:A');
   });
 });

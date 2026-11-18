@@ -4,23 +4,31 @@ export interface ReaderChoice {
   /** The reader selected now. */
   selected?: string;
   /**
-   * The reader the user picked last, or the first one picked for them. It's selected again
-   * whenever it's present, so a reader that goes away and comes back gets the selection back.
-   * Every PC/SC reader does that in a service outage.
+   * The reader the user picked last, or the first reader with a card picked for them. When it goes
+   * away and comes back, as every PC/SC reader does in a service outage, it gets the selection back.
    */
   preferred?: string;
 }
 
 /**
- * The selection after the reader list changes: the preferred reader if it's present, else the
- * selected one if it still is, else the first PC/SC reader with a card, any reader with a card, or
- * the first reader. A reader picked only because the preferred one went away doesn't replace it.
+ * The selection after the reader list changes.
+ *
+ * - The preferred reader, if it's present, unless the selection has moved to another hardware
+ *   reader that has a card: that card may be in use, and it's safer not to switch cards under it.
+ * - Else the selected reader, if it's still present and something is preferred.
+ * - Else the first PC/SC reader with a card, then any reader with a card, then the first reader.
+ *   Until a reader with a card has been picked, this runs again on every change, so a card that
+ *   connects just after its reader appears still gets picked.
  */
 export function pickReader(readers: ReaderInfo[], choice: ReaderChoice): ReaderChoice {
-  const present = (id: string | undefined) => readers.some((r) => r.id === id);
-  if (present(choice.preferred)) return { selected: choice.preferred, preferred: choice.preferred };
-  const fallback =
+  const find = (id: string | undefined) => readers.find((r) => r.id === id);
+  const selected = find(choice.selected);
+  const inUse = selected?.kind === 'pcsc' && selected.card !== undefined;
+  if (find(choice.preferred) && !inUse) {
+    return { selected: choice.preferred, preferred: choice.preferred };
+  }
+  if (selected && choice.preferred !== undefined) return choice;
+  const pick =
     readers.find((r) => r.kind === 'pcsc' && r.card) ?? readers.find((r) => r.card) ?? readers[0];
-  const selected = present(choice.selected) ? choice.selected : fallback?.id;
-  return { selected, preferred: choice.preferred ?? selected };
+  return { selected: pick?.id, preferred: choice.preferred ?? (pick?.card ? pick.id : undefined) };
 }

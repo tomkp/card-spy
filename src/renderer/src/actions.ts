@@ -55,7 +55,7 @@ export async function init(): Promise<void> {
   });
 }
 
-/** The reader the user picked last, or the first one picked for them: see `ReaderChoice`. */
+/** The reader the user picked last, or the first with a card picked for them: see `ReaderChoice`. */
 let preferredReaderId: string | undefined;
 
 /** Keeps a sensible reader selected as readers come and go. */
