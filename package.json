@@ -1,7 +1,7 @@
 {
   "name": "card-spy",
   "productName": "Card Spy",
-  "version": "3.0.0-dev",
+  "version": "3.0.0",
   "description": "A smartcard and NFC IDE: APDU workbench, card explorer, scripting and virtual cards",
   "author": "tomkp <tom@tomkp.com>",
   "license": "MIT",
